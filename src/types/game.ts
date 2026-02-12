@@ -1,3 +1,10 @@
+import {
+  BATTERY_SPACE_ID,
+  BLANK_SPACE_ID,
+  QUEUE_SPACE_ID,
+  VOID_SPACE_ID,
+} from "../enums/spaces";
+
 export interface VellymonStats {
   speed: number;
   health: number;
@@ -14,13 +21,19 @@ export interface Attack {
   energyCost: number;
 }
 
-export interface Space {
-  type: number;
-  x: number;
-  y: number;
-  isPrimary?: boolean;
-  index?: number;
-}
+type SpaceBase = { x: number; y: number };
+export type VoidSpace = SpaceBase & { type: typeof VOID_SPACE_ID };
+export type BlankSpace = SpaceBase & { type: typeof BLANK_SPACE_ID };
+export type BatterySpace = SpaceBase & {
+  type: typeof BATTERY_SPACE_ID;
+  isPrimary: boolean;
+};
+export type QueueSpace = SpaceBase & {
+  type: typeof QUEUE_SPACE_ID;
+  isPrimary: boolean;
+  index: number;
+};
+export type Space = QueueSpace | BatterySpace | BlankSpace | VoidSpace;
 
 export interface Board {
   width: number;
