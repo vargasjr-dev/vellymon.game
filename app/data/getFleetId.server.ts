@@ -5,7 +5,7 @@ const getFleetId =
     ? () => Promise.resolve("fleet-123")
     : () =>
         gamelift
-          .listAliases({ Name: "WarshopServer" })
+          .listAliases({ Name: "VellymonServer" })
           .promise()
           .then((res) => {
             const AliasId = res.Aliases?.[0]?.AliasId || "";

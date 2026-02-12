@@ -10,7 +10,7 @@ export default () => (
     <Splash
       title={"Play and Earn through your army of robots"}
       subtitle={
-        "Warshop pits players against each other in a simultaneous action RPG"
+        "Vellymon pits players against each other in a simultaneous action RPG"
       }
     />
     <Showcase header="Rule the arena through battle" showCards={[]} />

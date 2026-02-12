@@ -1,7 +1,7 @@
 {
   "language": "typescript",
   "app": "npx ts-node-esm data/main.ts",
-  "projectId": "warshop",
+  "projectId": "vellymon",
   "sendCrashReports": "false",
   "context": {
     "excludeStackIdFromLogicalIds": "true",

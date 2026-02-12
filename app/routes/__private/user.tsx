@@ -7,7 +7,7 @@ export { default as CatchBoundary } from "@dvargas92495/app/components/DefaultCa
 const TABS = ["Teams", "Matches", "Settings"];
 
 const UserPage: React.FunctionComponent = () => {
-  return <UserDashboard tabs={TABS} title={"Warshop"} />;
+  return <UserDashboard tabs={TABS} title={"Vellymon"} />;
 };
 
 export const meta = getMeta({
