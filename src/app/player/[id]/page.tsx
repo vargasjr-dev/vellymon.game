@@ -38,8 +38,13 @@ export default async function PlayerDetailPage({ params }: PageProps) {
             </div>
             
             <div className="border-b pb-4">
-              <p className="text-gray-600 text-sm">Priority</p>
-              <p className="text-2xl font-semibold">{vellymon.priority}</p>
+              <p className="text-gray-600 text-sm">Speed</p>
+              <p className="text-2xl font-semibold">{vellymon.speed}</p>
+            </div>
+            
+            <div className="border-b pb-4">
+              <p className="text-gray-600 text-sm">Energy</p>
+              <p className="text-2xl font-semibold">{vellymon.energy}</p>
             </div>
             
             <div className="mt-6">

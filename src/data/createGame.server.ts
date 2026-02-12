@@ -1,4 +1,4 @@
-import { sandbox } from '@vercel/sandbox';
+import { Sandbox } from '@vercel/sandbox';
 import { db } from "../../data/db";
 import { gameSession } from "../../data/schema";
 
@@ -11,32 +11,36 @@ const PROJECT_ID = 'prj_bAckE5PGlllJHSE2kGL74Bq3MjPV';
 const createGame = async (userId: string) => {
   try {
     // Create a Vercel Sandbox deployment for the game server
-    const sbx = await sandbox.create({
-      projectId: PROJECT_ID,
+    const sbx = await Sandbox.create({
       token: process.env.VERCEL_TOKEN!,
-      name: 'vellymon-game-server',
-      gitSource: {
-        type: 'github',
-        ref: 'main',
+      source: {
+        type: 'git',
+        url: 'https://github.com/vargasjr-dev/vellymon.game.git',
+        revision: 'main',
       },
+      ports: [12345], // WebSocket game server port
+      timeout: 3600000, // 1 hour
     });
+    
+    // Get the URL for the exposed port
+    const gameServerUrl = sbx.routes.find(r => r.port === 12345)?.url || sbx.routes[0]?.url;
     
     // Track game session in Postgres
     const [session] = await db.insert(gameSession).values({
-      deploymentId: sbx.id,
+      deploymentId: sbx.sandboxId,
       status: 'active',
       createdBy: userId,
       maxPlayers: 4,
       currentPlayers: 1,
       metadata: {
-        deploymentUrl: sbx.url,
+        deploymentUrl: gameServerUrl,
       },
     }).returning();
 
     return {
       sessionId: session.uuid,
-      deploymentId: sbx.id,
-      url: sbx.url,
+      deploymentId: sbx.sandboxId,
+      url: gameServerUrl,
     };
   } catch (error) {
     console.error('Failed to create game:', error);
