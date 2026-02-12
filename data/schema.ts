@@ -1,14 +1,10 @@
-import { z } from "zod";
+import { pgTable, uuid, varchar, integer } from "drizzle-orm/pg-core";
 
-const robotInstance = z.object({
-  uuid: z.string().uuid().describe("primary"),
-  address: z.string().max(64).describe("unique"),
-  network: z.number().describe("unique"),
-  version: z.string().max(17),
-  userId: z.string().max(32),
-  modelUuid: z.string().uuid(),
+export const robotInstance = pgTable("robotInstance", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  address: varchar("address", { length: 64 }).notNull().unique(),
+  network: integer("network").notNull().unique(),
+  version: varchar("version", { length: 17 }).notNull(),
+  userId: varchar("userId", { length: 32 }).notNull(),
+  modelUuid: uuid("modelUuid").notNull(),
 });
-
-const schema = { robotInstance };
-
-export default schema;
