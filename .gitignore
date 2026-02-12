@@ -3,9 +3,9 @@ build
 dist
 out
 .env
-_fuego
+.env.local
+.next
 .cache
-app/tailwind.css
 
 unity/Library
 unity/Temp
@@ -14,5 +14,3 @@ unity/Temp
 unity/[Ll]ogs/
 unity/obj
 unity/[Uu]ser[Ss]ettings/
-
-GameLiftLocal.jar

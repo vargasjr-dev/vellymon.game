@@ -1,13 +1,13 @@
 # vellymon.game
 
-A multiplayer RPG game built with Remix, deployed on Vercel.
+A multiplayer RPG game built with Next.js, deployed on Vercel.
 
 ## Tech Stack
 
-- **Framework:** Remix (React)
-- **Deployment:** Vercel
+- **Framework:** Next.js 15 (App Router)
+- **Deployment:** Vercel (with Sandbox support for game servers)
 - **Database:** Neon (PostgreSQL)
-- **Auth:** better-auth
+- **Auth:** better-auth with Google OAuth
 - **ORM:** Drizzle
 
 ## Development
@@ -21,6 +21,8 @@ npm run dev
 
 Deployed via Vercel. Push to `main` branch triggers automatic deployment.
 
+Game servers run in Vercel Sandboxes, with sessions tracked in Postgres.
+
 ## Environment Variables
 
 Required environment variables:
@@ -28,17 +30,29 @@ Required environment variables:
 - `DATABASE_URL` - Neon PostgreSQL connection string
 - `BETTER_AUTH_SECRET` - Secret for better-auth sessions
 - `BETTER_AUTH_URL` - Base URL for auth callbacks
-- `GITHUB_CLIENT_ID` - GitHub OAuth (optional)
-- `GITHUB_CLIENT_SECRET` - GitHub OAuth (optional)
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+- `VERCEL_TOKEN` - Vercel API token for creating sandboxes
+- `VERCEL_PROJECT_ID` - Vercel project ID
+- `GAME_SERVER_REPO` - GitHub repo for game server (optional, defaults to vargasjr-dev/vellymon-server)
 
-## Migration Status
+## Game Architecture
 
-This project was recently migrated from:
-- AWS (GameLift, RDS) → Vercel + Neon
-- Clerk → better-auth
-- CDK Terraform → vercel.json
-- Custom fuegojs framework → Standard Remix
+### Vellymons
+Each player can collect and battle with vellymons (formerly robots). Vellymons have stats:
+- Health
+- Attack
+- Priority
 
-### TODO
+### Game Sessions
+Game sessions are created as Vercel Sandboxes and tracked in Postgres with:
+- Deployment ID
+- Player list
+- Session status
+- Metadata
 
-Game server functionality (matchmaking, game sessions) needs reimplementation after removing AWS GameLift. See TODO comments in `app/data/` files.
+### Matchmaking
+Players can create new games or join existing ones. The system tracks:
+- Current player count
+- Max players per game
+- Player join/leave status
