@@ -6,6 +6,7 @@ out
 .env.local
 .next
 .cache
+*.tsbuildinfo
 
 unity/Library
 unity/Temp
