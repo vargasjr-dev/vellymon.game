@@ -1,24 +1,7 @@
-import getMysqlConnection from "@dvargas92495/app/backend/mysql.server";
-import gamelift from "./gamelift.server";
-import getRobotModel from "./getRobotModel.server";
+// TODO: Implement team submission (replace AWS GameLift)
 
-const submitTeam = ({
-  userId,
-  data,
-  params,
-}: {
-  userId: string;
-  data: Record<string, string[]>;
-  params: Record<string, string | undefined>;
-}) => {
-    // TODO: check that userId can actually submit to this player session
-  const id = params["id"];
-  return gamelift
-    .describePlayerSessions({
-      PlayerSessionId: id,
-    })
-    .promise()
-    .then(() => gamelift.pla);
+const submitTeam = async (playerSessionId: string) => {
+  throw new Error("Team submission not yet implemented - AWS GameLift removed");
 };
 
 export default submitTeam;
