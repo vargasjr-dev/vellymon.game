@@ -1,5 +1,8 @@
+import { sandbox } from '@vercel/sandbox';
 import { db } from "../../data/db";
 import { gameSession } from "../../data/schema";
+
+const PROJECT_ID = 'prj_bAckE5PGlllJHSE2kGL74Bq3MjPV';
 
 /**
  * Creates a new game session using Vercel Sandbox
@@ -8,48 +11,32 @@ import { gameSession } from "../../data/schema";
 const createGame = async (userId: string) => {
   try {
     // Create a Vercel Sandbox deployment for the game server
-    const deploymentResponse = await fetch('https://api.vercel.com/v1/deployments', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.VERCEL_TOKEN}`,
-        'Content-Type': 'application/json',
+    const sbx = await sandbox.create({
+      projectId: PROJECT_ID,
+      token: process.env.VERCEL_TOKEN!,
+      name: 'vellymon-game-server',
+      gitSource: {
+        type: 'github',
+        ref: 'main',
       },
-      body: JSON.stringify({
-        name: 'vellymon-game-server',
-        project: process.env.VERCEL_PROJECT_ID,
-        target: 'production',
-        // Sandbox-specific configuration
-        sandbox: true,
-        gitSource: {
-          type: 'github',
-          repo: process.env.GAME_SERVER_REPO || 'vargasjr-dev/vellymon-server',
-          ref: 'main',
-        },
-      }),
     });
-
-    if (!deploymentResponse.ok) {
-      throw new Error(`Failed to create deployment: ${deploymentResponse.statusText}`);
-    }
-
-    const deployment = await deploymentResponse.json();
     
     // Track game session in Postgres
     const [session] = await db.insert(gameSession).values({
-      deploymentId: deployment.id,
+      deploymentId: sbx.id,
       status: 'active',
       createdBy: userId,
       maxPlayers: 4,
       currentPlayers: 1,
       metadata: {
-        deploymentUrl: deployment.url,
+        deploymentUrl: sbx.url,
       },
     }).returning();
 
     return {
       sessionId: session.uuid,
-      deploymentId: deployment.id,
-      url: deployment.url,
+      deploymentId: sbx.id,
+      url: sbx.url,
     };
   } catch (error) {
     console.error('Failed to create game:', error);

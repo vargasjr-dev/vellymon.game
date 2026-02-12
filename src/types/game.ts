@@ -1,9 +1,17 @@
 export interface VellymonStats {
-  priority: number;
+  speed: number;
   health: number;
   attack: number;
+  energy: number;
   name: string;
   uuid: string;
+  attacks: Attack[];
+}
+
+export interface Attack {
+  name: string;
+  damage: number;
+  energyCost: number;
 }
 
 export interface Space {

@@ -33,16 +33,15 @@ Required environment variables:
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
 - `VERCEL_TOKEN` - Vercel API token for creating sandboxes
-- `VERCEL_PROJECT_ID` - Vercel project ID
-- `GAME_SERVER_REPO` - GitHub repo for game server (optional, defaults to vargasjr-dev/vellymon-server)
 
 ## Game Architecture
 
 ### Vellymons
-Each player can collect and battle with vellymons (formerly robots). Vellymons have stats:
+Each player can collect and battle with vellymons. Vellymons have stats:
 - Health
 - Attack
-- Priority
+- Speed
+- Energy (collected by eating or sleeping, consumed for movement and attacks)
 
 ### Game Sessions
 Game sessions are created as Vercel Sandboxes and tracked in Postgres with:

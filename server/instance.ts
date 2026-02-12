@@ -6,7 +6,7 @@ import GameLiftServerAPI, {
 import { OnStartGameSessionDelegate } from "@dplusic/gamelift-nodejs-serversdk/dist/types/Server/ProcessParameters";
 import { NULL_VEC } from "./map";
 import { commandsToEvents, Command, Game, storeCommands } from "./game";
-import getRobot from "~/data/getRobot.server";
+import getVellymon from "~/data/getVellymon.server";
 import getBoardById from "~/data/getBoardById.server";
 
 const port = Number(process.argv[2]) || 12345;
@@ -14,7 +14,7 @@ const MAX_BATTERY = 256;
 const game: Game = {
   healthChecks: 0,
   gameSessionId: "",
-  nextRobotId: 0,
+  nextVellymonId: 0,
   turn: 0,
   history: {},
   board: {
@@ -69,10 +69,10 @@ const onProcessTerminate = () => {
 
 const onStartGame = (
   {
-    myRobots,
+    myVellymons,
     myName,
   }: {
-    myRobots: string[];
+    myVellymons: string[];
     myName: string;
   },
   ws: WebSocket,
@@ -82,28 +82,29 @@ const onStartGame = (
     "Client",
     myName,
     "Starting Game With Team",
-    JSON.stringify(myRobots, null, 4)
+    JSON.stringify(myVellymons, null, 4)
   );
 
   const isPrimary = !game.primary?.joined;
-  return Promise.all(myRobots.map(getRobot))
-    .then((myRobots) => {
-      const robots = myRobots.map((r) => {
-        const robot = {
-          ...r,
-          id: game.nextRobotId++,
+  return Promise.all(myVellymons.map(getVellymon))
+    .then((myVellymons) => {
+      const vellymons = myVellymons.map((v) => {
+        const vellymon = {
+          ...v,
+          id: game.nextVellymonId++,
           position: NULL_VEC,
-          startingHealth: r.health,
+          startingHealth: v.health,
+          currentEnergy: v.energy,
         };
         // game.board add to dock
-        return robot;
+        return vellymon;
       });
       const player = {
         name: myName,
         joined: true,
         ready: false,
         ws,
-        team: robots,
+        team: vellymons,
         battery: MAX_BATTERY,
       };
       if (isPrimary) {
@@ -168,7 +169,7 @@ const onAcceptPlayerSession = (
         onStartGame(
           {
             myName: p.Result?.PlayerSessions[0].PlayerId || "",
-            myRobots: p.Result?.PlayerSessions[0].PlayerData?.split(",") || [],
+            myVellymons: p.Result?.PlayerSessions[0].PlayerData?.split(",") || [],
           },
           ws,
           game
