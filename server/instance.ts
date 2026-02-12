@@ -1,13 +1,8 @@
 import WebSocket, { WebSocketServer } from "ws";
-import GameLiftServerAPI, {
-  LogParameters,
-  ProcessParameters,
-} from "@dplusic/gamelift-nodejs-serversdk";
-import { OnStartGameSessionDelegate } from "@dplusic/gamelift-nodejs-serversdk/dist/types/Server/ProcessParameters";
 import { NULL_VEC } from "./map";
 import { commandsToEvents, Command, Game, storeCommands } from "./game";
-import getVellymon from "~/data/getVellymon.server";
-import getBoardById from "~/data/getBoardById.server";
+import getVellymon from "../src/data/getVellymon.server";
+import getBoardById from "../src/data/getBoardById.server";
 
 const port = Number(process.argv[2]) || 12345;
 const MAX_BATTERY = 256;
@@ -26,54 +21,28 @@ const game: Game = {
   },
 };
 
-const onGameSession: OnStartGameSessionDelegate = (gameSession) => {
-  game.gameSessionId = gameSession.GameSessionId || "";
-  getBoardById(
-    gameSession.GameProperties.find((p) => p.Key === "board")?.Value || ""
-  ).then((board) => {
+const initializeBoard = (boardId: string) => {
+  return getBoardById(boardId).then((board) => {
     game.board = board;
-    GameLiftServerAPI.ActivateGameSession();
+    console.log(`Board ${boardId} loaded`);
   });
-};
-
-const onUpdateGameSession = () => {
-  console.log("Updating");
 };
 
 const EndGame = () => {
-  GameLiftServerAPI.TerminateGameSession();
-};
-
-const onHealthCheck = (): boolean => {
-  GameLiftServerAPI.DescribePlayerSessions({
-    GameSessionId: game.gameSessionId,
-    Limit: 2,
-  }).then((result) => {
-    const sessions = result.Result?.PlayerSessions || [];
-    let timedOut = sessions.length > 0;
-    sessions.forEach((ps) => {
-      timedOut = timedOut && ps.Status === 4; // PlayerSessionStatus.TIMEDOUT;
-    });
-    if (timedOut) EndGame();
-    if (game.healthChecks == 10 && sessions.length == 0) EndGame();
-  });
-  return true;
-};
-
-const onProcessTerminate = () => {
-  console.log("IM THE TERMINATOR");
-  GameLiftServerAPI.ProcessEnding();
-  GameLiftServerAPI.Destroy();
-  process.exit(0);
+  console.log("Game session ending");
+  game.primary?.ws?.close();
+  game.secondary?.ws?.close();
 };
 
 const onStartGame = (
   {
     myVellymons,
     myName,
+    boardId,
   }: {
     myVellymons: string[];
     myName: string;
+    boardId?: string;
   },
   ws: WebSocket,
   game: Game
@@ -86,7 +55,14 @@ const onStartGame = (
   );
 
   const isPrimary = !game.primary?.joined;
-  return Promise.all(myVellymons.map(getVellymon))
+  
+  // Initialize board if provided and not already loaded
+  const boardPromise = boardId && game.board.spaces.length === 0
+    ? initializeBoard(boardId)
+    : Promise.resolve();
+
+  return boardPromise
+    .then(() => Promise.all(myVellymons.map(getVellymon)))
     .then((myVellymons) => {
       const vellymons = myVellymons.map((v) => {
         const vellymon = {
@@ -138,11 +114,17 @@ const onStartGame = (
     );
 };
 
-const onAcceptPlayerSession = (
+const onJoinGame = (
   {
     playerSessionId,
+    playerName,
+    playerTeam,
+    boardId,
   }: {
     playerSessionId: string;
+    playerName: string;
+    playerTeam: string[];
+    boardId?: string;
   },
   ws: WebSocket,
   game: Game
@@ -156,26 +138,15 @@ const onAcceptPlayerSession = (
     );
     return;
   }
-  return GameLiftServerAPI.AcceptPlayerSession(playerSessionId).then(
-    (outcome) => {
-      if (!outcome.Success) {
-        console.error(outcome);
-        return;
-      }
-      GameLiftServerAPI.DescribePlayerSessions({
-        PlayerSessionId: playerSessionId,
-        Limit: 1,
-      }).then((p) =>
-        onStartGame(
-          {
-            myName: p.Result?.PlayerSessions[0].PlayerId || "",
-            myVellymons: p.Result?.PlayerSessions[0].PlayerData?.split(",") || [],
-          },
-          ws,
-          game
-        )
-      );
-    }
+  
+  return onStartGame(
+    {
+      myName: playerName,
+      myVellymons: playerTeam,
+      boardId,
+    },
+    ws,
+    game
   );
 };
 
@@ -248,48 +219,72 @@ const onSubmitCommands = (
   }
 };
 
-console.log(`Starting the server at port: ${port}`);
-const outcome = GameLiftServerAPI.InitSDK();
+console.log(`Starting the vellymon game server at port: ${port}`);
+
 const MESSAGE_HANDLERS = {
-  ACCEPT_PLAYER_SESSION: onAcceptPlayerSession,
+  JOIN_GAME: onJoinGame,
+  START_GAME: onStartGame,
   SUBMIT_COMMANDS: onSubmitCommands,
 } as const;
 
-if (outcome.Success) {
-  const paths = new LogParameters(["./logs"]);
-  const wss = new WebSocketServer({ port }, () => {
-    console.log("server started");
-  });
-  wss.on("connection", (ws) => {
-    ws.on("message", (data) => {
-      try {
-        const { name, ...props } = JSON.parse(data.toString());
-        console.log(name, props);
-        MESSAGE_HANDLERS[name as keyof typeof MESSAGE_HANDLERS](
-          props,
-          ws,
-          game
-        );
-      } catch (e) {
-        console.error("Latest message failed:");
-        console.error("- data:", data.toString());
-        console.error("- error:", e);
+const wss = new WebSocketServer({ port }, () => {
+  console.log("Vellymon game server started");
+});
+
+wss.on("connection", (ws) => {
+  console.log("New client connected");
+  
+  ws.on("message", (data) => {
+    try {
+      const { name, ...props } = JSON.parse(data.toString());
+      console.log("Received message:", name, props);
+      
+      const handler = MESSAGE_HANDLERS[name as keyof typeof MESSAGE_HANDLERS];
+      if (handler) {
+        handler(props as any, ws, game);
+      } else {
+        console.warn("Unknown message type:", name);
+        ws.send(JSON.stringify({ name: "ERROR", message: `Unknown message type: ${name}` }));
       }
-    });
+    } catch (e) {
+      console.error("Failed to process message:");
+      console.error("- data:", data.toString());
+      console.error("- error:", e);
+      ws.send(JSON.stringify({ name: "ERROR", message: "Failed to process message" }));
+    }
   });
-  wss.on("listening", () => {
-    console.log(`listening on ${port}`);
-    GameLiftServerAPI.ProcessReady(
-      new ProcessParameters(
-        onGameSession,
-        onUpdateGameSession,
-        onProcessTerminate,
-        onHealthCheck,
-        port,
-        paths
-      )
-    );
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
+    // Check if game should end
+    if (game.primary?.ws === ws || game.secondary?.ws === ws) {
+      console.log("Player disconnected, ending game");
+      EndGame();
+    }
   });
-} else {
-  console.log(outcome);
-}
+
+  ws.on("error", (error) => {
+    console.error("WebSocket error:", error);
+  });
+});
+
+wss.on("listening", () => {
+  console.log(`Vellymon game server listening on port ${port}`);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  wss.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down gracefully");
+  wss.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+});
