@@ -13,18 +13,27 @@ type Position = {
   y: number;
 };
 
+export type Attack = {
+  name: string;
+  damage: number;
+  energyCost: number;
+};
+
 export type VellymonStats = {
-  priority: number;
+  speed: number;
   health: number;
   attack: number;
+  energy: number;
   name: string;
   uuid: string;
+  attacks: Attack[];
 };
 
 export type Vellymon = {
   id: number;
   position: Position;
   startingHealth: number;
+  currentEnergy: number;
 } & VellymonStats;
 
 type Player = {
@@ -254,7 +263,7 @@ export const commandsToEvents = (game: LiveGame): GameEvent[] => {
       v.id,
       {
         vellymonId: v.id,
-        priority: v.priority,
+        priority: v.speed,
         num: {
           [SPAWN_COMMAND_ID]: 0,
           [MOVE_COMMAND_ID]: 0,

@@ -15,7 +15,8 @@ export default async function MarketPage() {
               <div className="space-y-2 text-gray-700">
                 <p><span className="font-semibold">Health:</span> {vellymon.health}</p>
                 <p><span className="font-semibold">Attack:</span> {vellymon.attack}</p>
-                <p><span className="font-semibold">Priority:</span> {vellymon.priority}</p>
+                <p><span className="font-semibold">Speed:</span> {vellymon.speed}</p>
+                <p><span className="font-semibold">Energy:</span> {vellymon.energy}</p>
               </div>
               <button className="mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
                 Buy Now
