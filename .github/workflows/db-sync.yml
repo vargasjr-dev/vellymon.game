@@ -30,13 +30,13 @@ jobs:
         run: |
           vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_ORG_ID: team_36iZPJkU2LLMsHZqJZXMZppe
           VERCEL_PROJECT_ID: prj_bAckE5PGlllJHSE2kGL74Bq3MjPV
         
       - name: Pull environment variables from Vercel
         run: vercel env pull .env.local --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_ORG_ID: team_36iZPJkU2LLMsHZqJZXMZppe
           VERCEL_PROJECT_ID: prj_bAckE5PGlllJHSE2kGL74Bq3MjPV
         
       - name: Push schema to database

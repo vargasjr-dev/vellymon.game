@@ -37,8 +37,6 @@ Required environment variables (set in Vercel):
 Required GitHub secrets (for database sync workflow):
 
 - `VERCEL_TOKEN` - Vercel API token (same as above)
-- `VERCEL_ORG_ID` - Your Vercel organization/team ID (found in Vercel settings)
-- `VERCEL_PROJECT_ID` - Set to `prj_bAckE5PGlllJHSE2kGL74Bq3MjPV`
 
 ## Game Architecture
 
