@@ -25,14 +25,18 @@ Game servers run in Vercel Sandboxes, with sessions tracked in Postgres.
 
 ## Environment Variables
 
-Required environment variables:
+Required environment variables (set in Vercel):
 
 - `DATABASE_URL` - Neon PostgreSQL connection string
-- `BETTER_AUTH_SECRET` - Secret for better-auth sessions
-- `BETTER_AUTH_URL` - Base URL for auth callbacks
+- `BETTER_AUTH_SECRET` - Secret for better-auth sessions (generate with `openssl rand -base64 32`)
+- `BETTER_AUTH_URL` - Base URL for auth callbacks (e.g., `https://vellymon.game`)
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
 - `VERCEL_TOKEN` - Vercel API token for creating sandboxes
+
+Required GitHub secrets (for database sync workflow):
+
+- `VERCEL_TOKEN` - Vercel API token (same as above)
 
 ## Game Architecture
 
