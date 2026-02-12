@@ -8,7 +8,7 @@ public class AwsLambdaClient
     #if UNITY_EDITOR
       public const string GATEWAY_URL = "http://localhost:3003";
     #else
-      public const string GATEWAY_URL = "https://api.warshop.io";
+      public const string GATEWAY_URL = "https://api.vellymon.game";
     #endif
 
     public static void SendCreateGameRequest(bool isPriv, string username, string pass, UnityAction<string, string, int> callback, UnityAction<string> reject)

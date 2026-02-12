@@ -1,9 +1,9 @@
 {
-  "name": "warshop.io",
-  "description": "Description for warshop.io",
+  "name": "vellymon.game",
+  "description": "Description for vellymon.game",
   "version": "0.0.1",
   "license": "MIT",
-  "repository": "dvargas92495/warshop.io",
+  "repository": "vargasjr-dev/vellymon.game",
   "scripts": {
     "tailwind": "npm run generate:css -- --watch",
     "generate:css": "tailwindcss -o ./app/tailwind.css",
