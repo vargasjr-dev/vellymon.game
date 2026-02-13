@@ -42,5 +42,9 @@ jobs:
           VERCEL_ORG_ID: team_36iZPJkU2LLMsHZqJZXMZppe
           VERCEL_PROJECT_ID: prj_bAckE5PGlllJHSE2kGL74Bq3MjPV
         
-      - name: Push schema to database
-        run: npx drizzle-kit push
+      - name: Load environment and push schema to database
+        run: |
+          set -a
+          source .env.local
+          set +a
+          npx drizzle-kit push
