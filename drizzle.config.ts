@@ -6,4 +6,6 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },
+  // Always create new columns instead of renaming when field names change
+  breakpoints: true,
 });
