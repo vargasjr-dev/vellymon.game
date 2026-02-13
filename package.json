@@ -11,8 +11,7 @@
     "lint": "next lint",
     "format": "prettier --write \"**/*.tsx\"",
     "db:push": "drizzle-kit push --force",
-    "db:studio": "drizzle-kit studio",
-    "db:drop-auth": "node scripts/drop-auth-tables.js"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "next": "^15.0.0",
