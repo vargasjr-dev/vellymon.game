@@ -3,6 +3,22 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
+const MIN_PASSWORD_LENGTH = 8;
+
+function mapErrorMessage(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('pattern') || lower.includes('too_small') || lower.includes('too short')) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+  }
+  if (lower.includes('already') || lower.includes('exists') || lower.includes('duplicate')) {
+    return 'An account with this email already exists';
+  }
+  if (lower.includes('invalid') && lower.includes('email')) {
+    return 'Please enter a valid email address';
+  }
+  return message;
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +33,12 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -37,7 +59,8 @@ export default function SignupPage() {
       // Redirect to home page on success
       window.location.href = '/';
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      const raw = err instanceof Error ? err.message : 'Something went wrong';
+      setError(mapErrorMessage(raw));
     } finally {
       setLoading(false);
     }
