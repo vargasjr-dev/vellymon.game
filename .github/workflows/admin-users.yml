@@ -63,10 +63,20 @@ jobs:
                   return;
                 }
 
+                // List actual column names for diagnosis
+                const columns = await sql\`
+                  SELECT column_name, data_type
+                  FROM information_schema.columns
+                  WHERE table_name = 'user' AND table_schema = 'public'
+                  ORDER BY ordinal_position
+                \`;
+                console.log('=== USER TABLE COLUMNS ===');
+                columns.forEach(c => console.log(\`  - \${c.column_name} (\${c.data_type})\`));
+                console.log('');
+
                 const users = await sql\`
-                  SELECT id, name, email, email_verified, created_at
-                  FROM \"user\"
-                  ORDER BY created_at DESC
+                  SELECT * FROM \"user\"
+                  ORDER BY 1 DESC
                   LIMIT 10
                 \`;
                 console.log('=== LAST 10 REGISTERED USERS ===');
@@ -76,11 +86,12 @@ jobs:
                   console.log(\`Total: \${users.length} user(s)\`);
                   console.log('');
                   users.forEach((u, i) => {
-                    console.log(\`\${i + 1}. \${u.name}\`);
+                    console.log(\`\${i + 1}. \${u.name || '(no name)'}\`);
                     console.log(\`   Email: \${u.email}\`);
-                    console.log(\`   Verified: \${u.email_verified}\`);
-                    console.log(\`   Registered: \${u.created_at}\`);
+                    console.log(\`   Verified: \${u.emailVerified ?? u.email_verified ?? '?'}\`);
+                    console.log(\`   Registered: \${u.createdAt || u.created_at || '?'}\`);
                     console.log(\`   ID: \${u.id}\`);
+                    console.log(\`   Raw: \${JSON.stringify(u)}\`);
                     console.log('');
                   });
                 }
