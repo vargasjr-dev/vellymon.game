@@ -7,13 +7,18 @@ const MIN_PASSWORD_LENGTH = 8;
 
 function mapErrorMessage(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes('pattern') || lower.includes('too_small') || lower.includes('too short')) {
+  if (lower.includes('too_small') || lower.includes('too short')) {
     return `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
   }
   if (lower.includes('user not found') || lower.includes('no user')) {
     return 'No account found with this email address';
   }
-  if (lower.includes('invalid') || lower.includes('incorrect') || lower.includes('credentials')) {
+  if (
+    lower.includes('invalid') ||
+    lower.includes('incorrect') ||
+    lower.includes('credentials') ||
+    lower.includes('pattern')
+  ) {
     return 'Incorrect email or password';
   }
   return message;

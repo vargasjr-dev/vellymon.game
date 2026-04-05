@@ -7,7 +7,7 @@ const MIN_PASSWORD_LENGTH = 8;
 
 function mapErrorMessage(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes('pattern') || lower.includes('too_small') || lower.includes('too short')) {
+  if (lower.includes('too_small') || lower.includes('too short')) {
     return `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
   }
   if (lower.includes('already') || lower.includes('exists') || lower.includes('duplicate')) {
@@ -15,6 +15,9 @@ function mapErrorMessage(message: string): string {
   }
   if (lower.includes('invalid') && lower.includes('email')) {
     return 'Please enter a valid email address';
+  }
+  if (lower.includes('pattern')) {
+    return 'Invalid input. Please check your email and password';
   }
   return message;
 }
