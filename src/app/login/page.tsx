@@ -124,12 +124,17 @@ export default function LoginPage() {
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
 
-          <p className="text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
-              Sign up
+          <div className="flex items-center justify-between text-sm">
+            <Link href="/forgot-password" className="text-blue-600 hover:text-blue-800 font-medium">
+              Forgot password?
             </Link>
-          </p>
+            <p className="text-gray-600">
+              No account?{' '}
+              <Link href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
+                Sign up
+              </Link>
+            </p>
+          </div>
         </form>
 
         {/* Divider */}
