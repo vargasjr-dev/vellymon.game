@@ -17,17 +17,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
-        run: npm ci
-        
+        run: bun install --no-save
+
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: bun install -g vercel
         
       - name: Link to Vercel project
         run: |
@@ -47,4 +44,4 @@ jobs:
           set -a
           source .env.local
           set +a
-          npx drizzle-kit push --force
+          bunx drizzle-kit push --force
