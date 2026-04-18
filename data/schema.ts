@@ -30,6 +30,43 @@ export const gamePlayer = pgTable("gamePlayer", {
   status: varchar("status", { length: 32 }).notNull().default("active"), // active, left, kicked
 });
 
+// Team system — 8 vellymons per team, 4 active in match lineup
+export const team = pgTable(
+  "team",
+  {
+    uuid: uuid("uuid").primaryKey().defaultRandom(),
+    name: varchar("name", { length: 64 }).notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("team_userId_idx").on(table.userId)],
+);
+
+export const teamSlot = pgTable(
+  "teamSlot",
+  {
+    uuid: uuid("uuid").primaryKey().defaultRandom(),
+    teamUuid: uuid("teamUuid")
+      .notNull()
+      .references(() => team.uuid, { onDelete: "cascade" }),
+    vellymonInstanceUuid: uuid("vellymonInstanceUuid")
+      .notNull()
+      .references(() => vellymonInstance.uuid, { onDelete: "cascade" }),
+    slotIndex: integer("slotIndex").notNull(), // 0-7 position in roster
+    isActive: boolean("isActive").default(false).notNull(), // true = in the 4-slot match lineup
+  },
+  (table) => [
+    index("teamSlot_teamUuid_idx").on(table.teamUuid),
+    index("teamSlot_vellymonInstanceUuid_idx").on(table.vellymonInstanceUuid),
+  ],
+);
+
 // BetterAuth required tables (generated via @better-auth/cli generate)
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -104,6 +141,7 @@ export const verification = pgTable(
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  teams: many(team),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -117,5 +155,24 @@ export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
     references: [user.id],
+  }),
+}));
+
+export const teamRelations = relations(team, ({ one, many }) => ({
+  user: one(user, {
+    fields: [team.userId],
+    references: [user.id],
+  }),
+  slots: many(teamSlot),
+}));
+
+export const teamSlotRelations = relations(teamSlot, ({ one }) => ({
+  team: one(team, {
+    fields: [teamSlot.teamUuid],
+    references: [team.uuid],
+  }),
+  vellymonInstance: one(vellymonInstance, {
+    fields: [teamSlot.vellymonInstanceUuid],
+    references: [vellymonInstance.uuid],
   }),
 }));
