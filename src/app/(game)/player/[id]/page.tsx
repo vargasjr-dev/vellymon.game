@@ -1,6 +1,3 @@
-import { redirect } from "next/navigation";
-import { auth } from "~/lib/auth.server";
-import { headers } from "next/headers";
 import getVellymonByUuid from "~/data/getVellymon.server";
 
 interface PageProps {
@@ -8,15 +5,7 @@ interface PageProps {
 }
 
 export default async function PlayerDetailPage({ params }: PageProps) {
-  const headersList = await headers();
-  const session = await auth.api.getSession({
-    headers: headersList,
-  });
-
-  if (!session) {
-    redirect("/login");
-  }
-
+  // Auth guaranteed by (game)/layout.tsx — no session needed here
   const { id } = await params;
   const vellymon = await getVellymonByUuid(id);
 
