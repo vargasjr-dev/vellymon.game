@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const navLinks = [
   { href: "/player", label: "Roster" },
@@ -11,15 +11,63 @@ const navLinks = [
   { href: "/matches", label: "Matches" },
 ];
 
-export default function GameNav() {
+interface GameNavProps {
+  user: { name: string; email: string } | null;
+}
+
+export default function GameNav({ user }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => {
     if (href === "/player") {
       return pathname === "/player" || pathname.startsWith("/player/");
     }
     return pathname.startsWith(href);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setDropdownOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
+
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/sign-out", { method: "POST" });
+      router.push("/");
+      router.refresh();
+    } catch {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -51,18 +99,24 @@ export default function GameNav() {
             ))}
           </div>
 
-          {/* Account Link (Desktop) */}
-          <div className="hidden md:flex items-center">
-            <Link
-              href="/user"
+          {/* Account Dropdown (Desktop) */}
+          <div className="hidden md:block relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                isActive("/user")
+                isActive("/user") || dropdownOpen
                   ? "bg-blue-600 text-white"
                   : "text-gray-300 hover:bg-gray-800 hover:text-white"
               }`}
             >
+              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold">
+                {initials}
+              </span>
+              <span className="max-w-[120px] truncate">
+                {user?.name || "Account"}
+              </span>
               <svg
-                className="w-5 h-5"
+                className={`w-4 h-4 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -71,11 +125,68 @@ export default function GameNav() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  d="M19 9l-7 7-7-7"
                 />
               </svg>
-              Account
-            </Link>
+            </button>
+
+            {/* Dropdown Panel */}
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
+                {/* User Info */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {user?.name || "Player"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user?.email}
+                  </p>
+                </div>
+
+                {/* Profile Link */}
+                <Link
+                  href="/user"
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  Profile
+                </Link>
+
+                {/* Sign Out */}
+                <button
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  {signingOut ? "Signing out…" : "Sign Out"}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mobile Hamburger */}
@@ -123,7 +234,6 @@ export default function GameNav() {
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMenuOpen(false)}
                 className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
                   isActive(link.href)
                     ? "bg-blue-600 text-white"
@@ -133,17 +243,35 @@ export default function GameNav() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/user"
-              onClick={() => setMenuOpen(false)}
-              className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
-                isActive("/user")
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
-              }`}
-            >
-              Account
-            </Link>
+
+            {/* Mobile Account Section */}
+            <div className="border-t border-gray-800 mt-2 pt-2">
+              {user && (
+                <div className="px-4 py-2">
+                  <p className="text-sm font-semibold text-white truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                </div>
+              )}
+              <Link
+                href="/user"
+                className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  isActive("/user")
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                Profile
+              </Link>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="block w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-gray-800 transition disabled:opacity-50"
+              >
+                {signingOut ? "Signing out…" : "Sign Out"}
+              </button>
+            </div>
           </div>
         )}
       </div>
