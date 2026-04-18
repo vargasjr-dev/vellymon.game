@@ -19,7 +19,7 @@ export default async function MarketPage() {
             speed={vellymon.speed}
             energy={vellymon.energy}
           >
-            <BuyButton modelUuid={vellymon.uuid} />
+            <BuyButton modelUuid={vellymon.uuid} vellymonName={vellymon.name} />
           </VellymonCard>
         ))}
       </div>

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "~/lib/auth.server";
 import GameNav from "~/components/GameNav";
+import { ToastProvider } from "~/components/Toast";
 
 export default async function GameLayout({
   children,
@@ -18,10 +19,12 @@ export default async function GameLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-300">
-      <GameNav
-        user={{ name: session.user.name, email: session.user.email }}
-      />
-      <main>{children}</main>
+      <ToastProvider>
+        <GameNav
+          user={{ name: session.user.name, email: session.user.email }}
+        />
+        <main>{children}</main>
+      </ToastProvider>
     </div>
   );
 }
