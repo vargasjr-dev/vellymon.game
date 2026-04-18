@@ -15,3 +15,4 @@ unity/Temp
 unity/[Ll]ogs/
 unity/obj
 unity/[Uu]ser[Ss]ettings/
+.internal/
