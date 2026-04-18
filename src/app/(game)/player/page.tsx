@@ -2,6 +2,7 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
+import getTeams from "~/data/getTeams.server";
 import VellymonCard from "~/components/VellymonCard";
 
 export default async function PlayerHubPage() {
@@ -9,7 +10,10 @@ export default async function PlayerHubPage() {
   // Session guaranteed by (game)/layout.tsx auth gate
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const roster = await getVellymonRoster(session.user.id);
+  const [roster, teams] = await Promise.all([
+    getVellymonRoster(session.user.id),
+    getTeams(session.user.id),
+  ]);
   const displayName = session.user.name || "Trainer";
 
   return (
@@ -46,14 +50,23 @@ export default async function PlayerHubPage() {
         </Link>
 
         {/* Teams Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 opacity-75">
+        <Link
+          href="/teams"
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
+        >
           <div className="flex items-center gap-3 mb-2">
             <span className="text-2xl">⚔️</span>
-            <h2 className="text-lg font-semibold text-gray-900">Teams</h2>
+            <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">
+              Teams
+            </h2>
           </div>
-          <p className="text-3xl font-bold text-gray-400">0</p>
-          <p className="text-sm text-gray-400 mt-1">Coming soon</p>
-        </div>
+          <p className="text-3xl font-bold text-blue-600">{teams.length}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {teams.length === 0
+              ? "Create a team to compete"
+              : `team${teams.length !== 1 ? "s" : ""} built`}
+          </p>
+        </Link>
 
         {/* Matches Card */}
         <div className="bg-white rounded-lg shadow-md p-6 opacity-75">
