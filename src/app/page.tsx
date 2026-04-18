@@ -1,4 +1,15 @@
-export default function HomePage() {
+import { redirect } from "next/navigation";
+import { auth } from "../lib/auth.server";
+import { headers } from "next/headers";
+
+export default async function HomePage() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (session) {
+    redirect("/player");
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-300">
       <div className="container mx-auto px-4 py-16">
