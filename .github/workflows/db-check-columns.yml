@@ -1,0 +1,34 @@
+name: DB - Check Account Columns
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: oven-sh/setup-bun@v2
+      - name: Check account table columns
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          bun -e "
+          const { neon } = require('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL);
+          const cols = await sql\`
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns 
+            WHERE table_name = 'account'
+            ORDER BY ordinal_position
+          \`;
+          console.log('=== ACCOUNT TABLE COLUMNS ===');
+          cols.forEach(c => console.log(\`  \${c.column_name} (\${c.data_type}, nullable: \${c.is_nullable})\`));
+          
+          console.log('\\n=== ALL AUTH TABLES ===');
+          const tables = await sql\`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+          \`;
+          tables.forEach(t => console.log(\`  \${t.table_name}\`));
+          "
