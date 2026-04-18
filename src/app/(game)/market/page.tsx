@@ -1,4 +1,5 @@
 import listMarket from "~/data/listMarket.server";
+import BuyButton from "./BuyButton";
 
 export default async function MarketPage() {
   const vellymons = listMarket();
@@ -25,9 +26,7 @@ export default async function MarketPage() {
                 <span className="font-semibold">Energy:</span> {vellymon.energy}
               </p>
             </div>
-            <button className="mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-              Buy Now
-            </button>
+            <BuyButton modelUuid={vellymon.uuid} />
           </div>
         ))}
       </div>

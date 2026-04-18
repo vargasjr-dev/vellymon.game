@@ -9,24 +9,28 @@ const buyFromMarket = async ({
   userId: string;
 }) => {
   try {
-    const [instance] = await db.insert(vellymonInstance).values({
-      modelUuid: model,
-      userId,
-      address: `0x${Math.random().toString(36).substring(2, 10)}`,
-      network: 4,
-      version: "0xdeadbeef",
-    }).returning();
+    const [instance] = await db
+      .insert(vellymonInstance)
+      .values({
+        modelUuid: model,
+        userId,
+        // Generate unique values for legacy blockchain fields
+        address: `0x${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`,
+        network: Math.floor(Math.random() * 2_000_000_000),
+        version: "0.1.0",
+      })
+      .returning();
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "Successfully bought vellymon!",
       instanceUuid: instance.uuid,
     };
   } catch (error) {
-    console.error('Failed to buy from market:', error);
-    return { 
-      success: false, 
-      message: "Failed to purchase vellymon" 
+    console.error("Failed to buy from market:", error);
+    return {
+      success: false,
+      message: "Failed to purchase vellymon",
     };
   }
 };
