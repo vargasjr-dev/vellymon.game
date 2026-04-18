@@ -1,16 +1,10 @@
-import { redirect } from "next/navigation";
 import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 
 export default async function UserPage() {
   const headersList = await headers();
-  const session = await auth.api.getSession({
-    headers: headersList,
-  });
-
-  if (!session) {
-    redirect("/login");
-  }
+  // Session guaranteed by (game)/layout.tsx auth gate
+  const session = (await auth.api.getSession({ headers: headersList }))!;
 
   return (
     <div className="container mx-auto px-4 py-8">

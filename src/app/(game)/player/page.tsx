@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -6,13 +5,8 @@ import getVellymonRoster from "~/data/getVellymonRoster.server";
 
 export default async function PlayerHubPage() {
   const headersList = await headers();
-  const session = await auth.api.getSession({
-    headers: headersList,
-  });
-
-  if (!session) {
-    redirect("/login");
-  }
+  // Session guaranteed by (game)/layout.tsx auth gate
+  const session = (await auth.api.getSession({ headers: headersList }))!;
 
   const roster = await getVellymonRoster(session.user.id);
   const displayName = session.user.name || "Trainer";

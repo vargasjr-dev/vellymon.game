@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { auth } from "~/lib/auth.server";
 import GameNav from "~/components/GameNav";
 
@@ -10,13 +11,16 @@ export default async function GameLayout({
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
-  const user = session
-    ? { name: session.user.name, email: session.user.email }
-    : null;
+  // Single auth gate — all pages in this route group require authentication
+  if (!session) {
+    redirect("/login");
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-300">
-      <GameNav user={user} />
+      <GameNav
+        user={{ name: session.user.name, email: session.user.email }}
+      />
       <main>{children}</main>
     </div>
   );
