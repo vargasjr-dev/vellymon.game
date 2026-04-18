@@ -30,7 +30,7 @@ console.log(`  ID: ${user.id}`);
 console.log(`  Registered: ${user.createdAt}`);
 
 // Count related records
-const sessions = await sql`SELECT COUNT(*) as count FROM session WHERE "user_id" = ${user.id}`;
+const sessions = await sql`SELECT COUNT(*) as count FROM session WHERE "userId" = ${user.id}`;
 const accounts = await sql`SELECT COUNT(*) as count FROM account WHERE "user_id" = ${user.id}`;
 const verifications = await sql`SELECT COUNT(*) as count FROM verification WHERE identifier = ${email}`;
 const gamePlayers = await sql`SELECT COUNT(*) as count FROM "gamePlayer" WHERE "userId" = ${user.id}`;
