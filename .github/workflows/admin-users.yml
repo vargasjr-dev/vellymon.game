@@ -1,4 +1,4 @@
-name: Admin - List Recent Users
+name: Admin - List Users & DB Schema
 
 on:
   workflow_dispatch:
@@ -23,80 +23,66 @@ jobs:
       - name: Pull environment variables from Vercel
         run: vercel env pull .env.local --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
-          VERCEL_ORG_ID: team_36iZPJkU2LLMsHZqJZXMZppe
+          VERCEL_ORG_ID: team_dMi4vVfMQcpXl5uFPLAApy8v
           VERCEL_PROJECT_ID: prj_bAckE5PGlllJHSE2kGL74Bq3MjPV
 
-      - name: Query last 10 registered users
+      - name: Show DB schema and recent users
         run: |
           set -a
           source .env.local
           set +a
-          node -e "
-            const { neon } = require('@neondatabase/serverless');
-            const sql = neon(process.env.DATABASE_URL);
+          cat > query.mjs << 'SCRIPT'
+          import { neon } from "@neondatabase/serverless";
+          const sql = neon(process.env.DATABASE_URL);
 
-            async function main() {
-              try {
-                // Check if user table exists
-                const tables = await sql\`
-                  SELECT table_name FROM information_schema.tables
-                  WHERE table_schema = 'public'
-                  ORDER BY table_name
-                \`;
-                console.log('=== TABLES IN DATABASE ===');
-                if (tables.length === 0) {
-                  console.log('(no tables found - migrations need to be applied)');
-                } else {
-                  tables.forEach(t => console.log('  -', t.table_name));
-                }
-                console.log('');
+          // 1. List all public tables
+          const tables = await sql`
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public' ORDER BY table_name
+          `;
+          console.log("=== PUBLIC TABLES ===");
+          tables.forEach(t => console.log("  " + t.table_name));
 
-                // Try to query users
-                const hasUserTable = tables.some(t => t.table_name === 'user');
-                if (!hasUserTable) {
-                  console.log('=== USER TABLE NOT FOUND ===');
-                  console.log('The user table does not exist yet.');
-                  console.log('Run the Database Schema Sync workflow to apply migrations.');
-                  return;
-                }
-
-                // List actual column names for diagnosis
-                const columns = await sql\`
-                  SELECT column_name, data_type
-                  FROM information_schema.columns
-                  WHERE table_name = 'user' AND table_schema = 'public'
-                  ORDER BY ordinal_position
-                \`;
-                console.log('=== USER TABLE COLUMNS ===');
-                columns.forEach(c => console.log(\`  - \${c.column_name} (\${c.data_type})\`));
-                console.log('');
-
-                const users = await sql\`
-                  SELECT * FROM \"user\"
-                  ORDER BY 1 DESC
-                  LIMIT 10
-                \`;
-                console.log('=== LAST 10 REGISTERED USERS ===');
-                if (users.length === 0) {
-                  console.log('(no users registered yet)');
-                } else {
-                  console.log(\`Total: \${users.length} user(s)\`);
-                  console.log('');
-                  users.forEach((u, i) => {
-                    console.log(\`\${i + 1}. \${u.name || '(no name)'}\`);
-                    console.log(\`   Email: \${u.email}\`);
-                    console.log(\`   Verified: \${u.emailVerified ?? u.email_verified ?? '?'}\`);
-                    console.log(\`   Registered: \${u.createdAt || u.created_at || '?'}\`);
-                    console.log(\`   ID: \${u.id}\`);
-                    console.log(\`   Raw: \${JSON.stringify(u)}\`);
-                    console.log('');
-                  });
-                }
-              } catch (err) {
-                console.error('=== ERROR ===');
-                console.error(err.message);
-                process.exit(1);
-              }
+          // 2. Show columns for every auth table
+          for (const tbl of ["user", "session", "account", "verification"]) {
+            const cols = await sql`
+              SELECT column_name, data_type, is_nullable, column_default
+              FROM information_schema.columns
+              WHERE table_name = ${tbl} AND table_schema = 'public'
+              ORDER BY ordinal_position
+            `;
+            console.log("\n=== " + tbl.toUpperCase() + " TABLE (" + cols.length + " columns) ===");
+            if (cols.length === 0) {
+              console.log("  (table not found)");
+            } else {
+              cols.forEach(c => {
+                const nullable = c.is_nullable === "YES" ? "nullable" : "NOT NULL";
+                const def = c.column_default ? ` default=${c.column_default}` : "";
+                console.log("  " + c.column_name + " (" + c.data_type + ", " + nullable + def + ")");
+              });
             }
-            main();
-          "
+          }
+
+          // 3. List recent users
+          console.log("\n=== RECENT USERS ===");
+          const users = await sql`SELECT * FROM "user" ORDER BY 1 DESC LIMIT 10`;
+          if (users.length === 0) {
+            console.log("  (no users)");
+          } else {
+            users.forEach((u, i) => {
+              console.log((i + 1) + ". " + JSON.stringify(u));
+            });
+          }
+
+          // 4. List accounts
+          console.log("\n=== ACCOUNTS ===");
+          const accounts = await sql`SELECT * FROM "account" LIMIT 10`;
+          if (accounts.length === 0) {
+            console.log("  (no accounts)");
+          } else {
+            accounts.forEach((a, i) => {
+              console.log((i + 1) + ". " + JSON.stringify({...a, password: a.password ? "[REDACTED]" : null}));
+            });
+          }
+          SCRIPT
+          bun run query.mjs
