@@ -72,10 +72,10 @@ export default async function PlayerHubPage() {
           <h2 className="text-xl font-bold text-gray-900">Your Vellymons</h2>
           {roster.length > 0 && (
             <Link
-              href="/market"
+              href="/roster"
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
-              Visit Market →
+              View Full Roster →
             </Link>
           )}
         </div>
@@ -115,9 +115,12 @@ export default async function PlayerHubPage() {
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-500">
               Showing 4 of {roster.length} vellymons.{" "}
-              <span className="text-gray-400">
-                Full roster view coming soon.
-              </span>
+              <Link
+                href="/roster"
+                className="text-blue-600 hover:text-blue-800 font-medium"
+              >
+                View all →
+              </Link>
             </p>
           </div>
         )}
