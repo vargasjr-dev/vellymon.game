@@ -2,6 +2,7 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
+import VellymonCard from "~/components/VellymonCard";
 
 export default async function PlayerHubPage() {
   const headersList = await headers();
@@ -96,33 +97,16 @@ export default async function PlayerHubPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {roster.slice(0, 4).map((vellymon) => (
-              <Link
+              <VellymonCard
                 key={vellymon.uuid}
+                name={vellymon.name}
+                health={vellymon.health}
+                attack={vellymon.attack}
+                speed={vellymon.speed}
+                energy={vellymon.energy}
                 href={`/player/${vellymon.uuid}`}
-                className="border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition group"
-              >
-                <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition mb-2">
-                  {vellymon.name}
-                </h3>
-                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                  <div>
-                    <span className="text-gray-400">HP</span>{" "}
-                    <span className="font-semibold">{vellymon.health}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">ATK</span>{" "}
-                    <span className="font-semibold">{vellymon.attack}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">SPD</span>{" "}
-                    <span className="font-semibold">{vellymon.speed}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">NRG</span>{" "}
-                    <span className="font-semibold">{vellymon.energy}</span>
-                  </div>
-                </div>
-              </Link>
+                variant="compact"
+              />
             ))}
           </div>
         )}
