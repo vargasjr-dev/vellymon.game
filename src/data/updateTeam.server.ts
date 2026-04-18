@@ -2,6 +2,7 @@ import { db } from "../../data/db";
 import { team, teamSlot } from "../../data/schema";
 import { eq, and } from "drizzle-orm";
 import type { SlotInput } from "./createTeam.server";
+import validateTeamSlots from "./validateTeamSlots.server";
 
 const updateTeam = async ({
   teamUuid,
@@ -35,6 +36,12 @@ const updateTeam = async ({
 
     // Replace slots if provided
     if (slots !== undefined) {
+      // Validate new slots before replacing
+      const validation = await validateTeamSlots(slots, userId);
+      if (!validation.valid) {
+        return { success: false, message: validation.message };
+      }
+
       // Delete existing slots
       await db
         .delete(teamSlot)

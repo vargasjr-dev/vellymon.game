@@ -1,5 +1,6 @@
 import { db } from "../../data/db";
 import { team, teamSlot } from "../../data/schema";
+import validateTeamSlots from "./validateTeamSlots.server";
 
 export type SlotInput = {
   vellymonInstanceUuid: string;
@@ -17,6 +18,12 @@ const createTeam = async ({
   slots: SlotInput[];
 }) => {
   try {
+    // Validate slots before creating
+    const validation = await validateTeamSlots(slots, userId);
+    if (!validation.valid) {
+      return { success: false, message: validation.message };
+    }
+
     const [newTeam] = await db
       .insert(team)
       .values({ name, userId })
