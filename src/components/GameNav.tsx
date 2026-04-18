@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const navLinks = [
   { href: "/player", label: "Roster" },
@@ -19,9 +19,9 @@ export default function GameNav({ user }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const router = useRouter();
 
   const isActive = (href: string) => {
     if (href === "/player") {
@@ -61,12 +61,15 @@ export default function GameNav({ user }: GameNavProps) {
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    setSignOutError(false);
     try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-      router.push("/");
-      router.refresh();
+      const res = await fetch("/api/auth/sign-out", { method: "POST" });
+      if (!res.ok) throw new Error("Sign-out failed");
+      // Hard navigation clears all Next.js client cache — no stale session data
+      window.location.href = "/";
     } catch {
       setSigningOut(false);
+      setSignOutError(true);
     }
   };
 
@@ -185,6 +188,11 @@ export default function GameNav({ user }: GameNavProps) {
                   </svg>
                   {signingOut ? "Signing out…" : "Sign Out"}
                 </button>
+                {signOutError && (
+                  <p className="px-4 py-1 text-xs text-red-500">
+                    Sign out failed — try again
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -271,6 +279,11 @@ export default function GameNav({ user }: GameNavProps) {
               >
                 {signingOut ? "Signing out…" : "Sign Out"}
               </button>
+              {signOutError && (
+                <p className="px-4 py-1 text-xs text-red-400">
+                  Sign out failed — try again
+                </p>
+              )}
             </div>
           </div>
         )}
