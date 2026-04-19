@@ -1,0 +1,10 @@
+/**
+ * Power Registry Loader
+ *
+ * Import this file to register all vellymon special powers.
+ * Each power file self-registers via registerPower() on import.
+ *
+ * Add new powers here as they're created (one import per vellymon).
+ */
+
+import "./aerobolt";
