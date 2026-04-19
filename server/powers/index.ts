@@ -19,3 +19,4 @@ import "./coppercog";
 import "./coralord";
 import "./cosmog";
 import "./cragthorn";
+import "./crimshard";
