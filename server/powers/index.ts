@@ -12,3 +12,4 @@ import "./aquaplex";
 import "./barrikade";
 import "./blastova";
 import "./blinkatt";
+import "./breezekin";
