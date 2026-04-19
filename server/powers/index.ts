@@ -13,3 +13,4 @@ import "./barrikade";
 import "./blastova";
 import "./blinkatt";
 import "./breezekin";
+import "./buldrok";
