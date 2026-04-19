@@ -13,10 +13,6 @@ export interface VellymonStats {
   name: string;
   uuid: string;
   attacks: Attack[];
-  /** Archetype identifier */
-  archetype?: string;
-  /** Archetype emoji */
-  archetypeEmoji?: string;
   /** Short flavor text */
   flavor?: string;
 }

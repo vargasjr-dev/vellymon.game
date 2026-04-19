@@ -9,8 +9,6 @@ interface VellymonCardProps {
   uuid?: string;
   href?: string;
   variant?: "full" | "compact";
-  archetype?: string;
-  archetypeEmoji?: string;
   flavor?: string;
   children?: React.ReactNode;
 }
@@ -29,7 +27,6 @@ function CompactContent({
   health,
   attack,
   speed,
-  archetypeEmoji,
   flavor,
   children,
 }: {
@@ -37,14 +34,12 @@ function CompactContent({
   health: number;
   attack: number;
   speed: number;
-  archetypeEmoji?: string;
   flavor?: string;
   children?: React.ReactNode;
 }) {
   return (
     <>
       <div className="flex items-center gap-1.5 mb-1">
-        {archetypeEmoji && <span className="text-sm">{archetypeEmoji}</span>}
         <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition truncate">
           {name}
         </h3>
@@ -71,7 +66,6 @@ export default function VellymonCard({
   speed,
   href,
   variant = "full",
-  archetypeEmoji,
   flavor,
   children,
 }: VellymonCardProps) {
@@ -82,7 +76,6 @@ export default function VellymonCard({
         health={health}
         attack={attack}
         speed={speed}
-        archetypeEmoji={archetypeEmoji}
         flavor={flavor}
       >
         {children}
@@ -107,10 +100,7 @@ export default function VellymonCard({
   // Full variant
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex items-center gap-2 mb-3">
-        {archetypeEmoji && <span className="text-xl">{archetypeEmoji}</span>}
-        <h3 className="text-2xl font-bold">{name}</h3>
-      </div>
+      <h3 className="text-2xl font-bold mb-2">{name}</h3>
       {flavor && (
         <p className="text-sm text-gray-500 mb-3 italic">{flavor}</p>
       )}
