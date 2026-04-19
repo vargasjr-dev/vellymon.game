@@ -1,65 +1,59 @@
+/**
+ * Bridge between the 64-vellymon library (server/vellymonLibrary.ts)
+ * and the client-facing VellymonStats type used by market/roster/UI.
+ *
+ * Generates stable UUIDs from library IDs so the market, purchases,
+ * and team slots all reference consistent model identifiers.
+ */
 import type { VellymonStats } from "../types/game";
+import {
+  VELLYMON_LIBRARY,
+  type VellymonTemplate,
+} from "../../server/vellymonLibrary";
+import { calculateDamage } from "../../server/archetypes";
 
-const PlatinumVellymon: VellymonStats = {
-  speed: 8,
-  health: 8,
-  attack: 3,
-  energy: 100,
-  name: "Platinum Vellymon",
-  uuid: "05da83b5-f7c7-4478-b426-e4a2b69ab2b7",
-  attacks: [
-    { name: "Swift Strike", damage: 5, energyCost: 10 },
-    { name: "Power Slam", damage: 8, energyCost: 20 },
-    { name: "Mega Blast", damage: 12, energyCost: 35 },
-    { name: "Ultimate Fury", damage: 15, energyCost: 50 },
-  ],
-};
+/**
+ * Generate a deterministic UUID v5-style string from a vellymon ID.
+ * Uses a simple hash to create stable UUIDs across restarts.
+ */
+function idToUuid(id: number): string {
+  const hex = id.toString(16).padStart(8, "0");
+  // Format: vellymon-0000-4000-8000-{id padded}
+  return `ve11ym0n-${hex.slice(0, 4)}-4${hex.slice(4, 7)}-8000-00000000${hex}`;
+}
 
-const GoldenVellymon: VellymonStats = {
-  speed: 7,
-  health: 8,
-  attack: 3,
-  energy: 100,
-  name: "Golden Vellymon",
-  uuid: "f9564a8b-836e-4259-81bb-cdafadba0ed2",
-  attacks: [
-    { name: "Swift Strike", damage: 5, energyCost: 10 },
-    { name: "Power Slam", damage: 8, energyCost: 20 },
-    { name: "Mega Blast", damage: 11, energyCost: 35 },
-    { name: "Ultimate Fury", damage: 14, energyCost: 50 },
-  ],
-};
+/**
+ * Convert a library template to the client-facing VellymonStats format.
+ */
+function templateToStats(t: VellymonTemplate): VellymonStats {
+  return {
+    uuid: idToUuid(t.id),
+    name: t.name,
+    health: t.hp,
+    attack: t.attack,
+    speed: t.speed,
+    energy: 0, // Energy is team-wide now, not per-vellymon
+    attacks: t.attacks.map((atk) => ({
+      name: atk.name,
+      damage: calculateDamage(atk, t.attack),
+      energyCost: atk.energyCost,
+    })),
+  };
+}
 
-const SilverVellymon: VellymonStats = {
-  speed: 6,
-  health: 8,
-  attack: 3,
-  energy: 100,
-  name: "Silver Vellymon",
-  uuid: "06ea4e02-0697-48f4-9296-d72153b5a58d",
-  attacks: [
-    { name: "Swift Strike", damage: 4, energyCost: 10 },
-    { name: "Power Slam", damage: 7, energyCost: 20 },
-    { name: "Mega Blast", damage: 10, energyCost: 35 },
-    { name: "Ultimate Fury", damage: 13, energyCost: 50 },
-  ],
-};
-
-const BronzeVellymon: VellymonStats = {
-  speed: 5,
-  health: 8,
-  attack: 3,
-  energy: 100,
-  name: "Bronze Vellymon",
-  uuid: "df38d5f0-2023-47ba-b614-67b86be047ba",
-  attacks: [
-    { name: "Swift Strike", damage: 4, energyCost: 10 },
-    { name: "Power Slam", damage: 6, energyCost: 20 },
-    { name: "Mega Blast", damage: 9, energyCost: 35 },
-    { name: "Ultimate Fury", damage: 12, energyCost: 50 },
-  ],
-};
-
-const all = [PlatinumVellymon, GoldenVellymon, SilverVellymon, BronzeVellymon];
+/** All 64 vellymons as VellymonStats for the market/UI layer */
+const all: VellymonStats[] = VELLYMON_LIBRARY.map(templateToStats);
 
 export default all;
+
+/** Lookup helpers */
+export const vellymonByUuid = new Map<string, VellymonStats>(
+  all.map((v) => [v.uuid, v]),
+);
+
+export const vellymonByName = new Map<string, VellymonStats>(
+  all.map((v) => [v.name.toLowerCase(), v]),
+);
+
+/** Convert a library ID to UUID */
+export { idToUuid };
