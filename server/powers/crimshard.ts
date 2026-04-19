@@ -1,24 +1,16 @@
 /**
  * Crimshard — "Crystal Barrage"
  *
- * First attack each turn also deals 50% bonus damage to a random
- * adjacent enemy. Red crystal shards lash out at nearby targets.
+ * After attacking, Crimshard deals 4 bonus splash damage to another
+ * enemy. Red crystal shards lash out at nearby targets.
  *
- * Hook: onAttack
- * Effect: splash damage (half base damage) to one adjacent enemy
- *
- * Design rationale: Crimshard is glass cannon (HP 47, ATK 17, SPD 6)
- * with "red crystal shards orbit it like tiny daggers." Crystal Barrage
- * turns Crimshard into an AoE threat — 17 damage to the primary target
- * plus ~8 splash to a neighbor. That's 25 total damage per turn from
- * a single action, making Crimshard the highest damage-per-action
- * unit when enemies cluster. But at 47 HP, one focused attack can
- * take it out. High risk, absurdly high reward.
+ * Hook: onAfterCommand (attack)
+ * Effect: bonus_damage 4 to a secondary enemy
  */
 
 import {
   registerPower,
-  type AttackHookContext,
+  type CommandHookContext,
   type PowerEffect,
 } from "../specialPowers";
 
@@ -26,38 +18,17 @@ registerPower({
   id: "crystal-barrage",
   name: "Crystal Barrage",
   description:
-    "First attack each turn splashes 50% bonus damage to a random adjacent enemy. Orbiting shards lash out.",
+    "After attacking, deals 4 splash damage to another enemy. Orbiting shards lash out.",
   hooks: {
-    onAttack: (ctx: AttackHookContext): PowerEffect[] => {
-      // Only first attack per turn (track via powerState)
-      const hasAttacked = ctx.self.powerState?.attackedThisTurn ?? false;
-      if (hasAttacked) return [];
-
-      // Find adjacent enemies
-      const adjacentEnemies = ctx.nearbyEnemies?.filter(
-        (e) => e.uuid !== ctx.target.uuid,
+    onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
+      if (ctx.command.type !== "attack") return [];
+      const enemyTeam = ctx.state.teams[ctx.team === 1 ? 1 : 0];
+      const others = enemyTeam.active.filter(
+        (v) => !v.isKO && v.uuid !== ctx.command.vellymonId,
       );
-
-      const effects: PowerEffect[] = [
-        {
-          type: "updatePowerState",
-          targetId: ctx.self.uuid,
-          state: { attackedThisTurn: true },
-        },
-      ];
-
-      if (adjacentEnemies && adjacentEnemies.length > 0) {
-        // Pick random adjacent enemy for splash
-        const splashTarget =
-          adjacentEnemies[Math.floor(Math.random() * adjacentEnemies.length)];
-        effects.push({
-          type: "splashDamage",
-          targetId: splashTarget.uuid,
-          amount: Math.floor(ctx.baseDamage / 2),
-        });
-      }
-
-      return effects;
+      if (others.length === 0) return [];
+      const splash = others[Math.floor(Math.random() * others.length)];
+      return [{ type: "bonus_damage", targetId: splash.uuid, amount: 4 }];
     },
   },
 });
