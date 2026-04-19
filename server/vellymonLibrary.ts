@@ -57,7 +57,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 15, name: "Dewdrop", archetype: "support", hp: 70, attack: 5, speed: 7, attacks: [T.chip, T.snipe], flavor: "A sentient dewdrop. Surprisingly hard to squish.", specialPowerId: "cleansing-mist", imageUrl: "/vellymon/dewdrop.png" },
   { id: 16, name: "Doomsprout", archetype: "glass_cannon", hp: 58, attack: 17, speed: 4, attacks: [T.slam, T.lob], flavor: "An innocent sprout that unleashes devastating blooms.", specialPowerId: "bloom-burst", imageUrl: "/vellymon/doomsprout.png" },
   { id: 17, name: "Duraclod", archetype: "tank", hp: 92, attack: 12, speed: 2, attacks: [T.poke, T.strike], flavor: "A clod of super-dense earth. Surprisingly determined.", specialPowerId: "fortify", imageUrl: "/vellymon/duraclod.png" },
-  { id: 18, name: "Duskfin", archetype: "balanced", hp: 83, attack: 13, speed: 4, attacks: [T.strike, T.snipe], flavor: "Emerges at dusk. Thrives in twilight conditions." },
+  { id: 18, name: "Duskfin", archetype: "balanced", hp: 83, attack: 13, speed: 4, attacks: [T.strike, T.snipe], flavor: "Emerges at dusk. Thrives in twilight conditions.", specialPowerId: "twilight-veil", imageUrl: "/vellymon/duskfin.png" },
   { id: 19, name: "Embercub", archetype: "balanced", hp: 72, attack: 13, speed: 4, attacks: [T.poke, T.strike], flavor: "A warm little cub with surprising grit." },
   { id: 20, name: "Ferridon", archetype: "tank", hp: 115, attack: 9, speed: 1, attacks: [T.poke, T.strike], flavor: "Iron-plated beast that rusts its enemies on contact." },
   { id: 21, name: "Flashfin", archetype: "speedster", hp: 62, attack: 8, speed: 9, attacks: [T.poke, T.snipe], flavor: "Glows bright when it accelerates. Blinding." },
