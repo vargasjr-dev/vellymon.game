@@ -21,3 +21,4 @@ import "./cosmog";
 import "./cragthorn";
 import "./crimshard";
 import "./dashpaw";
+import "./dewdrop";
