@@ -38,7 +38,7 @@ export type VellymonTemplate = {
 // ─── All 64 Vellymons (alphabetical) ─────────────────────────────────────────
 
 const ALL_VELLYMONS: VellymonTemplate[] = [
-  { id: 1, name: "Aerobolt", archetype: "speedster", hp: 65, attack: 8, speed: 8, attacks: [T.snipe, T.strike], flavor: "Rides its own shockwave like a surfboard." },
+  { id: 1, name: "Aerobolt", archetype: "speedster", hp: 65, attack: 8, speed: 8, attacks: [T.snipe, T.strike], flavor: "Rides its own shockwave like a surfboard.", specialPowerId: "shockwave-surfer" },
   { id: 2, name: "Aquaplex", archetype: "balanced", hp: 73, attack: 12, speed: 5, attacks: [T.snipe, T.strike], flavor: "Water creature that adapts to any situation." },
   { id: 3, name: "Barrikade", archetype: "tank", hp: 102, attack: 11, speed: 2, attacks: [T.poke, T.strike], flavor: "Literally a walking barricade. Blocks everything." },
   { id: 4, name: "Blastova", archetype: "glass_cannon", hp: 45, attack: 20, speed: 4, attacks: [T.poke, T.nuke], flavor: "A living supernova. Bright, hot, and short-lived." },

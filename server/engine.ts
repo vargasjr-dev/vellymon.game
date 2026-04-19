@@ -15,6 +15,8 @@
  */
 
 import { GAME_CONFIG } from "./config";
+// Register all special powers on engine load
+import "./powers";
 import type {
   GameState,
   TeamState,
