@@ -45,7 +45,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 5, name: "Blinkatt", archetype: "speedster", hp: 42, attack: 11, speed: 10, attacks: [T.snipe, T.strike], flavor: "Blinks in and out of existence between attacks.", specialPowerId: "phase-shift" },
   { id: 6, name: "Breezekin", archetype: "balanced", hp: 75, attack: 13, speed: 5, attacks: [T.poke, T.lob], flavor: "Kin of the wind. Light on its feet, steady aim.", specialPowerId: "tailwind" },
   { id: 7, name: "Buldrok", archetype: "tank", hp: 120, attack: 8, speed: 1, attacks: [T.poke, T.slam], flavor: "An ancient stone golem. Slow but nearly indestructible.", specialPowerId: "stone-skin" },
-  { id: 8, name: "Cloudpuff", archetype: "support", hp: 78, attack: 8, speed: 7, attacks: [T.poke, T.chip], flavor: "A tiny cloud that floats just above the ground." },
+  { id: 8, name: "Cloudpuff", archetype: "support", hp: 78, attack: 8, speed: 7, attacks: [T.poke, T.chip], flavor: "A tiny cloud that floats just above the ground.", specialPowerId: "rain-dance" },
   { id: 9, name: "Coppercog", archetype: "balanced", hp: 80, attack: 12, speed: 4, attacks: [T.strike, T.lob], flavor: "Mechanical vellymon made of spinning copper gears." },
   { id: 10, name: "Coralord", archetype: "tank", hp: 95, attack: 11, speed: 3, attacks: [T.strike, T.slam], flavor: "Coral reef creature. Slow on land, king of the shallows." },
   { id: 11, name: "Cosmog", archetype: "balanced", hp: 90, attack: 10, speed: 4, attacks: [T.poke, T.strike], flavor: "Cosmic origins. The most mysterious vellymon of all." },

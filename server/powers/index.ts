@@ -14,3 +14,4 @@ import "./blastova";
 import "./blinkatt";
 import "./breezekin";
 import "./buldrok";
+import "./cloudpuff";
