@@ -23,3 +23,4 @@ import "./crimshard";
 import "./dashpaw";
 import "./dewdrop";
 import "./doomsprout";
+import "./duraclod";
