@@ -13,13 +13,18 @@ import {
 import { calculateDamage } from "../../server/archetypes";
 
 /**
- * Generate a deterministic UUID v5-style string from a vellymon ID.
- * Uses a simple hash to create stable UUIDs across restarts.
+ * Generate a deterministic UUID from a vellymon library ID.
+ *
+ * Format: 00be1100-{id_hex}-4000-8000-{id_hex_padded_12}
+ *
+ * Uses only valid hex characters so PostgreSQL accepts it as a uuid.
+ * The "0be11" prefix is a nod to "vellymon" in hex-safe form.
+ * Deterministic: same ID always produces the same UUID.
  */
 function idToUuid(id: number): string {
-  const hex = id.toString(16).padStart(8, "0");
-  // Format: vellymon-0000-4000-8000-{id padded}
-  return `ve11ym0n-${hex.slice(0, 4)}-4${hex.slice(4, 7)}-8000-00000000${hex}`;
+  const hex4 = id.toString(16).padStart(4, "0");
+  const hex12 = id.toString(16).padStart(12, "0");
+  return `00be1100-${hex4}-4000-8000-${hex12}`;
 }
 
 /**
