@@ -8,3 +8,4 @@
  */
 
 import "./aerobolt";
+import "./aquaplex";
