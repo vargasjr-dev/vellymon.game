@@ -50,7 +50,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 10, name: "Coralord", archetype: "tank", hp: 95, attack: 11, speed: 3, attacks: [T.strike, T.slam], flavor: "Coral reef creature. Slow on land, king of the shallows.", specialPowerId: "reef-armor" },
   { id: 11, name: "Cosmog", archetype: "balanced", hp: 90, attack: 10, speed: 4, attacks: [T.poke, T.strike], flavor: "Cosmic origins. The most mysterious vellymon of all.", specialPowerId: "warp-strike" },
   { id: 12, name: "Cragthorn", archetype: "tank", hp: 110, attack: 10, speed: 1, attacks: [T.strike, T.slam], flavor: "Covered in thorny rock formations. Touch at your peril.", specialPowerId: "thorns" },
-  { id: 13, name: "Crimshard", archetype: "glass_cannon", hp: 47, attack: 17, speed: 6, attacks: [T.poke, T.nuke], flavor: "Red crystal shards orbit it like tiny daggers." },
+  { id: 13, name: "Crimshard", archetype: "glass_cannon", hp: 47, attack: 17, speed: 6, attacks: [T.poke, T.nuke], flavor: "Red crystal shards orbit it like tiny daggers.", specialPowerId: "crystal-barrage" },
   { id: 14, name: "Dashpaw", archetype: "speedster", hp: 45, attack: 12, speed: 9, attacks: [T.poke, T.snipe], flavor: "Paw prints everywhere but you never see it pass." },
   { id: 15, name: "Dewdrop", archetype: "support", hp: 70, attack: 5, speed: 7, attacks: [T.chip, T.snipe], flavor: "A sentient dewdrop. Surprisingly hard to squish." },
   { id: 16, name: "Doomsprout", archetype: "glass_cannon", hp: 58, attack: 17, speed: 4, attacks: [T.slam, T.lob], flavor: "An innocent sprout that unleashes devastating blooms." },
