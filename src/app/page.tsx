@@ -47,12 +47,18 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="text-center">
+          <div className="text-center flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="/login" 
               className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
             >
               Get Started
+            </a>
+            <a
+              href="/guide"
+              className="inline-block border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+            >
+              Learn to Play
             </a>
           </div>
         </div>
