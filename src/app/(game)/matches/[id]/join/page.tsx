@@ -8,10 +8,15 @@ import JoinTeamSelector from "./JoinTeamSelector";
 
 export default async function JoinMatchPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ pbs?: string }>;
 }) {
   const { id } = await params;
+  const { pbs } = await searchParams;
+  const isPlayBothSides = pbs === "true";
+
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
   const match = await getMatch(id);
@@ -20,8 +25,13 @@ export default async function JoinMatchPage({
     notFound();
   }
 
-  // Can't join if already in the match
-  if (match.players.some((p) => p.userId === session.user.id)) {
+  const isAlreadyInMatch = match.players.some(
+    (p) => p.userId === session.user.id,
+  );
+
+  // Normal join: redirect if already in the match
+  // PBS mode: allow self-join (creator joins as P2 with a different team)
+  if (isAlreadyInMatch && !isPlayBothSides) {
     redirect(`/matches/${id}`);
   }
 
@@ -49,23 +59,48 @@ export default async function JoinMatchPage({
   }
 
   const teams = await getTeams(session.user.id);
-  const eligibleTeams = teams.filter((t) => t.activeCount >= 4);
+
+  // In PBS mode, exclude the team already used by P1
+  const usedTeamUuids = new Set(match.players.map((p) => p.teamUuid));
+  const eligibleTeams = teams.filter(
+    (t) => t.activeCount >= 4 && !usedTeamUuids.has(t.uuid),
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-6">
         <Link
-          href="/matches"
+          href={isPlayBothSides ? `/matches/${id}` : "/matches"}
           className="text-sm text-blue-600 hover:text-blue-800 font-medium mb-2 inline-block"
         >
-          ← Back to Matches
+          ← {isPlayBothSides ? "Back to Match" : "Back to Matches"}
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Join Match</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          {isPlayBothSides ? "Play Both Sides" : "Join Match"}
+        </h1>
         <p className="text-gray-600 mt-1">
-          Joining {match.creatorName ?? "Unknown"}&apos;s match. Select your
-          team.
+          {isPlayBothSides
+            ? "Select a second team to control the opposing side."
+            : `Joining ${match.creatorName ?? "Unknown"}'s match. Select your team.`}
         </p>
       </div>
+
+      {/* PBS Mode Banner */}
+      {isPlayBothSides && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🧪</span>
+            <div>
+              <p className="text-sm font-semibold text-purple-800">
+                Playtest Mode
+              </p>
+              <p className="text-xs text-purple-600">
+                You&apos;ll control both sides of the match for rule testing.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Match Info */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -108,16 +143,20 @@ export default async function JoinMatchPage({
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <p className="text-5xl mb-4">⚠️</p>
           <h2 className="text-xl font-bold text-gray-900 mb-2">
-            No eligible teams
+            {isPlayBothSides
+              ? "Need a second team"
+              : "No eligible teams"}
           </h2>
           <p className="text-gray-600 mb-6">
-            Teams need at least 4 active vellymons to compete.
+            {isPlayBothSides
+              ? "You need a different team with 4+ active vellymons to play both sides."
+              : "Teams need at least 4 active vellymons to compete."}
           </p>
           <Link
-            href="/teams"
+            href="/teams/new"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
-            Manage Teams
+            Build Another Team
           </Link>
         </div>
       ) : (

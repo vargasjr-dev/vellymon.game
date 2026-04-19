@@ -121,9 +121,18 @@ export default async function MatchDetailPage({
       {match.status === "waiting" && !isPlayer && (
         <Link
           href={`/matches/${match.uuid}/join`}
-          className="block w-full text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+          className="block w-full text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition mb-3"
         >
           Join This Match
+        </Link>
+      )}
+
+      {match.status === "waiting" && isCreator && (
+        <Link
+          href={`/matches/${match.uuid}/join?pbs=true`}
+          className="block w-full text-center bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition mb-3"
+        >
+          ⚔️ Play Both Sides (Playtest)
         </Link>
       )}
 
