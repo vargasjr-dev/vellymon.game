@@ -141,14 +141,14 @@ export function calculateDamage(
   return Math.round(template.baseDamage + template.attackMultiplier * attackStat);
 }
 
-/** Validate stat budget: HP + (Attack × 5) + (Speed × 8) should be ~160 ± 15 */
+/** Validate stat budget: HP + (Attack × 5) + (Speed × 8) should be ~160 ± 20 */
 export function validateStatBudget(
   hp: number,
   attack: number,
   speed: number,
 ): { budget: number; valid: boolean } {
   const budget = hp + attack * 5 + speed * 8;
-  return { budget, valid: budget >= 145 && budget <= 175 };
+  return { budget, valid: budget >= 145 && budget <= 180 };
 }
 
 /** Check if stats fall within an archetype's ranges */
