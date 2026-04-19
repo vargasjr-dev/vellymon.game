@@ -1,11 +1,16 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import {
   useGameSocket,
   type CommandPayload,
-  type GameStatePayload,
+  type TurnResultPayload,
 } from "~/hooks/useGameSocket";
+import BoardRenderer from "~/components/game/BoardRenderer";
+import CommandInput, { TurnCommandBar } from "~/components/game/CommandInput";
+import GameHUD from "~/components/game/GameHUD";
+import TurnAnimation, { BattleLog } from "~/components/game/TurnAnimation";
 
 type PlayClientProps = {
   matchUuid: string;
@@ -18,7 +23,6 @@ export default function PlayClient({
   userId,
   playerTeamName,
 }: PlayClientProps) {
-  // TODO: auth token will come from session — placeholder for now
   const {
     connectionState,
     teamId,
@@ -30,296 +34,281 @@ export default function PlayClient({
     gameOver,
     error,
     sendCommands,
+    requestState,
   } = useGameSocket(matchUuid, userId);
 
-  return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
-      {/* Connection Status Bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/matches/${matchUuid}`}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-          >
-            ← Match Details
-          </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <ConnectionIndicator state={connectionState} />
-          {teamId && (
-            <span className="text-xs font-medium text-gray-500">
-              {playerTeamName} (P{teamId})
-            </span>
-          )}
+  // ─── Local State ─────────────────────────────────────────────────────────
+
+  const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
+  const [pendingCommands, setPendingCommands] = useState<CommandPayload[]>([]);
+  const [showAnimation, setShowAnimation] = useState(false);
+  const [battleHistory, setBattleHistory] = useState<
+    { turn: number; events: TurnResultPayload["events"] }[]
+  >([]);
+
+  // ─── Handlers ────────────────────────────────────────────────────────────
+
+  const handleVellymonClick = useCallback((uuid: string) => {
+    setSelectedUuid((prev) => (prev === uuid ? null : uuid));
+  }, []);
+
+  const handleSpaceClick = useCallback(
+    (x: number, y: number) => {
+      // If we're in attack-target mode and have a selected vellymon with a pending attack
+      // This will be expanded when CommandInput signals target mode
+      setSelectedUuid(null);
+    },
+    [],
+  );
+
+  const handleSubmitCommand = useCallback((command: CommandPayload) => {
+    setPendingCommands((prev) => {
+      // Replace if same vellymon already has a command
+      const filtered = prev.filter(
+        (c) => c.vellymonUuid !== command.vellymonUuid,
+      );
+      return [...filtered, command];
+    });
+    setSelectedUuid(null);
+  }, []);
+
+  const handleSubmitTurn = useCallback(() => {
+    if (pendingCommands.length > 0) {
+      sendCommands(pendingCommands);
+      setPendingCommands([]);
+    }
+  }, [pendingCommands, sendCommands]);
+
+  const handleAnimationComplete = useCallback(() => {
+    setShowAnimation(false);
+    requestState();
+  }, [requestState]);
+
+  // ─── Effects: handle turn results ────────────────────────────────────────
+
+  // When turn results arrive, show animation and log to history
+  if (turnResults && !showAnimation && !battleHistory.some((h) => h.turn === turnResults.turn)) {
+    setShowAnimation(true);
+    setBattleHistory((prev) => [
+      ...prev,
+      { turn: turnResults.turn, events: turnResults.events },
+    ]);
+    setPendingCommands([]);
+  }
+
+  // ─── Render: Connection/Loading States ───────────────────────────────────
+
+  if (connectionState === "connecting") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-gray-400">Connecting to match...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Error Banner */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-          <p className="text-sm text-red-700">{error}</p>
+  if (connectionState === "error" || error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="text-center max-w-md">
+          <p className="text-red-400 text-lg font-bold mb-2">Connection Error</p>
+          <p className="text-gray-400 text-sm mb-4">{error ?? "Failed to connect to game server"}</p>
+          <Link
+            href={`/matches/${matchUuid}`}
+            className="text-blue-400 hover:text-blue-300 text-sm"
+          >
+            ← Back to match
+          </Link>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* Game Over */}
-      {gameOver && (
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center mb-6">
-          <p className="text-5xl mb-4">
-            {gameOver.winner === teamId ? "🏆" : "💀"}
+  if (!gameState || !teamId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="animate-pulse text-gray-400">Loading game state...</div>
+      </div>
+    );
+  }
+
+  // ─── Game Over Screen ────────────────────────────────────────────────────
+
+  if (gameOver) {
+    const isWinner = gameOver.winner === teamId;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">{isWinner ? "🏆" : "💀"}</div>
+          <h1
+            className={`text-3xl font-bold mb-2 ${isWinner ? "text-yellow-400" : "text-red-400"}`}
+          >
+            {isWinner ? "Victory!" : "Defeat"}
+          </h1>
+          <p className="text-gray-400 mb-1">
+            {gameOver.condition === "elimination" && "All opposing vellymons eliminated!"}
+            {gameOver.condition === "occupation" && "Occupation points secured!"}
+            {gameOver.condition === "accumulation" && "Energy threshold reached!"}
           </p>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {gameOver.winner === teamId ? "Victory!" : "Defeat"}
-          </h2>
-          <p className="text-gray-600 mb-1">
-            Won by{" "}
-            <span className="font-semibold capitalize">
-              {gameOver.condition}
-            </span>
-          </p>
-          <p className="text-sm text-gray-400 mb-6">
-            {gameOver.winner === teamId
-              ? "Your strategy prevailed."
-              : "Better luck next time."}
+          <p className="text-gray-500 text-sm mb-6">
+            {playerTeamName} — {gameState.turn} turns played
           </p>
           <Link
             href="/matches"
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             Back to Matches
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  // ─── Main Game Layout ────────────────────────────────────────────────────
+
+  const selectedVellymon = selectedUuid
+    ? gameState.yourTeam.active.find((v) => v.uuid === selectedUuid) ?? null
+    : null;
+
+  const activeCount = gameState.yourTeam.active.filter((v) => !v.isKO).length;
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Turn Animation Overlay */}
+      {showAnimation && turnResults && (
+        <TurnAnimation
+          results={turnResults}
+          onComplete={handleAnimationComplete}
+        />
       )}
 
-      {/* Connecting State */}
-      {connectionState === "connecting" && !gameOver && (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Connecting to Game Server...
-          </h2>
-          <p className="text-gray-600">
-            Establishing connection for match {matchUuid.slice(0, 8)}.
-          </p>
+      {/* Responsive Layout: sidebar left, board center, sidebar right */}
+      <div className="h-screen flex flex-col">
+        {/* Top nav */}
+        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-900 border-b border-gray-800">
+          <Link
+            href={`/matches/${matchUuid}`}
+            className="text-xs text-gray-400 hover:text-white transition-colors"
+          >
+            ← Match
+          </Link>
+          <div className="flex items-center gap-2">
+            <ConnectionDot state={connectionState} />
+            <span className="text-xs text-gray-500">{playerTeamName}</span>
+            {opponentReady && (
+              <span className="text-[10px] bg-green-900 text-green-300 px-1.5 py-0.5 rounded">
+                Opponent ready
+              </span>
+            )}
+            {commandsAccepted && (
+              <span className="text-[10px] bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded">
+                Commands sent
+              </span>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Active Game */}
-      {connectionState === "connected" && gameState && !gameOver && (
-        <div className="space-y-4">
-          {/* HUD Bar */}
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="flex items-center justify-between">
-              {/* Your Team */}
-              <div className="flex-1">
-                <p className="text-xs text-gray-500 mb-1">Your Team</p>
-                <p className="text-lg font-bold text-blue-600">
-                  {gameState.yourTeam.name}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-500">⚡</span>
-                  <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[120px]">
-                    <div
-                      className="bg-yellow-500 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, (gameState.yourTeam.energy / 120) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs font-mono text-gray-700">
-                    {gameState.yourTeam.energy}
-                  </span>
-                </div>
-              </div>
+        {/* Main content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left sidebar — HUD (hidden on mobile, shown on md+) */}
+          <aside className="hidden md:flex md:w-64 lg:w-72 flex-col p-2 overflow-y-auto border-r border-gray-800">
+            <GameHUD
+              turn={gameState.turn}
+              yourTeam={gameState.yourTeam}
+              opponentTeam={gameState.opponentTeam}
+              board={gameState.board}
+              timerSeconds={timerSeconds}
+              phase={gameState.phase}
+            />
+          </aside>
 
-              {/* Turn / Timer */}
-              <div className="text-center px-6">
-                <p className="text-xs text-gray-500">Turn {gameState.turn}</p>
-                <p
-                  className={`text-3xl font-bold font-mono ${
-                    timerSeconds <= 5
-                      ? "text-red-600 animate-pulse"
-                      : timerSeconds <= 10
-                        ? "text-yellow-600"
-                        : "text-gray-900"
-                  }`}
+          {/* Center — Board + Command Input */}
+          <main className="flex-1 flex flex-col p-2 overflow-y-auto">
+            {/* Mobile-only HUD summary */}
+            <div className="md:hidden mb-2">
+              <div className="flex items-center justify-between bg-gray-900 rounded px-3 py-1.5 text-xs">
+                <span>
+                  Turn <span className="font-bold">{gameState.turn}</span>
+                </span>
+                <span className="text-blue-300">
+                  ⚡ {gameState.yourTeam.energy}
+                </span>
+                <span className="text-red-300">
+                  ⚡ {gameState.opponentTeam.energy}
+                </span>
+                <span
+                  className={
+                    timerSeconds <= 10
+                      ? "text-red-400 animate-pulse"
+                      : "text-gray-400"
+                  }
                 >
                   {timerSeconds}s
-                </p>
-                {commandsAccepted && (
-                  <p className="text-xs text-green-600 font-medium mt-1">
-                    ✓ Submitted
-                  </p>
-                )}
-                {opponentReady && !commandsAccepted && (
-                  <p className="text-xs text-yellow-600 font-medium mt-1">
-                    Opponent ready
-                  </p>
-                )}
-              </div>
-
-              {/* Opponent Team */}
-              <div className="flex-1 text-right">
-                <p className="text-xs text-gray-500 mb-1">Opponent</p>
-                <p className="text-lg font-bold text-red-600">
-                  {gameState.opponentTeam.name}
-                </p>
-                <div className="flex items-center gap-2 mt-1 justify-end">
-                  <span className="text-xs font-mono text-gray-700">
-                    {gameState.opponentTeam.energy}
-                  </span>
-                  <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[120px]">
-                    <div
-                      className="bg-red-400 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, (gameState.opponentTeam.energy / 120) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500">⚡</span>
-                </div>
+                </span>
               </div>
             </div>
-          </div>
 
-          {/* Board Placeholder */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-              <p className="text-4xl mb-3">🗺️</p>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">
-                Board Renderer
-              </h3>
-              <p className="text-sm text-gray-600">
-                Phase 7 — {gameState.board.width}×{gameState.board.height} grid
-                with {gameState.yourTeam.active.length} active vellymons.
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                Command input and board visualization coming in the Match UI
-                phase.
-              </p>
+            {/* Board */}
+            <div className="flex-1 flex items-center justify-center">
+              <BoardRenderer
+                board={gameState.board}
+                yourActive={gameState.yourTeam.active}
+                opponentActive={gameState.opponentTeam.active}
+                teamId={teamId}
+                selectedUuid={selectedUuid}
+                onVellymonClick={handleVellymonClick}
+                onSpaceClick={handleSpaceClick}
+              />
             </div>
-          </div>
 
-          {/* Team Roster Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Your Active */}
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">
-                Your Active ({gameState.yourTeam.active.filter((v) => !v.isKO).length}/
-                {gameState.yourTeam.active.length})
-              </h3>
-              <div className="space-y-2">
-                {gameState.yourTeam.active.map((v) => (
-                  <div
-                    key={v.uuid}
-                    className={`flex items-center justify-between text-xs p-2 rounded ${
-                      v.isKO
-                        ? "bg-gray-100 text-gray-400 line-through"
-                        : "bg-blue-50 text-gray-900"
-                    }`}
-                  >
-                    <span className="font-medium">{v.name}</span>
-                    <span className="font-mono">
-                      {v.hp}/{v.maxHp} HP
-                    </span>
-                  </div>
-                ))}
+            {/* Command Input (below board) */}
+            {selectedVellymon && (
+              <div className="mt-2 flex justify-center">
+                <CommandInput
+                  vellymon={selectedVellymon}
+                  teamEnergy={gameState.yourTeam.energy}
+                  board={gameState.board}
+                  pendingCommands={pendingCommands}
+                  onSubmitCommand={handleSubmitCommand}
+                  onCancel={() => setSelectedUuid(null)}
+                />
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Bench: {gameState.yourTeam.benchCount} · KO&apos;d:{" "}
-                {gameState.yourTeam.knockedCount}
-              </p>
-            </div>
+            )}
 
-            {/* Opponent Active */}
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">
-                Opponent Active (
-                {gameState.opponentTeam.active.filter((v) => !v.isKO).length}/
-                {gameState.opponentTeam.active.length})
-              </h3>
-              <div className="space-y-2">
-                {gameState.opponentTeam.active.map((v) => (
-                  <div
-                    key={v.uuid}
-                    className={`flex items-center justify-between text-xs p-2 rounded ${
-                      v.isKO
-                        ? "bg-gray-100 text-gray-400 line-through"
-                        : "bg-red-50 text-gray-900"
-                    }`}
-                  >
-                    <span className="font-medium">{v.name}</span>
-                    <span className="font-mono">
-                      {v.hp}/{v.maxHp} HP
-                    </span>
-                  </div>
-                ))}
+            {/* Turn Command Bar (always visible during play) */}
+            {gameState.phase === "playing" && (
+              <div className="mt-2">
+                <TurnCommandBar
+                  activeCount={activeCount}
+                  pendingCommands={pendingCommands}
+                  onSubmitTurn={handleSubmitTurn}
+                  timerSeconds={timerSeconds}
+                />
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Bench: {gameState.opponentTeam.benchCount} · KO&apos;d:{" "}
-                {gameState.opponentTeam.knockedCount}
-              </p>
-            </div>
-          </div>
+            )}
+          </main>
 
-          {/* Turn Results */}
-          {turnResults && (
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <h3 className="text-sm font-bold text-gray-900 mb-2">
-                Turn {turnResults.turn} Results
-              </h3>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {turnResults.events.map((event, i) => (
-                  <p key={i} className="text-xs text-gray-600">
-                    <span className="font-medium text-gray-800">
-                      {event.vellymonName ?? "System"}
-                    </span>{" "}
-                    — {event.detail}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Right sidebar — Battle Log (hidden on mobile) */}
+          <aside className="hidden lg:flex lg:w-56 xl:w-64 flex-col p-2 overflow-y-auto border-l border-gray-800">
+            <BattleLog history={battleHistory} />
+          </aside>
         </div>
-      )}
-
-      {/* Disconnected */}
-      {connectionState === "disconnected" && !gameOver && (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-5xl mb-4">📡</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Disconnected
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Connection to game server lost. Refresh to reconnect.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-          >
-            Reconnect
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
 
-// ─── Sub-Components ──────────────────────────────────────────────────────────
+// ─── Connection Indicator ────────────────────────────────────────────────────
 
-function ConnectionIndicator({ state }: { state: string }) {
-  const config: Record<string, { color: string; label: string }> = {
-    connecting: { color: "bg-yellow-500 animate-pulse", label: "Connecting" },
-    connected: { color: "bg-green-500", label: "Connected" },
-    disconnected: { color: "bg-red-500", label: "Disconnected" },
-    error: { color: "bg-red-500", label: "Error" },
-  };
+function ConnectionDot({ state }: { state: string }) {
+  const color =
+    state === "connected"
+      ? "bg-green-500"
+      : state === "connecting"
+        ? "bg-yellow-500 animate-pulse"
+        : "bg-red-500";
 
-  const c = config[state] ?? config.error;
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className={`w-2 h-2 rounded-full ${c.color}`} />
-      <span className="text-xs text-gray-500">{c.label}</span>
-    </div>
-  );
+  return <span className={`w-2 h-2 rounded-full ${color}`} />;
 }
