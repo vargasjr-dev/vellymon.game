@@ -5,6 +5,29 @@ import { revalidatePath } from "next/cache";
 import { auth } from "~/lib/auth.server";
 import createMatch from "~/data/createMatch.server";
 import joinGame from "~/data/joinGame.server";
+import cancelMatch from "~/data/cancelMatch.server";
+import getMatch from "~/data/getMatch.server";
+
+export async function getMatchAction(matchUuid: string) {
+  return getMatch(matchUuid);
+}
+
+export async function cancelMatchAction(matchUuid: string) {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+
+  const result = await cancelMatch({
+    matchUuid,
+    userId: session.user.id,
+  });
+
+  if (result.success) {
+    revalidatePath("/matches");
+    revalidatePath("/player");
+  }
+
+  return result;
+}
 
 export async function createMatchAction(teamUuid: string) {
   const headersList = await headers();
