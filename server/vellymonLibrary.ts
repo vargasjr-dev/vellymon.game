@@ -48,7 +48,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 8, name: "Cloudpuff", archetype: "support", hp: 78, attack: 8, speed: 7, attacks: [T.poke, T.chip], flavor: "A tiny cloud that floats just above the ground.", specialPowerId: "rain-dance" },
   { id: 9, name: "Coppercog", archetype: "balanced", hp: 80, attack: 12, speed: 4, attacks: [T.strike, T.lob], flavor: "Mechanical vellymon made of spinning copper gears.", specialPowerId: "overclock" },
   { id: 10, name: "Coralord", archetype: "tank", hp: 95, attack: 11, speed: 3, attacks: [T.strike, T.slam], flavor: "Coral reef creature. Slow on land, king of the shallows.", specialPowerId: "reef-armor" },
-  { id: 11, name: "Cosmog", archetype: "balanced", hp: 90, attack: 10, speed: 4, attacks: [T.poke, T.strike], flavor: "Cosmic origins. The most mysterious vellymon of all." },
+  { id: 11, name: "Cosmog", archetype: "balanced", hp: 90, attack: 10, speed: 4, attacks: [T.poke, T.strike], flavor: "Cosmic origins. The most mysterious vellymon of all.", specialPowerId: "warp-strike" },
   { id: 12, name: "Cragthorn", archetype: "tank", hp: 110, attack: 10, speed: 1, attacks: [T.strike, T.slam], flavor: "Covered in thorny rock formations. Touch at your peril." },
   { id: 13, name: "Crimshard", archetype: "glass_cannon", hp: 47, attack: 17, speed: 6, attacks: [T.poke, T.nuke], flavor: "Red crystal shards orbit it like tiny daggers." },
   { id: 14, name: "Dashpaw", archetype: "speedster", hp: 45, attack: 12, speed: 9, attacks: [T.poke, T.snipe], flavor: "Paw prints everywhere but you never see it pass." },
