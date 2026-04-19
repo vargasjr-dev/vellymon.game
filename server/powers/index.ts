@@ -22,3 +22,4 @@ import "./cragthorn";
 import "./crimshard";
 import "./dashpaw";
 import "./dewdrop";
+import "./doomsprout";
