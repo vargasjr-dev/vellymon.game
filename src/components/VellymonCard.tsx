@@ -9,37 +9,55 @@ interface VellymonCardProps {
   uuid?: string;
   href?: string;
   variant?: "full" | "compact";
+  archetype?: string;
+  archetypeEmoji?: string;
+  flavor?: string;
   children?: React.ReactNode;
 }
 
-const statLabel: Record<string, string> = {
-  health: "HP",
-  attack: "ATK",
-  speed: "SPD",
-  energy: "NRG",
-};
+function StatBadge({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="text-center">
+      <div className="text-xs text-gray-400 uppercase">{label}</div>
+      <div className="font-bold text-sm">{value}</div>
+    </div>
+  );
+}
 
 function CompactContent({
   name,
-  stats,
+  health,
+  attack,
+  speed,
+  archetypeEmoji,
+  flavor,
   children,
 }: {
   name: string;
-  stats: Record<string, number>;
+  health: number;
+  attack: number;
+  speed: number;
+  archetypeEmoji?: string;
+  flavor?: string;
   children?: React.ReactNode;
 }) {
   return (
     <>
-      <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition mb-2">
-        {name}
-      </h3>
-      <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-        {Object.entries(stats).map(([key, value]) => (
-          <div key={key}>
-            <span className="text-gray-400">{statLabel[key]}</span>{" "}
-            <span className="font-semibold">{value}</span>
-          </div>
-        ))}
+      <div className="flex items-center gap-1.5 mb-1">
+        {archetypeEmoji && <span className="text-sm">{archetypeEmoji}</span>}
+        <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition truncate">
+          {name}
+        </h3>
+      </div>
+      {flavor && (
+        <p className="text-[11px] text-gray-400 mb-2 line-clamp-2 leading-tight">
+          {flavor}
+        </p>
+      )}
+      <div className="flex justify-between px-1">
+        <StatBadge label="HP" value={health} />
+        <StatBadge label="ATK" value={attack} />
+        <StatBadge label="SPD" value={speed} />
       </div>
       {children}
     </>
@@ -51,45 +69,55 @@ export default function VellymonCard({
   health,
   attack,
   speed,
-  energy,
   href,
   variant = "full",
+  archetypeEmoji,
+  flavor,
   children,
 }: VellymonCardProps) {
-  const stats = { health, attack, speed, energy };
-
   if (variant === "compact") {
+    const content = (
+      <CompactContent
+        name={name}
+        health={health}
+        attack={attack}
+        speed={speed}
+        archetypeEmoji={archetypeEmoji}
+        flavor={flavor}
+      >
+        {children}
+      </CompactContent>
+    );
+
     if (href) {
       return (
         <Link
           href={href}
-          className="border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition group block"
+          className="border border-gray-200 rounded-lg p-3 hover:border-blue-400 hover:shadow-md transition group block"
         >
-          <CompactContent name={name} stats={stats}>
-            {children}
-          </CompactContent>
+          {content}
         </Link>
       );
     }
     return (
-      <div className="border border-gray-200 rounded-lg p-4">
-        <CompactContent name={name} stats={stats}>
-          {children}
-        </CompactContent>
-      </div>
+      <div className="border border-gray-200 rounded-lg p-3">{content}</div>
     );
   }
 
   // Full variant
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h3 className="text-2xl font-bold mb-4">{name}</h3>
-      <div className="space-y-2 text-gray-700">
-        {Object.entries(stats).map(([key, value]) => (
-          <p key={key}>
-            <span className="font-semibold capitalize">{key}:</span> {value}
-          </p>
-        ))}
+      <div className="flex items-center gap-2 mb-3">
+        {archetypeEmoji && <span className="text-xl">{archetypeEmoji}</span>}
+        <h3 className="text-2xl font-bold">{name}</h3>
+      </div>
+      {flavor && (
+        <p className="text-sm text-gray-500 mb-3 italic">{flavor}</p>
+      )}
+      <div className="flex gap-4 text-gray-700">
+        <StatBadge label="HP" value={health} />
+        <StatBadge label="ATK" value={attack} />
+        <StatBadge label="SPD" value={speed} />
       </div>
       {children}
     </div>

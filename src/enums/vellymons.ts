@@ -10,7 +10,7 @@ import {
   VELLYMON_LIBRARY,
   type VellymonTemplate,
 } from "../../server/vellymonLibrary";
-import { calculateDamage } from "../../server/archetypes";
+import { calculateDamage, ARCHETYPES } from "../../server/archetypes";
 
 /**
  * Generate a deterministic UUID v5-style string from a vellymon ID.
@@ -26,6 +26,7 @@ function idToUuid(id: number): string {
  * Convert a library template to the client-facing VellymonStats format.
  */
 function templateToStats(t: VellymonTemplate): VellymonStats {
+  const archetype = ARCHETYPES[t.archetype];
   return {
     uuid: idToUuid(t.id),
     name: t.name,
@@ -38,6 +39,9 @@ function templateToStats(t: VellymonTemplate): VellymonStats {
       damage: calculateDamage(atk, t.attack),
       energyCost: atk.energyCost,
     })),
+    archetype: archetype.label,
+    archetypeEmoji: archetype.emoji,
+    flavor: t.flavor,
   };
 }
 
