@@ -31,6 +31,8 @@ export type VellymonTemplate = {
   attacks: [AttackTemplate, AttackTemplate];
   /** Short flavor text */
   flavor: string;
+  /** Avatar image URL — generated via Nano Banana (Gemini image gen) */
+  imageUrl?: string;
   /** Optional special power ID — references server/specialPowers registry */
   specialPowerId?: string;
 };
