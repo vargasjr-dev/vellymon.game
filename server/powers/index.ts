@@ -16,3 +16,4 @@ import "./breezekin";
 import "./buldrok";
 import "./cloudpuff";
 import "./coppercog";
+import "./coralord";
