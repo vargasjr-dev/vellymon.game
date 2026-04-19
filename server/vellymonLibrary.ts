@@ -31,6 +31,8 @@ export type VellymonTemplate = {
   attacks: [AttackTemplate, AttackTemplate];
   /** Short flavor text */
   flavor: string;
+  /** Optional special power ID — references server/specialPowers registry */
+  specialPowerId?: string;
 };
 
 // ─── 🛡️ TANKS (12) — High HP, low speed, moderate attack ────────────────────

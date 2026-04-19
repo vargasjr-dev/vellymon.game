@@ -47,6 +47,8 @@ export type VellymonState = {
   isKO: boolean;
   /** Pre-assigned spawn position for bench entry */
   spawnPosition: Position;
+  /** Optional special power ID — references the power registry */
+  specialPowerId?: string;
 };
 
 // ─── Team State ──────────────────────────────────────────────────────────────
