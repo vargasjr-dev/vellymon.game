@@ -10,25 +10,48 @@ export const vellymonInstance = pgTable("vellymonInstance", {
   modelUuid: uuid("modelUuid").notNull(),
 });
 
-export const gameSession = pgTable("gameSession", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  deploymentId: varchar("deploymentId", { length: 256 }).notNull(),
-  status: varchar("status", { length: 32 }).notNull().default("active"), // active, completed, error
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
-  createdBy: varchar("createdBy", { length: 32 }).notNull(),
-  maxPlayers: integer("maxPlayers").notNull().default(4),
-  currentPlayers: integer("currentPlayers").notNull().default(0),
-  metadata: json("metadata"),
-});
+export const gameSession = pgTable(
+  "gameSession",
+  {
+    uuid: uuid("uuid").primaryKey().defaultRandom(),
+    deploymentId: varchar("deploymentId", { length: 256 }), // nullable — no server until match starts
+    status: varchar("status", { length: 32 }).notNull().default("waiting"), // waiting, ready, playing, completed, cancelled
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    createdBy: text("createdBy")
+      .notNull()
+      .references(() => user.id),
+    maxPlayers: integer("maxPlayers").notNull().default(2), // 1v1 format
+    currentPlayers: integer("currentPlayers").notNull().default(1), // creator counts
+    metadata: json("metadata"),
+  },
+  (table) => [index("gameSession_createdBy_idx").on(table.createdBy)],
+);
 
-export const gamePlayer = pgTable("gamePlayer", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  gameSessionUuid: uuid("gameSessionUuid").notNull().references(() => gameSession.uuid),
-  userId: varchar("userId", { length: 32 }).notNull(),
-  joinedAt: timestamp("joinedAt").notNull().defaultNow(),
-  status: varchar("status", { length: 32 }).notNull().default("active"), // active, left, kicked
-});
+export const gamePlayer = pgTable(
+  "gamePlayer",
+  {
+    uuid: uuid("uuid").primaryKey().defaultRandom(),
+    gameSessionUuid: uuid("gameSessionUuid")
+      .notNull()
+      .references(() => gameSession.uuid, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id),
+    teamUuid: uuid("teamUuid")
+      .notNull()
+      .references(() => team.uuid),
+    joinedAt: timestamp("joinedAt").notNull().defaultNow(),
+    status: varchar("status", { length: 32 }).notNull().default("active"), // active, left, kicked
+  },
+  (table) => [
+    index("gamePlayer_gameSessionUuid_idx").on(table.gameSessionUuid),
+    index("gamePlayer_userId_idx").on(table.userId),
+  ],
+);
 
 // Team system — 8 vellymons per team, 4 active in match lineup
 export const team = pgTable(
