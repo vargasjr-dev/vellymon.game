@@ -20,3 +20,4 @@ import "./coralord";
 import "./cosmog";
 import "./cragthorn";
 import "./crimshard";
+import "./dashpaw";
