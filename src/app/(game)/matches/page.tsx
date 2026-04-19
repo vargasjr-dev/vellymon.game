@@ -102,11 +102,19 @@ export default async function MatchesPage() {
       {/* Match History */}
       {myPastMatches.length > 0 && (
         <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-3">
-            Match History
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">
+              Match History
+            </h2>
+            <Link
+              href="/matches/history"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              View all →
+            </Link>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myPastMatches.map((match) => (
+            {myPastMatches.slice(0, 4).map((match) => (
               <MatchCard
                 key={match.uuid}
                 match={match}
