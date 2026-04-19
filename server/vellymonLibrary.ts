@@ -42,7 +42,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 2, name: "Aquaplex", archetype: "balanced", hp: 73, attack: 12, speed: 5, attacks: [T.snipe, T.strike], flavor: "Water creature that adapts to any situation.", specialPowerId: "adaptive-flow" },
   { id: 3, name: "Barrikade", archetype: "tank", hp: 102, attack: 11, speed: 2, attacks: [T.poke, T.strike], flavor: "Literally a walking barricade. Blocks everything.", specialPowerId: "iron-curtain" },
   { id: 4, name: "Blastova", archetype: "glass_cannon", hp: 45, attack: 20, speed: 4, attacks: [T.poke, T.nuke], flavor: "A living supernova. Bright, hot, and short-lived.", specialPowerId: "supernova-burst" },
-  { id: 5, name: "Blinkatt", archetype: "speedster", hp: 42, attack: 11, speed: 10, attacks: [T.snipe, T.strike], flavor: "Blinks in and out of existence between attacks." },
+  { id: 5, name: "Blinkatt", archetype: "speedster", hp: 42, attack: 11, speed: 10, attacks: [T.snipe, T.strike], flavor: "Blinks in and out of existence between attacks.", specialPowerId: "phase-shift" },
   { id: 6, name: "Breezekin", archetype: "balanced", hp: 75, attack: 13, speed: 5, attacks: [T.poke, T.lob], flavor: "Kin of the wind. Light on its feet, steady aim." },
   { id: 7, name: "Buldrok", archetype: "tank", hp: 120, attack: 8, speed: 1, attacks: [T.poke, T.slam], flavor: "An ancient stone golem. Slow but nearly indestructible." },
   { id: 8, name: "Cloudpuff", archetype: "support", hp: 78, attack: 8, speed: 7, attacks: [T.poke, T.chip], flavor: "A tiny cloud that floats just above the ground." },

@@ -11,3 +11,4 @@ import "./aerobolt";
 import "./aquaplex";
 import "./barrikade";
 import "./blastova";
+import "./blinkatt";
