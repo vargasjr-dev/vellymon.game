@@ -18,3 +18,4 @@ import "./cloudpuff";
 import "./coppercog";
 import "./coralord";
 import "./cosmog";
+import "./cragthorn";
