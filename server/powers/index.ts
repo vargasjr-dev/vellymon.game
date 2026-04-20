@@ -28,3 +28,4 @@ import "./duskfin";
 import "./embercub";
 import "./ferridon";
 import "./flashfin";
+import "./flicktail";
