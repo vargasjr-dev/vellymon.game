@@ -66,7 +66,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 24, name: "Fungipal", archetype: "support", hp: 82, attack: 8, speed: 6, attacks: [T.chip, T.poke], flavor: "A friendly fungus. Absorbs energy from the ground.", specialPowerId: "spore-harvest", imageUrl: "/vellymon/fungipal.png" },
   { id: 25, name: "Gleamoss", archetype: "support", hp: 65, attack: 5, speed: 8, attacks: [T.chip, T.snipe], flavor: "Glowing moss creature. Harvests energy from sunlight.", specialPowerId: "photosynthesis", imageUrl: "/vellymon/gleamoss.png" },
   { id: 26, name: "Glintpaw", archetype: "balanced", hp: 85, attack: 10, speed: 5, attacks: [T.poke, T.strike], flavor: "Shiny paws that glint when it attacks. Flashy.", specialPowerId: "flash-strike", imageUrl: "/vellymon/glintpaw.png" },
-  { id: 27, name: "Grumblix", archetype: "tank", hp: 100, attack: 12, speed: 1, attacks: [T.poke, T.slam], flavor: "Always grumbling. The grumpiest vellymon alive." },
+  { id: 27, name: "Grumblix", archetype: "tank", hp: 100, attack: 12, speed: 1, attacks: [T.poke, T.slam], flavor: "Always grumbling. The grumpiest vellymon alive.", specialPowerId: "grudge", imageUrl: "/vellymon/grumblix.png" },
   { id: 28, name: "Gustling", archetype: "speedster", hp: 55, attack: 10, speed: 9, attacks: [T.snipe, T.strike], flavor: "A tiny wind spirit. Leaves a breeze trail everywhere." },
   { id: 29, name: "Hexaflare", archetype: "glass_cannon", hp: 60, attack: 16, speed: 5, attacks: [T.lob, T.nuke], flavor: "Six-pointed flare pattern. Mesmerizing and deadly." },
   { id: 30, name: "Humbloom", archetype: "support", hp: 72, attack: 7, speed: 7, attacks: [T.poke, T.snipe], flavor: "Hums a gentle tune while harvesting. Very zen." },
