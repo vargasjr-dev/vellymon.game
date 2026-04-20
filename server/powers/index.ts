@@ -51,3 +51,4 @@ import "./prismite";
 import "./pyroburst";
 import "./quicksilk";
 import "./razorush";
+import "./rustleclaw";
