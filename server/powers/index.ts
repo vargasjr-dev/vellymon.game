@@ -44,3 +44,4 @@ import "./magmorus";
 import "./mosswall";
 import "./nectarb";
 import "./pebblink";
+import "./phantoboom";
