@@ -12,6 +12,7 @@ interface RosterVellymon {
   attack: number;
   speed: number;
   energy: number;
+  imageUrl?: string;
 }
 
 const sortOptions: { key: SortKey; label: string }[] = [
@@ -78,6 +79,7 @@ export default function RosterGrid({ roster }: { roster: RosterVellymon[] }) {
             attack={vellymon.attack}
             speed={vellymon.speed}
             energy={vellymon.energy}
+            imageUrl={vellymon.imageUrl}
             href={`/player/${vellymon.uuid}`}
             variant="compact"
           />

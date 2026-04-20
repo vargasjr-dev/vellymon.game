@@ -15,6 +15,8 @@ export interface VellymonStats {
   attacks: Attack[];
   /** Short flavor text */
   flavor?: string;
+  /** Avatar image URL */
+  imageUrl?: string;
 }
 
 export interface Attack {

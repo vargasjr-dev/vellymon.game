@@ -25,6 +25,7 @@ export default async function MarketPage() {
             speed={vellymon.speed}
             energy={vellymon.energy}
             flavor={vellymon.flavor}
+            imageUrl={vellymon.imageUrl}
             variant="compact"
           >
             <BuyButton
