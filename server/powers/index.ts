@@ -40,3 +40,4 @@ import "./humbloom";
 import "./ironpup";
 import "./joltmink";
 import "./lumisprout";
+import "./magmorus";
