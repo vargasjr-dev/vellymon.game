@@ -69,3 +69,4 @@ import "./verdantix";
 import "./voidclaw";
 import "./voltwing";
 import "./whispurr";
+import "./wrecktor";
