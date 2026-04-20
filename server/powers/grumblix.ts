@@ -6,7 +6,7 @@
  * it hits.
  *
  * Hook: onDamaged
- * Effect: bonus damage accumulates (max +6)
+ * Effect: bonus damage accumulates (max +6), applied to attacker
  *
  * Design: Grumblix is a pure tank (HP 100, ATK 12, SPD 1).
  * Slowest in the game but massive HP and solid attack.
@@ -18,7 +18,7 @@
 
 import {
   registerPower,
-  type HookContext,
+  type DamagedHookContext,
   type PowerEffect,
 } from "../specialPowers";
 
@@ -31,15 +31,15 @@ registerPower({
   description:
     "Taking damage adds +2 to next attack (max +6). The grumpier, the harder.",
   hooks: {
-    onDamaged: (ctx: HookContext): PowerEffect[] => {
-      // Only Grumblix accumulates grudge
+    onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];
 
       grudgeStacks = Math.min(grudgeStacks + 2, MAX_GRUDGE);
 
       return [
         {
-          type: "bonusDamage",
+          type: "bonus_damage",
+          targetId: ctx.attacker.uuid,
           amount: grudgeStacks,
         },
       ];
