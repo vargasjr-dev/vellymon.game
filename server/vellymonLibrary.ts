@@ -74,7 +74,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 32, name: "Joltmink", archetype: "speedster", hp: 55, attack: 8, speed: 10, attacks: [T.poke, T.snipe], flavor: "Fuzzy and electrified. Don't pet it.", specialPowerId: "static-charge", imageUrl: "/vellymon/joltmink.png" },
   { id: 33, name: "Lumisprout", archetype: "support", hp: 85, attack: 9, speed: 6, attacks: [T.snipe, T.poke], flavor: "Bioluminescent sprout. Lights up the whole board.", specialPowerId: "bioluminescence", imageUrl: "/vellymon/lumisprout.png" },
   { id: 34, name: "Magmorus", archetype: "glass_cannon", hp: 48, attack: 19, speed: 4, attacks: [T.slam, T.nuke], flavor: "Molten core barely contained by a thin rocky shell.", specialPowerId: "meltdown", imageUrl: "/vellymon/magmorus.png" },
-  { id: 35, name: "Mosswall", archetype: "tank", hp: 100, attack: 10, speed: 3, attacks: [T.poke, T.slam], flavor: "A living wall of moss and stone. Regenerates slowly." },
+  { id: 35, name: "Mosswall", archetype: "tank", hp: 100, attack: 10, speed: 3, attacks: [T.poke, T.slam], flavor: "A living wall of moss and stone. Regenerates slowly.", specialPowerId: "regrowth", imageUrl: "/vellymon/mosswall.png" },
   { id: 36, name: "Nectarb", archetype: "support", hp: 75, attack: 9, speed: 7, attacks: [T.chip, T.snipe], flavor: "Drips sweet nectar that converts to pure energy." },
   { id: 37, name: "Pebblink", archetype: "balanced", hp: 82, attack: 10, speed: 5, attacks: [T.poke, T.lob], flavor: "A blinking pebble. Don't underestimate small things." },
   { id: 38, name: "Phantoboom", archetype: "glass_cannon", hp: 65, attack: 15, speed: 5, attacks: [T.poke, T.slam], flavor: "A phantom that materializes only to detonate." },
