@@ -27,3 +27,4 @@ import "./duraclod";
 import "./duskfin";
 import "./embercub";
 import "./ferridon";
+import "./flashfin";
