@@ -34,3 +34,4 @@ import "./fungipal";
 import "./gleamoss";
 import "./glintpaw";
 import "./grumblix";
+import "./gustling";
