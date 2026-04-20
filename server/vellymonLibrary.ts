@@ -62,7 +62,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 20, name: "Ferridon", archetype: "tank", hp: 115, attack: 9, speed: 1, attacks: [T.poke, T.strike], flavor: "Iron-plated beast that rusts its enemies on contact.", specialPowerId: "rust-aura", imageUrl: "/vellymon/ferridon.png" },
   { id: 21, name: "Flashfin", archetype: "speedster", hp: 62, attack: 8, speed: 9, attacks: [T.poke, T.snipe], flavor: "Glows bright when it accelerates. Blinding.", specialPowerId: "blinding-dash", imageUrl: "/vellymon/flashfin.png" },
   { id: 22, name: "Flicktail", archetype: "speedster", hp: 50, attack: 10, speed: 10, attacks: [T.snipe, T.poke], flavor: "Flicks its tail to redirect mid-dash. Uncatchable.", specialPowerId: "evasive-flick", imageUrl: "/vellymon/flicktail.png" },
-  { id: 23, name: "Frostfawn", archetype: "balanced", hp: 72, attack: 12, speed: 6, attacks: [T.snipe, T.lob], flavor: "A frost-touched fawn. Graceful and deceptively tough." },
+  { id: 23, name: "Frostfawn", archetype: "balanced", hp: 72, attack: 12, speed: 6, attacks: [T.snipe, T.lob], flavor: "A frost-touched fawn. Graceful and deceptively tough.", specialPowerId: "frost-grace", imageUrl: "/vellymon/frostfawn.png" },
   { id: 24, name: "Fungipal", archetype: "support", hp: 82, attack: 8, speed: 6, attacks: [T.chip, T.poke], flavor: "A friendly fungus. Absorbs energy from the ground." },
   { id: 25, name: "Gleamoss", archetype: "support", hp: 65, attack: 5, speed: 8, attacks: [T.chip, T.snipe], flavor: "Glowing moss creature. Harvests energy from sunlight." },
   { id: 26, name: "Glintpaw", archetype: "balanced", hp: 85, attack: 10, speed: 5, attacks: [T.poke, T.strike], flavor: "Shiny paws that glint when it attacks. Flashy." },

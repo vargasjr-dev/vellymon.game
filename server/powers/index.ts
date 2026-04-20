@@ -29,3 +29,4 @@ import "./embercub";
 import "./ferridon";
 import "./flashfin";
 import "./flicktail";
+import "./frostfawn";
