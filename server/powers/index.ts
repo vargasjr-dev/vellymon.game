@@ -47,3 +47,4 @@ import "./pebblink";
 import "./phantoboom";
 import "./plateor";
 import "./pollyx";
+import "./prismite";
