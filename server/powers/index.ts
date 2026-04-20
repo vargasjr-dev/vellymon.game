@@ -31,3 +31,4 @@ import "./flashfin";
 import "./flicktail";
 import "./frostfawn";
 import "./fungipal";
+import "./gleamoss";
