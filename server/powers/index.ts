@@ -60,3 +60,4 @@ import "./skidmark";
 import "./sproutail";
 import "./starveil";
 import "./terravex";
+import "./thornlash";
