@@ -66,3 +66,4 @@ import "./titanog";
 import "./toxiblast";
 import "./tundrak";
 import "./verdantix";
+import "./voidclaw";
