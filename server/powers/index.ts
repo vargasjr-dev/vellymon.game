@@ -37,3 +37,4 @@ import "./grumblix";
 import "./gustling";
 import "./hexaflare";
 import "./humbloom";
+import "./ironpup";
