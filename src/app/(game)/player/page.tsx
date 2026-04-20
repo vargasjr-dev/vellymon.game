@@ -37,7 +37,7 @@ export default async function PlayerHubPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {/* Roster Card */}
         <Link
-          href="/market"
+          href="/roster"
           className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
         >
           <div className="flex items-center gap-3 mb-2">
