@@ -94,7 +94,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 52, name: "Starveil", archetype: "balanced", hp: 77, attack: 11, speed: 6, attacks: [T.poke, T.snipe], flavor: "Veiled in starlight. Hard to read, harder to predict.", specialPowerId: "starlight_veil", imageUrl: "/vellymon/starveil.png" },
   { id: 53, name: "Terravex", archetype: "balanced", hp: 70, attack: 14, speed: 4, attacks: [T.strike, T.lob], flavor: "Earth-aspected all-rounder. Reliable as bedrock.", specialPowerId: "bedrock_stance", imageUrl: "/vellymon/terravex.png" },
   { id: 54, name: "Thornlash", archetype: "glass_cannon", hp: 55, attack: 17, speed: 5, attacks: [T.lob, T.slam], flavor: "Whip-like thorns with devastating reach.", specialPowerId: "thorn_reach", imageUrl: "/vellymon/thornlash.png" },
-  { id: 55, name: "Tidalmini", archetype: "support", hp: 80, attack: 5, speed: 6, attacks: [T.snipe, T.poke], flavor: "Miniature tidal wave. Splashes harmlessly but fast." },
+  { id: 55, name: "Tidalmini", archetype: "support", hp: 80, attack: 5, speed: 6, attacks: [T.snipe, T.poke], flavor: "Miniature tidal wave. Splashes harmlessly but fast.", specialPowerId: "tidal_splash", imageUrl: "/vellymon/tidalmini.png" },
   { id: 56, name: "Titanog", archetype: "tank", hp: 98, attack: 11, speed: 1, attacks: [T.strike, T.slam], flavor: "Titanium-boned creature from deep underground." },
   { id: 57, name: "Toxiblast", archetype: "glass_cannon", hp: 70, attack: 15, speed: 4, attacks: [T.lob, T.slam], flavor: "Toxic goo with surprisingly good aim." },
   { id: 58, name: "Tundrak", archetype: "tank", hp: 105, attack: 9, speed: 2, attacks: [T.strike, T.slam], flavor: "Frost-covered mammoth that freezes the ground it walks on." },
