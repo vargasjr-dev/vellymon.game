@@ -72,7 +72,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 30, name: "Humbloom", archetype: "support", hp: 72, attack: 7, speed: 7, attacks: [T.poke, T.snipe], flavor: "Hums a gentle tune while harvesting. Very zen.", specialPowerId: "zen-harvest", imageUrl: "/vellymon/humbloom.png" },
   { id: 31, name: "Ironpup", archetype: "balanced", hp: 70, attack: 14, speed: 5, attacks: [T.strike, T.snipe], flavor: "An iron-coated pup. Loyal, tough, decent in a fight.", specialPowerId: "loyal-guard", imageUrl: "/vellymon/ironpup.png" },
   { id: 32, name: "Joltmink", archetype: "speedster", hp: 55, attack: 8, speed: 10, attacks: [T.poke, T.snipe], flavor: "Fuzzy and electrified. Don't pet it.", specialPowerId: "static-charge", imageUrl: "/vellymon/joltmink.png" },
-  { id: 33, name: "Lumisprout", archetype: "support", hp: 85, attack: 9, speed: 6, attacks: [T.snipe, T.poke], flavor: "Bioluminescent sprout. Lights up the whole board." },
+  { id: 33, name: "Lumisprout", archetype: "support", hp: 85, attack: 9, speed: 6, attacks: [T.snipe, T.poke], flavor: "Bioluminescent sprout. Lights up the whole board.", specialPowerId: "bioluminescence", imageUrl: "/vellymon/lumisprout.png" },
   { id: 34, name: "Magmorus", archetype: "glass_cannon", hp: 48, attack: 19, speed: 4, attacks: [T.slam, T.nuke], flavor: "Molten core barely contained by a thin rocky shell." },
   { id: 35, name: "Mosswall", archetype: "tank", hp: 100, attack: 10, speed: 3, attacks: [T.poke, T.slam], flavor: "A living wall of moss and stone. Regenerates slowly." },
   { id: 36, name: "Nectarb", archetype: "support", hp: 75, attack: 9, speed: 7, attacks: [T.chip, T.snipe], flavor: "Drips sweet nectar that converts to pure energy." },
