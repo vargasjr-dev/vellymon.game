@@ -52,3 +52,4 @@ import "./pyroburst";
 import "./quicksilk";
 import "./razorush";
 import "./rustleclaw";
+import "./sandscout";
