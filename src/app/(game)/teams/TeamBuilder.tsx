@@ -55,7 +55,6 @@ export default function TeamBuilder({
   const [saving, setSaving] = useState(false);
 
   const assignedUuids = new Set(slots.map((s) => s.vellymonInstanceUuid));
-  const activeCount = slots.filter((s) => s.isActive).length;
 
   // Get model UUIDs already in slots (for dupe-type prevention)
   const assignedModelUuids = new Set(
@@ -83,17 +82,6 @@ export default function TeamBuilder({
     setSlots((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const toggleActive = (index: number) => {
-    setSlots((prev) =>
-      prev.map((s, i) => {
-        if (i !== index) return s;
-        // Don't activate if already at max
-        if (!s.isActive && activeCount >= 4) return s;
-        return { ...s, isActive: !s.isActive };
-      }),
-    );
-  };
-
   const handleSubmit = async () => {
     if (!name.trim()) {
       addToast("Team name is required", "error");
@@ -102,10 +90,11 @@ export default function TeamBuilder({
 
     setSaving(true);
 
+    // Auto-set first 4 slots as active lineup, rest as bench
     const slotInputs: SlotInput[] = slots.map((s, i) => ({
       vellymonInstanceUuid: s.vellymonInstanceUuid,
       slotIndex: i,
-      isActive: s.isActive,
+      isActive: i < 4,
     }));
 
     try {
@@ -158,7 +147,7 @@ export default function TeamBuilder({
             Team Slots ({slots.length}/8)
           </h2>
           <span className="text-sm text-gray-500">
-            Active: {activeCount}/4
+            First 4 = active lineup
           </span>
         </div>
 
@@ -172,23 +161,32 @@ export default function TeamBuilder({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {slots.map((slot, index) => {
               const v = getVellymon(slot.vellymonInstanceUuid);
+              const isActive = index < 4;
               return (
                 <div
                   key={`${slot.vellymonInstanceUuid}-${index}`}
                   className={`border-2 rounded-lg p-4 flex items-center justify-between ${
-                    slot.isActive
-                      ? "border-green-400 bg-green-50"
+                    isActive
+                      ? "border-blue-300 bg-blue-50"
                       : "border-gray-200 bg-white"
                   }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 font-mono">
+                        {index + 1}.
+                      </span>
                       <p className="font-bold text-gray-900 truncate">
                         {v?.name ?? "Unknown"}
                       </p>
-                      {slot.isActive && (
-                        <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full font-medium">
+                      {isActive && (
+                        <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">
                           ACTIVE
+                        </span>
+                      )}
+                      {!isActive && (
+                        <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+                          BENCH
                         </span>
                       )}
                     </div>
@@ -201,27 +199,12 @@ export default function TeamBuilder({
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 ml-3">
-                    <button
-                      onClick={() => toggleActive(index)}
-                      className={`text-xs px-2 py-1 rounded font-medium transition ${
-                        slot.isActive
-                          ? "bg-green-600 text-white hover:bg-green-700"
-                          : activeCount >= 4
-                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            : "bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-green-700"
-                      }`}
-                      disabled={!slot.isActive && activeCount >= 4}
-                    >
-                      {slot.isActive ? "★" : "☆"}
-                    </button>
-                    <button
-                      onClick={() => removeSlot(index)}
-                      className="text-xs px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 font-medium transition"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => removeSlot(index)}
+                    className="text-xs px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 font-medium transition ml-3"
+                  >
+                    ✕
+                  </button>
                 </div>
               );
             })}
