@@ -54,3 +54,4 @@ import "./razorush";
 import "./rustleclaw";
 import "./sandscout";
 import "./scoopuff";
+import "./shellmaw";
