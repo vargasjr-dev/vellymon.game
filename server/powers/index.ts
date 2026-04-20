@@ -50,3 +50,4 @@ import "./pollyx";
 import "./prismite";
 import "./pyroburst";
 import "./quicksilk";
+import "./razorush";
