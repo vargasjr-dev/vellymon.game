@@ -34,9 +34,15 @@ registerPower({
       attackCount++;
 
       if (attackCount % 3 === 0) {
+        // Find nearest enemy target
+        const enemyTeam = ctx.state.teams[ctx.team === 1 ? 1 : 0];
+        const target = enemyTeam.active.find((v) => !v.isKO);
+        if (!target) return [];
+
         return [
           {
-            type: "bonusDamage",
+            type: "bonus_damage",
+            targetId: target.uuid,
             amount: 4,
           },
         ];
