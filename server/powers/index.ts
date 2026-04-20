@@ -30,3 +30,4 @@ import "./ferridon";
 import "./flashfin";
 import "./flicktail";
 import "./frostfawn";
+import "./fungipal";
