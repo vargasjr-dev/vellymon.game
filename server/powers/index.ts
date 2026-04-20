@@ -38,3 +38,4 @@ import "./gustling";
 import "./hexaflare";
 import "./humbloom";
 import "./ironpup";
+import "./joltmink";
