@@ -70,3 +70,4 @@ import "./voidclaw";
 import "./voltwing";
 import "./whispurr";
 import "./wrecktor";
+import "./zipfang";
