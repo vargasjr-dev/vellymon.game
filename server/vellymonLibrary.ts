@@ -81,7 +81,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 39, name: "Plateor", archetype: "tank", hp: 90, attack: 12, speed: 3, attacks: [T.strike, T.slam], flavor: "Tectonic plates shift when this one charges.", specialPowerId: "tectonic_charge", imageUrl: "/vellymon/plateor.png" },
   { id: 40, name: "Pollyx", archetype: "support", hp: 68, attack: 6, speed: 8, attacks: [T.chip, T.poke], flavor: "Spreads pollen everywhere. Annoyingly persistent.", specialPowerId: "pollen_cloud", imageUrl: "/vellymon/pollyx.png" },
   { id: 41, name: "Prismite", archetype: "balanced", hp: 88, attack: 12, speed: 4, attacks: [T.snipe, T.lob], flavor: "Refracts light into rainbow patterns. Beautiful fighter.", specialPowerId: "prismatic_shield", imageUrl: "/vellymon/prismite.png" },
-  { id: 42, name: "Pyroburst", archetype: "glass_cannon", hp: 52, attack: 18, speed: 4, attacks: [T.poke, T.slam], flavor: "Explodes on impact. Reassembles slowly." },
+  { id: 42, name: "Pyroburst", archetype: "glass_cannon", hp: 52, attack: 18, speed: 4, attacks: [T.poke, T.slam], flavor: "Explodes on impact. Reassembles slowly.", specialPowerId: "volatile_core", imageUrl: "/vellymon/pyroburst.png" },
   { id: 43, name: "Quicksilk", archetype: "speedster", hp: 60, attack: 9, speed: 9, attacks: [T.snipe, T.poke], flavor: "Spins silk webs at impossible speed." },
   { id: 44, name: "Razorush", archetype: "speedster", hp: 52, attack: 11, speed: 9, attacks: [T.poke, T.strike], flavor: "Razor-edged fins that slice the air at top speed." },
   { id: 45, name: "Rustleclaw", archetype: "balanced", hp: 85, attack: 11, speed: 4, attacks: [T.strike, T.lob], flavor: "Rustling claws that sound like wind through leaves." },
