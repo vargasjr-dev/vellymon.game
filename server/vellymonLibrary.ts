@@ -64,7 +64,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 22, name: "Flicktail", archetype: "speedster", hp: 50, attack: 10, speed: 10, attacks: [T.snipe, T.poke], flavor: "Flicks its tail to redirect mid-dash. Uncatchable.", specialPowerId: "evasive-flick", imageUrl: "/vellymon/flicktail.png" },
   { id: 23, name: "Frostfawn", archetype: "balanced", hp: 72, attack: 12, speed: 6, attacks: [T.snipe, T.lob], flavor: "A frost-touched fawn. Graceful and deceptively tough.", specialPowerId: "frost-grace", imageUrl: "/vellymon/frostfawn.png" },
   { id: 24, name: "Fungipal", archetype: "support", hp: 82, attack: 8, speed: 6, attacks: [T.chip, T.poke], flavor: "A friendly fungus. Absorbs energy from the ground.", specialPowerId: "spore-harvest", imageUrl: "/vellymon/fungipal.png" },
-  { id: 25, name: "Gleamoss", archetype: "support", hp: 65, attack: 5, speed: 8, attacks: [T.chip, T.snipe], flavor: "Glowing moss creature. Harvests energy from sunlight." },
+  { id: 25, name: "Gleamoss", archetype: "support", hp: 65, attack: 5, speed: 8, attacks: [T.chip, T.snipe], flavor: "Glowing moss creature. Harvests energy from sunlight.", specialPowerId: "photosynthesis", imageUrl: "/vellymon/gleamoss.png" },
   { id: 26, name: "Glintpaw", archetype: "balanced", hp: 85, attack: 10, speed: 5, attacks: [T.poke, T.strike], flavor: "Shiny paws that glint when it attacks. Flashy." },
   { id: 27, name: "Grumblix", archetype: "tank", hp: 100, attack: 12, speed: 1, attacks: [T.poke, T.slam], flavor: "Always grumbling. The grumpiest vellymon alive." },
   { id: 28, name: "Gustling", archetype: "speedster", hp: 55, attack: 10, speed: 9, attacks: [T.snipe, T.strike], flavor: "A tiny wind spirit. Leaves a breeze trail everywhere." },
