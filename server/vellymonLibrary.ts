@@ -89,7 +89,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 47, name: "Scoopuff", archetype: "support", hp: 73, attack: 8, speed: 8, attacks: [T.chip, T.poke], flavor: "Scoops up energy pellets with its fluffy cheeks.", specialPowerId: "cheek_pouch", imageUrl: "/vellymon/scoopuff.png" },
   { id: 48, name: "Shellmaw", archetype: "tank", hp: 108, attack: 10, speed: 2, attacks: [T.poke, T.slam], flavor: "A massive jaw hidden inside an impenetrable shell.", specialPowerId: "iron_shell", imageUrl: "/vellymon/shellmaw.png" },
   { id: 49, name: "Shrednova", archetype: "glass_cannon", hp: 50, attack: 18, speed: 5, attacks: [T.poke, T.nuke], flavor: "Shreds reality with its claws. Terrifying but brittle.", specialPowerId: "reality_shred", imageUrl: "/vellymon/shrednova.png" },
-  { id: 50, name: "Skidmark", archetype: "speedster", hp: 58, attack: 10, speed: 8, attacks: [T.poke, T.strike], flavor: "Leaves scorch marks from sheer friction." },
+  { id: 50, name: "Skidmark", archetype: "speedster", hp: 58, attack: 10, speed: 8, attacks: [T.poke, T.strike], flavor: "Leaves scorch marks from sheer friction.", specialPowerId: "friction_burn", imageUrl: "/vellymon/skidmark.png" },
   { id: 51, name: "Sproutail", archetype: "support", hp: 78, attack: 7, speed: 6, attacks: [T.chip, T.snipe], flavor: "Its tail grows a new sprout after each harvest." },
   { id: 52, name: "Starveil", archetype: "balanced", hp: 77, attack: 11, speed: 6, attacks: [T.poke, T.snipe], flavor: "Veiled in starlight. Hard to read, harder to predict." },
   { id: 53, name: "Terravex", archetype: "balanced", hp: 70, attack: 14, speed: 4, attacks: [T.strike, T.lob], flavor: "Earth-aspected all-rounder. Reliable as bedrock." },
