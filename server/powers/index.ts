@@ -25,3 +25,4 @@ import "./dewdrop";
 import "./doomsprout";
 import "./duraclod";
 import "./duskfin";
+import "./embercub";

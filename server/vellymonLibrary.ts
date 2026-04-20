@@ -58,7 +58,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 16, name: "Doomsprout", archetype: "glass_cannon", hp: 58, attack: 17, speed: 4, attacks: [T.slam, T.lob], flavor: "An innocent sprout that unleashes devastating blooms.", specialPowerId: "bloom-burst", imageUrl: "/vellymon/doomsprout.png" },
   { id: 17, name: "Duraclod", archetype: "tank", hp: 92, attack: 12, speed: 2, attacks: [T.poke, T.strike], flavor: "A clod of super-dense earth. Surprisingly determined.", specialPowerId: "fortify", imageUrl: "/vellymon/duraclod.png" },
   { id: 18, name: "Duskfin", archetype: "balanced", hp: 83, attack: 13, speed: 4, attacks: [T.strike, T.snipe], flavor: "Emerges at dusk. Thrives in twilight conditions.", specialPowerId: "twilight-veil", imageUrl: "/vellymon/duskfin.png" },
-  { id: 19, name: "Embercub", archetype: "balanced", hp: 72, attack: 13, speed: 4, attacks: [T.poke, T.strike], flavor: "A warm little cub with surprising grit." },
+  { id: 19, name: "Embercub", archetype: "balanced", hp: 72, attack: 13, speed: 4, attacks: [T.poke, T.strike], flavor: "A warm little cub with surprising grit.", specialPowerId: "inner-fire", imageUrl: "/vellymon/embercub.png" },
   { id: 20, name: "Ferridon", archetype: "tank", hp: 115, attack: 9, speed: 1, attacks: [T.poke, T.strike], flavor: "Iron-plated beast that rusts its enemies on contact." },
   { id: 21, name: "Flashfin", archetype: "speedster", hp: 62, attack: 8, speed: 9, attacks: [T.poke, T.snipe], flavor: "Glows bright when it accelerates. Blinding." },
   { id: 22, name: "Flicktail", archetype: "speedster", hp: 50, attack: 10, speed: 10, attacks: [T.snipe, T.poke], flavor: "Flicks its tail to redirect mid-dash. Uncatchable." },
