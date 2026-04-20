@@ -24,3 +24,35 @@ jobs:
 
       - name: Type check
         run: bunx tsc --noEmit
+
+  schema-check:
+    name: Schema Safety
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - name: Check for schema changes
+        run: |
+          if ! diff -q data/schema.ts base/data/schema.ts > /dev/null 2>&1; then
+            echo "⚠️ data/schema.ts has been modified in this PR"
+            echo ""
+            echo "Changes:"
+            diff data/schema.ts base/data/schema.ts || true
+            echo ""
+            echo "Please verify:"
+            echo "  1. Existing production records will still work"
+            echo "  2. A migration is included if needed (bunx drizzle-kit generate)"
+            echo "  3. Column renames/type changes have a migration plan"
+            echo ""
+            echo "If this is an additive change (new table, new nullable column),"
+            echo "no migration is needed — Drizzle push handles it on deploy."
+          else
+            echo "✅ No schema changes detected"
+          fi
