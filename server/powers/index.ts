@@ -59,3 +59,4 @@ import "./shrednova";
 import "./skidmark";
 import "./sproutail";
 import "./starveil";
+import "./terravex";
