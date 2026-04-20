@@ -97,7 +97,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 55, name: "Tidalmini", archetype: "support", hp: 80, attack: 5, speed: 6, attacks: [T.snipe, T.poke], flavor: "Miniature tidal wave. Splashes harmlessly but fast.", specialPowerId: "tidal_splash", imageUrl: "/vellymon/tidalmini.png" },
   { id: 56, name: "Titanog", archetype: "tank", hp: 98, attack: 11, speed: 1, attacks: [T.strike, T.slam], flavor: "Titanium-boned creature from deep underground.", specialPowerId: "titanium_bones", imageUrl: "/vellymon/titanog.png" },
   { id: 57, name: "Toxiblast", archetype: "glass_cannon", hp: 70, attack: 15, speed: 4, attacks: [T.lob, T.slam], flavor: "Toxic goo with surprisingly good aim.", specialPowerId: "toxic_residue", imageUrl: "/vellymon/toxiblast.png" },
-  { id: 58, name: "Tundrak", archetype: "tank", hp: 105, attack: 9, speed: 2, attacks: [T.strike, T.slam], flavor: "Frost-covered mammoth that freezes the ground it walks on." },
+  { id: 58, name: "Tundrak", archetype: "tank", hp: 105, attack: 9, speed: 2, attacks: [T.strike, T.slam], flavor: "Frost-covered mammoth that freezes the ground it walks on.", specialPowerId: "permafrost", imageUrl: "/vellymon/tundrak.png" },
   { id: 59, name: "Verdantix", archetype: "balanced", hp: 78, attack: 11, speed: 5, attacks: [T.poke, T.strike], flavor: "Green crystal entity. Grows stronger near nature." },
   { id: 60, name: "Voidclaw", archetype: "glass_cannon", hp: 45, attack: 19, speed: 5, attacks: [T.slam, T.lob], flavor: "Reaches through tiny void portals to strike." },
   { id: 61, name: "Voltwing", archetype: "speedster", hp: 48, attack: 11, speed: 8, attacks: [T.poke, T.strike], flavor: "Electric wings that crackle with each flap." },

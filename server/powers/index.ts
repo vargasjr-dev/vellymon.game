@@ -64,3 +64,4 @@ import "./thornlash";
 import "./tidalmini";
 import "./titanog";
 import "./toxiblast";
+import "./tundrak";
