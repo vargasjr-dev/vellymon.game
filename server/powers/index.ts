@@ -46,3 +46,4 @@ import "./nectarb";
 import "./pebblink";
 import "./phantoboom";
 import "./plateor";
+import "./pollyx";
