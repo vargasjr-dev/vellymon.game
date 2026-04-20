@@ -44,6 +44,7 @@ function templateToStats(t: VellymonTemplate): VellymonStats {
       energyCost: atk.energyCost,
     })),
     flavor: t.flavor,
+    imageUrl: t.imageUrl,
   };
 }
 

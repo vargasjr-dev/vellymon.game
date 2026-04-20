@@ -133,6 +133,7 @@ export default async function PlayerHubPage() {
                 attack={vellymon.attack}
                 speed={vellymon.speed}
                 energy={vellymon.energy}
+                imageUrl={vellymon.imageUrl}
                 href={`/player/${vellymon.uuid}`}
                 variant="compact"
               />
