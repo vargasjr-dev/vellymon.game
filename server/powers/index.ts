@@ -68,3 +68,4 @@ import "./tundrak";
 import "./verdantix";
 import "./voidclaw";
 import "./voltwing";
+import "./whispurr";
