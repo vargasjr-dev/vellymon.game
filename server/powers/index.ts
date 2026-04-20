@@ -35,3 +35,4 @@ import "./gleamoss";
 import "./glintpaw";
 import "./grumblix";
 import "./gustling";
+import "./hexaflare";
