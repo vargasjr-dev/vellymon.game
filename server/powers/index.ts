@@ -62,3 +62,4 @@ import "./starveil";
 import "./terravex";
 import "./thornlash";
 import "./tidalmini";
+import "./titanog";
