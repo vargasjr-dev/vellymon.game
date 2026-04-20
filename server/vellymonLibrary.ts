@@ -100,7 +100,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 58, name: "Tundrak", archetype: "tank", hp: 105, attack: 9, speed: 2, attacks: [T.strike, T.slam], flavor: "Frost-covered mammoth that freezes the ground it walks on.", specialPowerId: "permafrost", imageUrl: "/vellymon/tundrak.png" },
   { id: 59, name: "Verdantix", archetype: "balanced", hp: 78, attack: 11, speed: 5, attacks: [T.poke, T.strike], flavor: "Green crystal entity. Grows stronger near nature.", specialPowerId: "crystal_growth", imageUrl: "/vellymon/verdantix.png" },
   { id: 60, name: "Voidclaw", archetype: "glass_cannon", hp: 45, attack: 19, speed: 5, attacks: [T.slam, T.lob], flavor: "Reaches through tiny void portals to strike.", specialPowerId: "void_rend", imageUrl: "/vellymon/voidclaw.png" },
-  { id: 61, name: "Voltwing", archetype: "speedster", hp: 48, attack: 11, speed: 8, attacks: [T.poke, T.strike], flavor: "Electric wings that crackle with each flap." },
+  { id: 61, name: "Voltwing", archetype: "speedster", hp: 48, attack: 11, speed: 8, attacks: [T.poke, T.strike], flavor: "Electric wings that crackle with each flap.", specialPowerId: "thunderclap", imageUrl: "/vellymon/voltwing.png" },
   { id: 62, name: "Whispurr", archetype: "support", hp: 75, attack: 6, speed: 7, attacks: [T.poke, T.snipe], flavor: "Purrs at a frequency that calms allies." },
   { id: 63, name: "Wrecktor", archetype: "glass_cannon", hp: 58, attack: 16, speed: 4, attacks: [T.poke, T.slam], flavor: "Built to wreck. Nothing else. Just wreck." },
   { id: 64, name: "Zipfang", archetype: "speedster", hp: 40, attack: 12, speed: 10, attacks: [T.poke, T.strike], flavor: "So fast it bites before you see it move." },

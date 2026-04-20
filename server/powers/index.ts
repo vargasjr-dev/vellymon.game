@@ -67,3 +67,4 @@ import "./toxiblast";
 import "./tundrak";
 import "./verdantix";
 import "./voidclaw";
+import "./voltwing";
