@@ -45,3 +45,4 @@ import "./mosswall";
 import "./nectarb";
 import "./pebblink";
 import "./phantoboom";
+import "./plateor";

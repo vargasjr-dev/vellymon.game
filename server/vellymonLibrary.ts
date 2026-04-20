@@ -78,7 +78,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 36, name: "Nectarb", archetype: "support", hp: 75, attack: 9, speed: 7, attacks: [T.chip, T.snipe], flavor: "Drips sweet nectar that converts to pure energy.", specialPowerId: "sweet_nectar", imageUrl: "/vellymon/nectarb.png" },
   { id: 37, name: "Pebblink", archetype: "balanced", hp: 82, attack: 10, speed: 5, attacks: [T.poke, T.lob], flavor: "A blinking pebble. Don't underestimate small things.", specialPowerId: "stone_blink", imageUrl: "/vellymon/pebblink.png" },
   { id: 38, name: "Phantoboom", archetype: "glass_cannon", hp: 65, attack: 15, speed: 5, attacks: [T.poke, T.slam], flavor: "A phantom that materializes only to detonate.", specialPowerId: "detonation", imageUrl: "/vellymon/phantoboom.png" },
-  { id: 39, name: "Plateor", archetype: "tank", hp: 90, attack: 12, speed: 3, attacks: [T.strike, T.slam], flavor: "Tectonic plates shift when this one charges." },
+  { id: 39, name: "Plateor", archetype: "tank", hp: 90, attack: 12, speed: 3, attacks: [T.strike, T.slam], flavor: "Tectonic plates shift when this one charges.", specialPowerId: "tectonic_charge", imageUrl: "/vellymon/plateor.png" },
   { id: 40, name: "Pollyx", archetype: "support", hp: 68, attack: 6, speed: 8, attacks: [T.chip, T.poke], flavor: "Spreads pollen everywhere. Annoyingly persistent." },
   { id: 41, name: "Prismite", archetype: "balanced", hp: 88, attack: 12, speed: 4, attacks: [T.snipe, T.lob], flavor: "Refracts light into rainbow patterns. Beautiful fighter." },
   { id: 42, name: "Pyroburst", archetype: "glass_cannon", hp: 52, attack: 18, speed: 4, attacks: [T.poke, T.slam], flavor: "Explodes on impact. Reassembles slowly." },
