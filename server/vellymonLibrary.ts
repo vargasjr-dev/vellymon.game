@@ -69,7 +69,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 27, name: "Grumblix", archetype: "tank", hp: 100, attack: 12, speed: 1, attacks: [T.poke, T.slam], flavor: "Always grumbling. The grumpiest vellymon alive.", specialPowerId: "grudge", imageUrl: "/vellymon/grumblix.png" },
   { id: 28, name: "Gustling", archetype: "speedster", hp: 55, attack: 10, speed: 9, attacks: [T.snipe, T.strike], flavor: "A tiny wind spirit. Leaves a breeze trail everywhere.", specialPowerId: "breeze-trail", imageUrl: "/vellymon/gustling.png" },
   { id: 29, name: "Hexaflare", archetype: "glass_cannon", hp: 60, attack: 16, speed: 5, attacks: [T.lob, T.nuke], flavor: "Six-pointed flare pattern. Mesmerizing and deadly.", specialPowerId: "flare-burst", imageUrl: "/vellymon/hexaflare.png" },
-  { id: 30, name: "Humbloom", archetype: "support", hp: 72, attack: 7, speed: 7, attacks: [T.poke, T.snipe], flavor: "Hums a gentle tune while harvesting. Very zen." },
+  { id: 30, name: "Humbloom", archetype: "support", hp: 72, attack: 7, speed: 7, attacks: [T.poke, T.snipe], flavor: "Hums a gentle tune while harvesting. Very zen.", specialPowerId: "zen-harvest", imageUrl: "/vellymon/humbloom.png" },
   { id: 31, name: "Ironpup", archetype: "balanced", hp: 70, attack: 14, speed: 5, attacks: [T.strike, T.snipe], flavor: "An iron-coated pup. Loyal, tough, decent in a fight." },
   { id: 32, name: "Joltmink", archetype: "speedster", hp: 55, attack: 8, speed: 10, attacks: [T.poke, T.snipe], flavor: "Fuzzy and electrified. Don't pet it." },
   { id: 33, name: "Lumisprout", archetype: "support", hp: 85, attack: 9, speed: 6, attacks: [T.snipe, T.poke], flavor: "Bioluminescent sprout. Lights up the whole board." },
