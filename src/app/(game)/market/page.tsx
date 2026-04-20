@@ -1,40 +1,35 @@
+import { auth } from "~/lib/auth.server";
+import { headers } from "next/headers";
 import listMarket from "~/data/listMarket.server";
-import VellymonCard from "~/components/VellymonCard";
-import BuyButton from "./BuyButton";
+import getOwnedModelUuids from "~/data/getOwnedModelUuids.server";
+import MarketGrid from "./MarketGrid";
 
 export default async function MarketPage() {
-  const vellymons = listMarket();
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  // Sort alphabetically — let players discover patterns themselves
-  const sorted = [...vellymons].sort((a, b) => a.name.localeCompare(b.name));
+  const [vellymons, ownedUuids] = await Promise.all([
+    Promise.resolve(listMarket()),
+    getOwnedModelUuids(session.user.id),
+  ]);
+
+  // Sort alphabetically, tag owned status
+  const sorted = [...vellymons]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((v) => ({
+      ...v,
+      isOwned: ownedUuids.has(v.uuid),
+    }));
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-2 text-center">Vellymon Market</h1>
       <p className="text-gray-500 text-center mb-8">
-        {vellymons.length} vellymons available
+        {vellymons.length} vellymons available ·{" "}
+        {ownedUuids.size} owned
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {sorted.map((vellymon) => (
-          <VellymonCard
-            key={vellymon.uuid}
-            name={vellymon.name}
-            health={vellymon.health}
-            attack={vellymon.attack}
-            speed={vellymon.speed}
-            energy={vellymon.energy}
-            flavor={vellymon.flavor}
-            imageUrl={vellymon.imageUrl}
-            variant="compact"
-          >
-            <BuyButton
-              modelUuid={vellymon.uuid}
-              vellymonName={vellymon.name}
-            />
-          </VellymonCard>
-        ))}
-      </div>
+      <MarketGrid vellymons={sorted} />
     </div>
   );
 }
