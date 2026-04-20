@@ -42,3 +42,5 @@ import "./joltmink";
 import "./lumisprout";
 import "./magmorus";
 import "./mosswall";
+import "./nectarb";
+import "./pebblink";
