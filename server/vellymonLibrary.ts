@@ -86,7 +86,7 @@ const ALL_VELLYMONS: VellymonTemplate[] = [
   { id: 44, name: "Razorush", archetype: "speedster", hp: 52, attack: 11, speed: 9, attacks: [T.poke, T.strike], flavor: "Razor-edged fins that slice the air at top speed.", specialPowerId: "razor_slipstream", imageUrl: "/vellymon/razorush.png" },
   { id: 45, name: "Rustleclaw", archetype: "balanced", hp: 85, attack: 11, speed: 4, attacks: [T.strike, T.lob], flavor: "Rustling claws that sound like wind through leaves.", specialPowerId: "ambush_claws", imageUrl: "/vellymon/rustleclaw.png" },
   { id: 46, name: "Sandscout", archetype: "balanced", hp: 80, attack: 10, speed: 6, attacks: [T.snipe, T.strike], flavor: "Desert scout. Sees everything, reports nothing.", specialPowerId: "desert_sight", imageUrl: "/vellymon/sandscout.png" },
-  { id: 47, name: "Scoopuff", archetype: "support", hp: 73, attack: 8, speed: 8, attacks: [T.chip, T.poke], flavor: "Scoops up energy pellets with its fluffy cheeks." },
+  { id: 47, name: "Scoopuff", archetype: "support", hp: 73, attack: 8, speed: 8, attacks: [T.chip, T.poke], flavor: "Scoops up energy pellets with its fluffy cheeks.", specialPowerId: "cheek_pouch", imageUrl: "/vellymon/scoopuff.png" },
   { id: 48, name: "Shellmaw", archetype: "tank", hp: 108, attack: 10, speed: 2, attacks: [T.poke, T.slam], flavor: "A massive jaw hidden inside an impenetrable shell." },
   { id: 49, name: "Shrednova", archetype: "glass_cannon", hp: 50, attack: 18, speed: 5, attacks: [T.poke, T.nuke], flavor: "Shreds reality with its claws. Terrifying but brittle." },
   { id: 50, name: "Skidmark", archetype: "speedster", hp: 58, attack: 10, speed: 8, attacks: [T.poke, T.strike], flavor: "Leaves scorch marks from sheer friction." },

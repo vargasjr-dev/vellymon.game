@@ -53,3 +53,4 @@ import "./quicksilk";
 import "./razorush";
 import "./rustleclaw";
 import "./sandscout";
+import "./scoopuff";
