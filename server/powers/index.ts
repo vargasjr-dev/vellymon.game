@@ -63,3 +63,4 @@ import "./terravex";
 import "./thornlash";
 import "./tidalmini";
 import "./titanog";
+import "./toxiblast";
