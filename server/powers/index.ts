@@ -55,3 +55,4 @@ import "./rustleclaw";
 import "./sandscout";
 import "./scoopuff";
 import "./shellmaw";
+import "./shrednova";
