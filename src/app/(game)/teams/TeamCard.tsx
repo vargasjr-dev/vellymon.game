@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteTeamAction } from "./actions";
@@ -15,6 +16,7 @@ type TeamSlot = {
     attack: number;
     speed: number;
     energy: number;
+    imageUrl?: string;
   } | null;
 };
 
@@ -29,9 +31,6 @@ type Team = {
 export default function TeamCard({ team }: { team: Team }) {
   const router = useRouter();
   const { addToast } = useToast();
-
-  const activeSlots = team.slots.filter((s) => s.isActive);
-  const benchSlots = team.slots.filter((s) => !s.isActive);
 
   const handleDelete = async () => {
     const result = await deleteTeamAction(team.uuid);
@@ -50,7 +49,7 @@ export default function TeamCard({ team }: { team: Team }) {
         <div>
           <h2 className="text-xl font-bold text-gray-900">{team.name}</h2>
           <p className="text-sm text-gray-500">
-            {team.slots.length}/8 slots · {team.activeCount}/4 active
+            {team.slots.length}/8 vellymons
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -69,54 +68,36 @@ export default function TeamCard({ team }: { team: Team }) {
         </div>
       </div>
 
-      {/* Active Lineup */}
-      {activeSlots.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">
-            Active Lineup
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {activeSlots.map((slot) => (
-              <div
-                key={slot.uuid}
-                className="border border-green-200 bg-green-50 rounded-lg p-3 text-center"
-              >
-                <p className="text-sm font-bold text-gray-900 truncate">
-                  {slot.vellymon?.name ?? "Unknown"}
-                </p>
-                {slot.vellymon && (
-                  <div className="grid grid-cols-2 gap-1 mt-1 text-xs text-gray-500">
-                    <span>HP {slot.vellymon.health}</span>
-                    <span>ATK {slot.vellymon.attack}</span>
-                  </div>
-                )}
+      {/* Vellymon Avatar Grid */}
+      {team.slots.length > 0 ? (
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          {team.slots.map((slot) => (
+            <div
+              key={slot.uuid}
+              className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 relative group"
+              title={slot.vellymon?.name ?? "Unknown"}
+            >
+              {slot.vellymon?.imageUrl ? (
+                <Image
+                  src={slot.vellymon.imageUrl}
+                  alt={slot.vellymon.name}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">
+                  {slot.vellymon?.name?.slice(0, 3) ?? "?"}
+                </div>
+              )}
+              {/* Name tooltip on hover */}
+              <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition truncate px-0.5">
+                {slot.vellymon?.name ?? "?"}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* Bench */}
-      {benchSlots.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Bench
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {benchSlots.map((slot) => (
-              <div
-                key={slot.uuid}
-                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-600"
-              >
-                {slot.vellymon?.name ?? "Unknown"}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {team.slots.length === 0 && (
+      ) : (
         <div className="text-center py-4">
           <p className="text-gray-400 text-sm">
             No vellymons assigned.{" "}
