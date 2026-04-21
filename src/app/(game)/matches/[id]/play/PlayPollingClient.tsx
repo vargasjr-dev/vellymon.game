@@ -248,7 +248,7 @@ export default function PlayPollingClient({
         <Link href={`/matches/${matchUuid}`} className="text-gray-400 text-sm hover:text-white">
           ← Back
         </Link>
-        <span className="text-gray-400 text-sm">Turn {turn}</span>
+        <span className="text-gray-400 text-sm">Turn {turn + 1}</span>
       </div>
 
       {/* Team HUDs */}

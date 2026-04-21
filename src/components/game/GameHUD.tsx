@@ -40,7 +40,7 @@ export default function GameHUD({
       {/* Top bar — turn + timer */}
       <div className="flex items-center justify-between bg-gray-900 rounded-lg px-3 py-2">
         <div className="text-sm text-gray-400">
-          Turn <span className="text-white font-bold">{turn}</span>
+          Turn <span className="text-white font-bold">{turn + 1}</span>
         </div>
         <div className="text-xs text-gray-500 uppercase tracking-wider">
           {phase}
