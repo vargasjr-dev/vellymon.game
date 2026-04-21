@@ -57,6 +57,7 @@ export type VellymonSetup = {
   attack: number;
   attacks: { name: string; damage: number; energyCost: number; range: number }[];
   spawnPosition: Position;
+  imageUrl?: string;
 };
 
 /**
@@ -111,6 +112,7 @@ function createVellymonState(setup: VellymonSetup): VellymonState {
     position: { ...setup.spawnPosition },
     isKO: false,
     spawnPosition: { ...setup.spawnPosition },
+    imageUrl: setup.imageUrl,
   };
 }
 

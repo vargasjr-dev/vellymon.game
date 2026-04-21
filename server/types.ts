@@ -49,6 +49,8 @@ export type VellymonState = {
   spawnPosition: Position;
   /** Optional special power ID — references the power registry */
   specialPowerId?: string;
+  /** Avatar image URL (e.g. /vellymon/aerobolt.png) */
+  imageUrl?: string;
 };
 
 // ─── Team State ──────────────────────────────────────────────────────────────

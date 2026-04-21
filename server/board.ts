@@ -107,33 +107,26 @@ export function getDefaultSpawnPositions(
 
 /**
  * Get default occupation point positions.
- * 3 points: near team 1 side, center, near team 2 side.
- * All on the center row (or distributed if odd count).
+ * 3 points spread asymmetrically between the two teams:
+ * - One closer to team 1 (left side)
+ * - One in the center
+ * - One closer to team 2 (right side)
+ *
+ * For the default 8×5 board:
+ *   Team 1 spawns at x=0, Team 2 at x=7
+ *   Occupation at x=2 (near T1), x=4 (center), x=5 (near T2)
+ *   Spread across y for diagonal interest
  */
 function getDefaultOccupationPositions(
   width: number,
   height: number,
 ): Position[] {
   const centerY = Math.floor(height / 2);
-  const positions: Position[] = [];
 
-  // Near team 1 (left quarter)
-  positions.push({ x: Math.floor(width * 0.25), y: centerY });
-
-  // Center
-  positions.push({ x: Math.floor(width / 2), y: centerY });
-
-  // Near team 2 (right quarter)
-  positions.push({ x: Math.floor(width * 0.75), y: centerY });
-
-  // Also add occupation points at top and bottom for variety
-  // Use the standard 3-point layout: top-center area, center, bottom-center area
-  // Actually, per rules: "one near each team's side, one center"
-  // Let's place them diagonally for more interesting play:
   return [
-    { x: Math.floor(width * 0.5), y: 0 },           // top center (near team 1 territory)
-    { x: Math.floor(width * 0.5), y: centerY },      // true center
-    { x: Math.floor(width * 0.5), y: height - 1 },   // bottom center (near team 2 territory)
+    { x: Math.floor(width * 0.25), y: 1 },            // near team 1 side, upper
+    { x: Math.floor(width * 0.5), y: centerY },        // true center
+    { x: Math.floor(width * 0.75) - 1, y: height - 2 }, // near team 2 side, lower
   ];
 }
 
