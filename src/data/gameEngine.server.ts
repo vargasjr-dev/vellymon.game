@@ -146,6 +146,7 @@ async function buildTeamSetup(
         range: a.range,
       })),
       spawnPosition: spawns[slot.slotIndex % spawns.length],
+      imageUrl: template.imageUrl,
     };
 
     if (slot.slotIndex < 4) {

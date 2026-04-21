@@ -24,6 +24,7 @@ type VellymonDisplay = {
   x: number;
   y: number;
   isKO: boolean;
+  imageUrl?: string;
 };
 
 type TeamDisplay = {
@@ -70,17 +71,18 @@ export default function PlayPollingClient({
           name: string;
           energy: number;
           active: Array<{
-            uuid: string;
-            name: string;
-            hp: number;
-            maxHp: number;
-            speed: number;
-            attack: number;
-            position: { x: number; y: number } | null;
-            isKO: boolean;
-          }>;
-          bench: unknown[];
-          knocked: unknown[];
+              uuid: string;
+              name: string;
+              hp: number;
+              maxHp: number;
+              speed: number;
+              attack: number;
+              position: { x: number; y: number } | null;
+              isKO: boolean;
+              imageUrl?: string;
+            }>;
+            bench: unknown[];
+            knocked: unknown[];
         }>;
         boardWidth: number;
         boardHeight: number;
@@ -127,6 +129,7 @@ export default function PlayPollingClient({
             x: v.position?.x ?? 0,
             y: v.position?.y ?? 0,
             isKO: v.isKO,
+            imageUrl: v.imageUrl,
           })),
           benchCount: yourTeamData.bench.length,
           knockedCount: yourTeamData.knocked.length,
@@ -139,18 +142,19 @@ export default function PlayPollingClient({
           name: oppTeamData.name,
           energy: oppTeamData.energy,
           active: oppTeamData.active.map((v) => ({
-            uuid: v.uuid,
-            name: v.name,
-            hp: v.hp,
-            maxHp: v.maxHp,
-            speed: v.speed,
-            attack: v.attack,
-            x: v.position?.x ?? 0,
-            y: v.position?.y ?? 0,
-            isKO: v.isKO,
-          })),
-          benchCount: oppTeamData.bench.length,
-          knockedCount: oppTeamData.knocked.length,
+              uuid: v.uuid,
+              name: v.name,
+              hp: v.hp,
+              maxHp: v.maxHp,
+              speed: v.speed,
+              attack: v.attack,
+              x: v.position?.x ?? 0,
+              y: v.position?.y ?? 0,
+              isKO: v.isKO,
+              imageUrl: v.imageUrl,
+            })),
+            benchCount: oppTeamData.bench.length,
+            knockedCount: oppTeamData.knocked.length,
         });
       }
 
@@ -296,22 +300,12 @@ export default function PlayPollingClient({
               ← Back
             </Link>
             <span className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm font-mono">
-              Turn {turn + 1}
+              Turn {turn}
             </span>
           </div>
 
-          {/* Team HUDs — floating at top */}
+          {/* Team HUDs — your team first (left), opponent second (right) */}
           <div className="absolute top-12 left-0 right-0 z-10 flex gap-2 px-3">
-            {opponentTeam && (
-              <div className="flex-1 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-2 backdrop-blur-sm">
-                <p className="font-bold text-sm truncate">{opponentTeam.name}</p>
-                <div className="flex gap-2 text-xs text-gray-300">
-                  <span>⚡{opponentTeam.energy}</span>
-                  <span>🗡️{opponentTeam.active.filter((v) => !v.isKO).length}</span>
-                  <span>💀{opponentTeam.knockedCount}</span>
-                </div>
-              </div>
-            )}
             {yourTeam && (
               <div className="flex-1 bg-blue-950/60 border border-blue-500/30 rounded-lg px-3 py-2 backdrop-blur-sm">
                 <p className="font-bold text-sm truncate">{yourTeam.name}</p>
@@ -319,6 +313,16 @@ export default function PlayPollingClient({
                   <span>⚡{yourTeam.energy}</span>
                   <span>🗡️{yourTeam.active.filter((v) => !v.isKO).length}</span>
                   <span>💀{yourTeam.knockedCount}</span>
+                </div>
+              </div>
+            )}
+            {opponentTeam && (
+              <div className="flex-1 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-2 backdrop-blur-sm">
+                <p className="font-bold text-sm truncate">{opponentTeam.name}</p>
+                <div className="flex gap-2 text-xs text-gray-300">
+                  <span>⚡{opponentTeam.energy}</span>
+                  <span>🗡️{opponentTeam.active.filter((v) => !v.isKO).length}</span>
+                  <span>💀{opponentTeam.knockedCount}</span>
                 </div>
               </div>
             )}
