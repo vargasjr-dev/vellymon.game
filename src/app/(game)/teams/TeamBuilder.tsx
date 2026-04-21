@@ -147,7 +147,7 @@ export default function TeamBuilder({
             Team Slots ({slots.length}/8)
           </h2>
           <span className="text-sm text-gray-500">
-            First 4 = active lineup
+            Pick up to 8 vellymons
           </span>
         </div>
 
@@ -161,34 +161,16 @@ export default function TeamBuilder({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {slots.map((slot, index) => {
               const v = getVellymon(slot.vellymonInstanceUuid);
-              const isActive = index < 4;
               return (
                 <div
                   key={`${slot.vellymonInstanceUuid}-${index}`}
-                  className={`border-2 rounded-lg p-4 flex items-center justify-between ${
-                    isActive
-                      ? "border-blue-300 bg-blue-50"
-                      : "border-gray-200 bg-white"
-                  }`}
+                  className="border-2 border-gray-200 bg-white rounded-lg p-4 flex items-center justify-between"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 font-mono">
-                        {index + 1}.
-                      </span>
                       <p className="font-bold text-gray-900 truncate">
                         {v?.name ?? "Unknown"}
                       </p>
-                      {isActive && (
-                        <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">
-                          ACTIVE
-                        </span>
-                      )}
-                      {!isActive && (
-                        <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium">
-                          BENCH
-                        </span>
-                      )}
                     </div>
                     {v && (
                       <div className="flex gap-3 mt-1 text-xs text-gray-500">
