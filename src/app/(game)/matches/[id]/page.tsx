@@ -2,6 +2,7 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import getMatch from "~/data/getMatch.server";
+import { isAdmin } from "~/lib/admin";
 import WaitingRoom from "./WaitingRoom";
 
 export default async function MatchDetailPage({
@@ -20,7 +21,11 @@ export default async function MatchDetailPage({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <WaitingRoom initialMatch={match} currentUserId={session.user.id} />
+      <WaitingRoom
+        initialMatch={match}
+        currentUserId={session.user.id}
+        isAdmin={isAdmin(session)}
+      />
     </div>
   );
 }

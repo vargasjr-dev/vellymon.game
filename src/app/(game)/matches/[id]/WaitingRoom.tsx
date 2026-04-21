@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "~/components/Toast";
-import { getMatchAction, cancelMatchAction, startMatchAction } from "../actions";
+import { getMatchAction, cancelMatchAction, startMatchAction, deleteMatchAction } from "../actions";
 
 type Player = {
   uuid: string;
@@ -29,6 +29,7 @@ type MatchData = {
 type WaitingRoomProps = {
   initialMatch: MatchData;
   currentUserId: string;
+  isAdmin?: boolean;
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -42,12 +43,14 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 export default function WaitingRoom({
   initialMatch,
   currentUserId,
+  isAdmin: userIsAdmin = false,
 }: WaitingRoomProps) {
   const router = useRouter();
   const { addToast } = useToast();
   const [match, setMatch] = useState<MatchData>(initialMatch);
   const [cancelling, setCancelling] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isCreator = match.createdBy === currentUserId;
   const isPlayer = match.players.some((p) => p.userId === currentUserId);
@@ -272,6 +275,28 @@ export default function WaitingRoom({
             className="block w-full text-center border border-red-300 text-red-600 py-3 rounded-lg font-semibold hover:bg-red-50 transition disabled:opacity-50"
           >
             {cancelling ? "Cancelling..." : "Cancel Match"}
+          </button>
+        )}
+
+        {userIsAdmin && (
+          <button
+            onClick={async () => {
+              if (!confirm("Permanently delete this match? This cannot be undone.")) return;
+              setDeleting(true);
+              const result = await deleteMatchAction(match.uuid);
+              if (result.success) {
+                addToast("Match deleted", "success");
+                router.push("/matches");
+                router.refresh();
+              } else {
+                addToast(result.message ?? "Failed to delete", "error");
+                setDeleting(false);
+              }
+            }}
+            disabled={deleting}
+            className="block w-full text-center bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50"
+          >
+            {deleting ? "Deleting..." : "🗑️ Delete Match (Admin)"}
           </button>
         )}
       </div>
