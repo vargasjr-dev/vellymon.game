@@ -4,7 +4,7 @@ import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
 import getTeams from "~/data/getTeams.server";
 import getUserMatches from "~/data/getUserMatches.server";
-import VellymonCard from "~/components/VellymonCard";
+
 
 export default async function PlayerHubPage() {
   const headersList = await headers();
@@ -95,65 +95,32 @@ export default async function PlayerHubPage() {
         </Link>
       </div>
 
-      {/* Roster Preview */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Your Vellymons</h2>
-          {roster.length > 0 && (
-            <Link
-              href="/roster"
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              View Full Roster →
-            </Link>
-          )}
-        </div>
-
-        {roster.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-5xl mb-4">🥚</p>
-            <p className="text-lg text-gray-600 mb-4">
-              Your roster is empty! Head to the Market to collect your first
-              vellymon.
-            </p>
-            <Link
-              href="/market"
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-            >
-              Visit the Market
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {roster.slice(0, 4).map((vellymon) => (
-              <VellymonCard
-                key={vellymon.uuid}
-                name={vellymon.name}
-                health={vellymon.health}
-                attack={vellymon.attack}
-                speed={vellymon.speed}
-                energy={vellymon.energy}
-                imageUrl={vellymon.imageUrl}
-                href={`/player/${vellymon.uuid}`}
-                variant="compact"
-              />
-            ))}
-          </div>
-        )}
-
-        {roster.length > 4 && (
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-500">
-              Showing 4 of {roster.length} vellymons.{" "}
-              <Link
-                href="/roster"
-                className="text-blue-600 hover:text-blue-800 font-medium"
-              >
-                View all →
-              </Link>
-            </p>
-          </div>
-        )}
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link
+          href="/market"
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center"
+        >
+          <p className="text-3xl mb-2">🏪</p>
+          <p className="font-semibold text-gray-900 group-hover:text-blue-600">
+            Visit Market
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Browse and collect vellymons
+          </p>
+        </Link>
+        <Link
+          href="/guide"
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center"
+        >
+          <p className="text-3xl mb-2">📖</p>
+          <p className="font-semibold text-gray-900 group-hover:text-blue-600">
+            Game Guide
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Rules, strategy, and vellymon directory
+          </p>
+        </Link>
       </div>
     </div>
   );
