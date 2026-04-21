@@ -135,9 +135,18 @@ export default function TeamBuilder({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Enter a team name..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+            !name.trim() && slots.length > 0
+              ? "border-amber-400 bg-amber-50"
+              : "border-gray-300"
+          }`}
           maxLength={64}
         />
+        {!name.trim() && slots.length > 0 && (
+          <p className="text-xs text-amber-600 mt-1">
+            ⚠️ Team name required to save
+          </p>
+        )}
       </div>
 
       {/* Team Slots */}
