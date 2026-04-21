@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "~/components/Toast";
-import { getMatchAction, cancelMatchAction } from "../actions";
+import { getMatchAction, cancelMatchAction, startMatchAction } from "../actions";
 
 type Player = {
   uuid: string;
@@ -47,6 +47,7 @@ export default function WaitingRoom({
   const { addToast } = useToast();
   const [match, setMatch] = useState<MatchData>(initialMatch);
   const [cancelling, setCancelling] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const isCreator = match.createdBy === currentUserId;
   const isPlayer = match.players.some((p) => p.userId === currentUserId);
@@ -130,9 +131,6 @@ export default function WaitingRoom({
           <div>
             <p className="text-sm font-semibold text-green-800">
               Both players are in! Match is ready.
-            </p>
-            <p className="text-xs text-green-600">
-              The game server will start when Phase 5 is built.
             </p>
           </div>
         </div>
@@ -237,6 +235,25 @@ export default function WaitingRoom({
           >
             ⚔️ Play Both Sides (Playtest)
           </Link>
+        )}
+
+        {match.status === "ready" && isPlayer && (
+          <button
+            onClick={async () => {
+              setStarting(true);
+              const result = await startMatchAction(match.uuid);
+              if (result.success) {
+                router.push(`/matches/${match.uuid}/play`);
+              } else {
+                addToast(result.message ?? "Failed to start", "error");
+                setStarting(false);
+              }
+            }}
+            disabled={starting}
+            className="block w-full text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
+          >
+            {starting ? "Starting..." : "⚔️ Start Match"}
+          </button>
         )}
 
         {match.status === "playing" && isPlayer && (
