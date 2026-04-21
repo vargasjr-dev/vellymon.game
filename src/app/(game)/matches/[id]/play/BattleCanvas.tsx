@@ -32,6 +32,7 @@ type Props = {
   yourTeamId: 1 | 2;
   selectedVellymon: string | null;
   onSelectVellymon: (uuid: string | null) => void;
+  commandedUuids: Set<string>;
 };
 
 // Colors
@@ -42,8 +43,9 @@ const COLORS = {
   occupation: 0x3d2800,
   occupationBorder: 0xb8860b,
   occupationStar: 0xffd700,
-  harvestable: 0x0a2810,
-  harvestableBorder: 0x1a5c2a,
+  // Dimmed harvestable (was 0x0a2810 / 0x1a5c2a — too intense)
+  harvestable: 0x0a1a10,
+  harvestableBorder: 0x142e1a,
   spawn: 0x0f1628,
   spawnBorder: 0x2a3a5c,
   yourTeam: 0x2563eb,
@@ -55,10 +57,11 @@ const COLORS = {
   hpBarYellow: 0xeab308,
   hpBarRed: 0xef4444,
   selected: 0xfbbf24,
+  commanded: 0x22c55e,
 };
 
-// Cache loaded textures
-const textureCache = new Map<string, Promise<unknown>>();
+// Track which URLs we've started loading (prevents duplicate loads)
+const loadingUrls = new Set<string>();
 
 export default function BattleCanvas({
   boardWidth,
@@ -68,36 +71,39 @@ export default function BattleCanvas({
   yourTeamId,
   selectedVellymon,
   onSelectVellymon,
+  commandedUuids,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
-  const stateRef = useRef({ boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon });
+  const stateRef = useRef({
+    boardWidth, boardHeight, spaces, vellymons, yourTeamId,
+    selectedVellymon, commandedUuids,
+  });
+  const drawRef = useRef<() => void>();
 
-  // Keep stateRef current
-  stateRef.current = { boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon };
+  stateRef.current = {
+    boardWidth, boardHeight, spaces, vellymons, yourTeamId,
+    selectedVellymon, commandedUuids,
+  };
 
   const draw = useCallback(() => {
     const app = appRef.current;
     if (!app) return;
 
-    const { boardWidth: bw, boardHeight: bh, spaces: sp, vellymons: vms, yourTeamId: myTeam, selectedVellymon: selVm } = stateRef.current;
+    const {
+      boardWidth: bw, boardHeight: bh, spaces: sp, vellymons: vms,
+      yourTeamId: myTeam, selectedVellymon: selVm, commandedUuids: cmdSet,
+    } = stateRef.current;
 
-    // Clear
     app.stage.removeChildren();
 
     const screenW = app.screen.width;
     const screenH = app.screen.height;
-
-    // Use window dimensions for orientation — container may be squished by margins
     const isPortrait = window.innerHeight > window.innerWidth;
 
-    // Grid dimensions — if portrait, swap axes so board is tall
-    // In portrait: x-axis (team1→team2) becomes vertical, y-axis becomes horizontal
-    // Player's team (team 1 or 2) should be at the BOTTOM
     const cols = isPortrait ? bh : bw;
     const rows = isPortrait ? bw : bh;
 
-    // Calculate tile size to fit the screen with padding
     const padding = 12;
     const gap = 3;
     const availW = screenW - padding * 2;
@@ -107,7 +113,6 @@ export default function BattleCanvas({
     const tileSize = Math.min(tileW, tileH, 72);
     const cornerRadius = 6;
 
-    // Center the grid
     const gridW = cols * tileSize + (cols - 1) * gap;
     const gridH = rows * tileSize + (rows - 1) * gap;
     const offsetX = (screenW - gridW) / 2;
@@ -118,34 +123,38 @@ export default function BattleCanvas({
     boardContainer.y = offsetY;
     app.stage.addChild(boardContainer);
 
-    // Space lookup
     const spaceMap = new Map<string, BoardSpace>();
-    for (const s of sp) {
-      spaceMap.set(`${s.x},${s.y}`, s);
-    }
+    for (const s of sp) spaceMap.set(`${s.x},${s.y}`, s);
 
-    // Vellymon lookup by position
     const vmMap = new Map<string, VellymonDisplay>();
     for (const v of vms) {
-      if (!v.isKO) {
-        vmMap.set(`${v.x},${v.y}`, v);
+      if (!v.isKO) vmMap.set(`${v.x},${v.y}`, v);
+    }
+
+    // Pre-load any uncached textures, then trigger redraw
+    let needsRedraw = false;
+    for (const v of vms) {
+      if (v.imageUrl && !Assets.cache.has(v.imageUrl) && !loadingUrls.has(v.imageUrl)) {
+        loadingUrls.add(v.imageUrl);
+        needsRedraw = true;
+        Assets.load(v.imageUrl).then(() => {
+          // Texture now cached — trigger a redraw
+          drawRef.current?.();
+        }).catch(() => {
+          // Failed — remove from loading so fallback renders cleanly
+          loadingUrls.delete(v.imageUrl!);
+        });
       }
     }
 
-    // Draw each cell
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        // Map display coords back to game coords
         let gx: number, gy: number;
         if (isPortrait) {
-          // Rotated: vertical board
-          // Your team should be at BOTTOM
           if (myTeam === 1) {
-            // Team 1 spawns at x=0 (low x) → put at bottom (high row)
             gx = rows - 1 - row;
             gy = col;
           } else {
-            // Team 2 spawns at x=7 (high x) → put at bottom (high row)
             gx = row;
             gy = col;
           }
@@ -162,10 +171,10 @@ export default function BattleCanvas({
         const isOccupation = space?.type === "occupation";
         const isHarvestable = space?.type === "harvestable";
         const isSpawn = space?.type === "spawn";
-        const isSelected = vm && vm.uuid === selVm;
-        const isYours = vm && vm.teamId === myTeam;
+        const isSelected = vm?.uuid === selVm;
+        const isYours = vm ? vm.teamId === myTeam : false;
+        const isCommanded = vm ? cmdSet.has(vm.uuid) : false;
 
-        // Tile background
         const tile = new Graphics();
 
         // Selection glow
@@ -173,8 +182,12 @@ export default function BattleCanvas({
           tile.roundRect(px - 2, py - 2, tileSize + 4, tileSize + 4, cornerRadius + 2);
           tile.fill({ color: COLORS.selected, alpha: 0.6 });
         }
+        // Commanded indicator (green border glow)
+        else if (isCommanded && isYours) {
+          tile.roundRect(px - 1, py - 1, tileSize + 2, tileSize + 2, cornerRadius + 1);
+          tile.fill({ color: COLORS.commanded, alpha: 0.3 });
+        }
 
-        // Tile fill
         let fillColor = COLORS.tile;
         let borderColor = COLORS.tileBorder;
         if (isOccupation) {
@@ -188,7 +201,6 @@ export default function BattleCanvas({
           borderColor = COLORS.spawnBorder;
         }
 
-        // Override border for vellymon-occupied tiles
         if (vm) {
           borderColor = isYours ? COLORS.yourTeam : COLORS.opponent;
         }
@@ -198,7 +210,7 @@ export default function BattleCanvas({
         tile.stroke({ color: borderColor, width: vm ? 2 : 1 });
         boardContainer.addChild(tile);
 
-        // Make tiles interactive for vellymon selection
+        // Interactive — your vellymons are selectable
         if (vm && isYours) {
           tile.eventMode = "static";
           tile.cursor = "pointer";
@@ -208,38 +220,31 @@ export default function BattleCanvas({
           });
         }
 
-        // Vellymon rendering
+        // Vellymon sprite or fallback
         if (vm) {
           const centerX = px + tileSize / 2;
           const centerY = py + tileSize / 2;
           const avatarSize = tileSize * 0.6;
 
-          if (vm.imageUrl) {
-            // Load and display avatar sprite
-            const url = vm.imageUrl;
-            if (!textureCache.has(url)) {
-              textureCache.set(url, Assets.load(url));
-            }
-            textureCache.get(url)!.then((texture) => {
-              // Only add if app still exists and this draw cycle is current
-              if (!appRef.current || !boardContainer.parent) return;
-              const sprite = new Sprite(texture as never);
-              sprite.width = avatarSize;
-              sprite.height = avatarSize;
-              sprite.anchor.set(0.5);
-              sprite.x = centerX;
-              sprite.y = centerY - 4;
-              boardContainer.addChild(sprite);
-            }).catch(() => {
-              // Fallback: draw colored circle
-              drawFallbackAvatar(boardContainer, centerX, centerY - 4, avatarSize / 2, isYours ? COLORS.yourTeamGlow : COLORS.opponentGlow);
-            });
+          // Try synchronous cache hit first (fixes the async race condition)
+          if (vm.imageUrl && Assets.cache.has(vm.imageUrl)) {
+            const texture = Assets.get(vm.imageUrl);
+            const sprite = new Sprite(texture);
+            sprite.width = avatarSize;
+            sprite.height = avatarSize;
+            sprite.anchor.set(0.5);
+            sprite.x = centerX;
+            sprite.y = centerY - 2;
+            boardContainer.addChild(sprite);
           } else {
-            // No imageUrl — fallback circle
-            drawFallbackAvatar(boardContainer, centerX, centerY - 4, avatarSize / 2, isYours ? COLORS.yourTeamGlow : COLORS.opponentGlow);
+            // Fallback circle (either no imageUrl, or texture still loading)
+            const circle = new Graphics();
+            circle.circle(centerX, centerY - 2, avatarSize / 2);
+            circle.fill(isYours ? COLORS.yourTeamGlow : COLORS.opponentGlow);
+            boardContainer.addChild(circle);
           }
 
-          // HP bar at bottom of tile
+          // HP bar
           const hpBarW = tileSize * 0.75;
           const hpBarH = 4;
           const hpBarX = centerX - hpBarW / 2;
@@ -260,7 +265,7 @@ export default function BattleCanvas({
           }
         }
 
-        // Occupation star (only when no vellymon on the space)
+        // Occupation star
         if (!vm && isOccupation) {
           const starStyle = new TextStyle({
             fontSize: Math.min(tileSize * 0.35, 20),
@@ -273,7 +278,6 @@ export default function BattleCanvas({
           star.y = py + tileSize / 2;
           boardContainer.addChild(star);
 
-          // Counter
           if (space?.occupationCounter && space.occupationCounter !== 0) {
             const counterStyle = new TextStyle({
               fontSize: 9,
@@ -289,11 +293,11 @@ export default function BattleCanvas({
           }
         }
 
-        // Harvestable indicator
+        // Harvestable leaf (dimmed)
         if (!vm && isHarvestable) {
           const leafStyle = new TextStyle({
-            fontSize: Math.min(tileSize * 0.3, 16),
-            fill: 0x22c55e,
+            fontSize: Math.min(tileSize * 0.22, 12),
+            fill: 0x1a5c2a,
             align: "center",
           });
           const leaf = new Text({ text: "🌿", style: leafStyle });
@@ -306,10 +310,12 @@ export default function BattleCanvas({
     }
   }, [onSelectVellymon]);
 
+  // Store draw ref so async texture loads can trigger redraws
+  drawRef.current = draw;
+
   // Init PixiJS
   useEffect(() => {
     if (!containerRef.current) return;
-
     const container = containerRef.current;
     let destroyed = false;
 
@@ -322,12 +328,7 @@ export default function BattleCanvas({
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
       });
-
-      if (destroyed) {
-        app.destroy(true);
-        return;
-      }
-
+      if (destroyed) { app.destroy(true); return; }
       container.appendChild(app.canvas as HTMLCanvasElement);
       appRef.current = app;
       draw();
@@ -335,49 +336,19 @@ export default function BattleCanvas({
 
     return () => {
       destroyed = true;
-      if (appRef.current) {
-        appRef.current.destroy(true);
-        appRef.current = null;
-      }
+      if (appRef.current) { appRef.current.destroy(true); appRef.current = null; }
     };
   }, [draw]);
 
-  // Redraw on state changes
-  useEffect(() => {
-    draw();
-  }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, draw]);
+  useEffect(() => { draw(); }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, commandedUuids, draw]);
 
-  // Handle resize
   useEffect(() => {
-    const onResize = () => {
-      if (appRef.current) {
-        appRef.current.resize();
-        draw();
-      }
-    };
+    const onResize = () => { appRef.current?.resize(); draw(); };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [draw]);
 
   return (
-    <div
-      ref={containerRef}
-      className="absolute inset-0"
-      style={{ touchAction: "none" }}
-    />
+    <div ref={containerRef} className="absolute inset-0" style={{ touchAction: "none" }} />
   );
-}
-
-// Fallback when no avatar image is available
-function drawFallbackAvatar(
-  container: Container,
-  x: number,
-  y: number,
-  radius: number,
-  color: number,
-) {
-  const circle = new Graphics();
-  circle.circle(x, y, radius);
-  circle.fill(color);
-  container.addChild(circle);
 }
