@@ -1,6 +1,6 @@
 import { db } from "../../data/db";
 import { gameSession, gamePlayer, user } from "../../data/schema";
-import { eq, desc, and, ne } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export type UserMatch = {
   uuid: string;
@@ -14,7 +14,7 @@ export type UserMatch = {
 const getUserMatches = async (userId: string): Promise<UserMatch[]> => {
   try {
     // Get all matches this user has participated in
-    const matches = await db
+    const rows = await db
       .select({
         uuid: gameSession.uuid,
         status: gameSession.status,
@@ -28,6 +28,15 @@ const getUserMatches = async (userId: string): Promise<UserMatch[]> => {
       .leftJoin(user, eq(gameSession.createdBy, user.id))
       .where(eq(gamePlayer.userId, userId))
       .orderBy(desc(gameSession.createdAt));
+
+    // Deduplicate — admin playtest matches have the same user as both
+    // players, producing two rows for one session
+    const seen = new Set<string>();
+    const matches = rows.filter((m) => {
+      if (seen.has(m.uuid)) return false;
+      seen.add(m.uuid);
+      return true;
+    });
 
     return matches;
   } catch (error) {
