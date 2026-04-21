@@ -78,6 +78,29 @@ export async function startMatchAction(matchUuid: string) {
   return { success: true };
 }
 
+export async function deleteMatchAction(matchUuid: string) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  // Admin-only
+  const { isAdmin } = await import("~/lib/admin");
+  if (!isAdmin(session)) {
+    return { success: false, message: "Admin access required" };
+  }
+
+  // Verify match exists
+  const match = await getMatch(matchUuid);
+  if (!match) return { success: false, message: "Match not found" };
+
+  // Delete — gamePlayers cascade automatically
+  await db.delete(gameSession).where(eq(gameSession.uuid, matchUuid));
+
+  revalidatePath("/matches");
+  revalidatePath("/player");
+
+  return { success: true };
+}
+
 export async function joinMatchAction(matchUuid: string, teamUuid: string) {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
