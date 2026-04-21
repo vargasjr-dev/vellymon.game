@@ -62,11 +62,14 @@ export async function startMatchAction(matchUuid: string) {
   const isPlayer = match.players.some((p) => p.userId === session.user.id);
   if (!isPlayer) return { success: false, message: "You are not in this match" };
 
-  // Transition to playing
-  await db
-    .update(gameSession)
-    .set({ status: "playing" })
-    .where(eq(gameSession.uuid, matchUuid));
+  // Initialize the game engine and transition to playing
+  try {
+    const { initializeMatchGame } = await import("../../../data/gameEngine.server");
+    await initializeMatchGame(matchUuid);
+  } catch (error) {
+    console.error("Failed to initialize game:", error);
+    return { success: false, message: "Failed to initialize game engine" };
+  }
 
   revalidatePath(`/matches/${matchUuid}`);
   revalidatePath("/matches");

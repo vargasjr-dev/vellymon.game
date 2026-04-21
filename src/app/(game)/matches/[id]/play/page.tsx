@@ -2,7 +2,7 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import getMatch from "~/data/getMatch.server";
-import PlayClient from "./PlayClient";
+import PlayPollingClient from "./PlayPollingClient";
 
 export default async function PlayPage({
   params,
@@ -30,7 +30,7 @@ export default async function PlayPage({
   }
 
   return (
-    <PlayClient
+    <PlayPollingClient
       matchUuid={match.uuid}
       userId={session.user.id}
       playerTeamName={player.teamName ?? "Your Team"}
