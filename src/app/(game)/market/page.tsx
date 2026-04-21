@@ -2,6 +2,8 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import listMarket from "~/data/listMarket.server";
 import getOwnedModelUuids from "~/data/getOwnedModelUuids.server";
+import { getPower } from "../../../../server/specialPowers";
+import "../../../../server/powers"; // trigger power registration
 import MarketGrid from "./MarketGrid";
 
 export default async function MarketPage() {
@@ -13,13 +15,18 @@ export default async function MarketPage() {
     getOwnedModelUuids(session.user.id),
   ]);
 
-  // Sort alphabetically, tag owned status
+  // Sort alphabetically, tag owned status + power info
   const sorted = [...vellymons]
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((v) => ({
-      ...v,
-      isOwned: ownedUuids.has(v.uuid),
-    }));
+    .map((v) => {
+      const power = v.specialPowerId ? getPower(v.specialPowerId) : undefined;
+      return {
+        ...v,
+        isOwned: ownedUuids.has(v.uuid),
+        powerName: power?.name,
+        powerDescription: power?.description,
+      };
+    });
 
   return (
     <div className="container mx-auto px-4 py-8">

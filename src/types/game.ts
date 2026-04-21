@@ -17,6 +17,8 @@ export interface VellymonStats {
   flavor?: string;
   /** Avatar image URL */
   imageUrl?: string;
+  /** Special power ID — references the power registry */
+  specialPowerId?: string;
 }
 
 export interface Attack {
