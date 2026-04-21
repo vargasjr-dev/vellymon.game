@@ -44,6 +44,9 @@ export default function PlayPollingClient({
   const [opponentTeam, setOpponentTeam] = useState<TeamDisplay | null>(null);
   const [boardWidth, setBoardWidth] = useState(8);
   const [boardHeight, setBoardHeight] = useState(5);
+  const [boardSpaces, setBoardSpaces] = useState<
+    Array<{ x: number; y: number; type: string; occupationCounter?: number }>
+  >([]);
   const [commandsSubmitted, setCommandsSubmitted] = useState(false);
   const [gameOver, setGameOver] = useState<{
     winner: string;
@@ -76,6 +79,11 @@ export default function PlayPollingClient({
         }>;
         boardWidth: number;
         boardHeight: number;
+        board: Array<{
+          position: { x: number; y: number };
+          type: string;
+          occupationCounter?: number;
+        }>;
         result: { winner: 1 | 2; condition: string } | null;
         phase: string;
       };
@@ -83,6 +91,14 @@ export default function PlayPollingClient({
       setTurn(gs.turn);
       setBoardWidth(gs.boardWidth);
       setBoardHeight(gs.boardHeight);
+      setBoardSpaces(
+        gs.board?.map((s) => ({
+          x: s.position.x,
+          y: s.position.y,
+          type: s.type,
+          occupationCounter: s.occupationCounter,
+        })) ?? [],
+      );
 
       const yours = gs.teams.find((t) => t.userId === userId);
       const opponent = gs.teams.find((t) => t.userId !== userId);
@@ -262,6 +278,7 @@ export default function PlayPollingClient({
         <Board
           width={boardWidth}
           height={boardHeight}
+          spaces={boardSpaces}
           yourTeam={yourTeam}
           opponentTeam={opponentTeam}
         />
@@ -332,11 +349,13 @@ function TeamHUD({
 function Board({
   width,
   height,
+  spaces,
   yourTeam,
   opponentTeam,
 }: {
   width: number;
   height: number;
+  spaces: Array<{ x: number; y: number; type: string; occupationCounter?: number }>;
   yourTeam: TeamDisplay | null;
   opponentTeam: TeamDisplay | null;
 }) {
@@ -344,6 +363,12 @@ function Board({
     ...(yourTeam?.active.map((v) => ({ ...v, teamId: yourTeam.id })) ?? []),
     ...(opponentTeam?.active.map((v) => ({ ...v, teamId: opponentTeam.id })) ?? []),
   ];
+
+  // Build a lookup for space types
+  const spaceMap = new Map<string, { type: string; occupationCounter?: number }>();
+  for (const s of spaces) {
+    spaceMap.set(`${s.x},${s.y}`, { type: s.type, occupationCounter: s.occupationCounter });
+  }
 
   return (
     <div className="flex justify-center">
@@ -359,6 +384,9 @@ function Board({
               (v) => v.x === x && v.y === y && !v.isKO,
             );
             const isYoursCell = vellymon && yourTeam && vellymon.teamId === yourTeam.id;
+            const space = spaceMap.get(`${x},${y}`);
+            const isOccupation = space?.type === "occupation";
+            const isHarvestable = space?.type === "harvestable";
 
             return (
               <div
@@ -368,7 +396,11 @@ function Board({
                     ? isYoursCell
                       ? "bg-blue-900/50 border-blue-500/50"
                       : "bg-red-900/50 border-red-500/50"
-                    : "bg-gray-900/50 border-gray-800"
+                    : isOccupation
+                      ? "bg-amber-900/40 border-amber-500/60"
+                      : isHarvestable
+                        ? "bg-green-900/20 border-green-800/40"
+                        : "bg-gray-900/50 border-gray-800"
                 }`}
               >
                 {vellymon ? (
@@ -380,6 +412,8 @@ function Board({
                       {vellymon.hp}/{vellymon.maxHp}
                     </span>
                   </>
+                ) : isOccupation ? (
+                  <span className="text-amber-400 text-sm">⭐</span>
                 ) : null}
               </div>
             );
