@@ -2,12 +2,29 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
+import { getPower } from "../../../../server/specialPowers";
+import "../../../../server/powers"; // trigger power registration
 import RosterGrid from "./RosterGrid";
 
 export default async function RosterPage() {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
   const roster = await getVellymonRoster(session.user.id);
+
+  const enriched = roster.map((v) => {
+    const power = v.specialPowerId ? getPower(v.specialPowerId) : undefined;
+    return {
+      uuid: v.uuid,
+      name: v.name,
+      health: v.health,
+      attack: v.attack,
+      speed: v.speed,
+      flavor: v.flavor,
+      imageUrl: v.imageUrl,
+      powerName: power?.name,
+      powerDescription: power?.description,
+    };
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -44,16 +61,7 @@ export default async function RosterPage() {
           </Link>
         </div>
       ) : (
-        <RosterGrid
-          roster={roster.map((v) => ({
-            uuid: v.uuid,
-            name: v.name,
-            health: v.health,
-            attack: v.attack,
-            speed: v.speed,
-            energy: v.energy,
-          }))}
-        />
+        <RosterGrid roster={enriched} />
       )}
     </div>
   );
