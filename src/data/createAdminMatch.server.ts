@@ -99,11 +99,13 @@ const createAdminMatch = async (adminUserId: string) => {
     await createSlots(newTeamB.uuid, instancesB);
 
     // 5. Create game session (admin vs admin)
+    // Both players added at creation — skip "waiting" and go straight to "ready"
+    // so the WaitingRoom shows the Start Match button immediately.
     const [session] = await db
       .insert(gameSession)
       .values({
         createdBy: adminUserId,
-        status: "waiting",
+        status: "ready",
         maxPlayers: 2,
         currentPlayers: 2,
       })
