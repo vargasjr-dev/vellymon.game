@@ -24,6 +24,7 @@ export async function getGameStateAction(matchUuid: string) {
 export async function submitCommandsAction(
   matchUuid: string,
   commands: PlayCommand[],
+  asTeamId?: 1 | 2,
 ) {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
@@ -38,5 +39,5 @@ export async function submitCommandsAction(
     targetY: c.targetY,
   }));
 
-  return submitMatchCommands(matchUuid, session.user.id, engineCommands as never[]);
+  return submitMatchCommands(matchUuid, session.user.id, engineCommands as never[], asTeamId);
 }

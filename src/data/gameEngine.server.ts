@@ -194,6 +194,7 @@ export async function submitMatchCommands(
   matchUuid: string,
   userId: string,
   commands: Command[],
+  overrideTeamId?: 1 | 2,
 ) {
   const [match] = await db
     .select({ metadata: gameSession.metadata })
@@ -207,9 +208,15 @@ export async function submitMatchCommands(
   if (!timer) throw new Error("No active turn");
 
   // Determine which team this user is on
-  const teamIndex = gameState.teams.findIndex((t) => t.userId === userId);
-  if (teamIndex === -1) throw new Error("User is not in this match");
-  const teamId = (teamIndex + 1) as 1 | 2;
+  // overrideTeamId is used for admin play-both-sides matches
+  let teamId: 1 | 2;
+  if (overrideTeamId) {
+    teamId = overrideTeamId;
+  } else {
+    const teamIndex = gameState.teams.findIndex((t) => t.userId === userId);
+    if (teamIndex === -1) throw new Error("User is not in this match");
+    teamId = (teamIndex + 1) as 1 | 2;
+  }
 
   // Store commands in timer
   submitTimerCommands(timer, teamId, commands);

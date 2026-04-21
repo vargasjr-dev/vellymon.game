@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getGameStateAction, submitCommandsAction, type PlayCommand } from "./actions";
 
-// Lazy-load PixiJS canvas (no SSR — needs window/document)
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
 
 type Props = {
@@ -36,22 +35,58 @@ type TeamDisplay = {
   knockedCount: number;
 };
 
-export default function PlayPollingClient({
-  matchUuid,
-  userId,
-  playerTeamName,
-}: Props) {
+type RawTeam = {
+  id: 1 | 2;
+  userId: string;
+  name: string;
+  energy: number;
+  active: Array<{
+    uuid: string;
+    name: string;
+    hp: number;
+    maxHp: number;
+    speed: number;
+    attack: number;
+    position: { x: number; y: number } | null;
+    isKO: boolean;
+    imageUrl?: string;
+  }>;
+  bench: unknown[];
+  knocked: unknown[];
+};
+
+function mapTeam(t: RawTeam): TeamDisplay {
+  return {
+    id: t.id,
+    name: t.name,
+    energy: t.energy,
+    active: t.active.map((v) => ({
+      uuid: v.uuid,
+      name: v.name,
+      hp: v.hp,
+      maxHp: v.maxHp,
+      speed: v.speed,
+      attack: v.attack,
+      x: v.position?.x ?? 0,
+      y: v.position?.y ?? 0,
+      isKO: v.isKO,
+      imageUrl: v.imageUrl,
+    })),
+    benchCount: t.bench.length,
+    knockedCount: t.knocked.length,
+  };
+}
+
+export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
-  const [yourTeam, setYourTeam] = useState<TeamDisplay | null>(null);
-  const [opponentTeam, setOpponentTeam] = useState<TeamDisplay | null>(null);
+  const [teams, setTeams] = useState<[TeamDisplay, TeamDisplay] | null>(null);
   const [boardWidth, setBoardWidth] = useState(8);
   const [boardHeight, setBoardHeight] = useState(5);
   const [boardSpaces, setBoardSpaces] = useState<
     Array<{ x: number; y: number; type: string; occupationCounter?: number }>
   >([]);
-  const [commandsSubmitted, setCommandsSubmitted] = useState(false);
   const [selectedVellymon, setSelectedVellymon] = useState<string | null>(null);
   const [pendingCommands, setPendingCommands] = useState<PlayCommand[]>([]);
   const [gameOver, setGameOver] = useState<{
@@ -59,31 +94,38 @@ export default function PlayPollingClient({
     condition: string;
   } | null>(null);
 
+  // Admin play-both-sides: track which team we're currently commanding
+  const [activeTeamId, setActiveTeamId] = useState<1 | 2>(1);
+  const [waitingForSwitch, setWaitingForSwitch] = useState(false);
+
+  // We track raw team userIds to detect admin matches (same user on both teams)
+  const [rawUserIds, setRawUserIds] = useState<[string, string] | null>(null);
+  const isAdminSelfMatch = rawUserIds ? rawUserIds[0] === rawUserIds[1] : false;
+
+  // Your team = the one you're currently commanding
+  const yourTeam = useMemo(() => {
+    if (!teams) return null;
+    if (isAdminSelfMatch) {
+      return teams.find((t) => t.id === activeTeamId) ?? teams[0];
+    }
+    return teams.find((t) => t.id === activeTeamId) ?? teams[0];
+  }, [teams, activeTeamId, isAdminSelfMatch]);
+
+  const opponentTeam = useMemo(() => {
+    if (!teams) return null;
+    if (isAdminSelfMatch) {
+      return teams.find((t) => t.id !== activeTeamId) ?? teams[1];
+    }
+    return teams.find((t) => t.id !== activeTeamId) ?? teams[1];
+  }, [teams, activeTeamId, isAdminSelfMatch]);
+
   const parseState = useCallback(
     (data: { gameState: Record<string, unknown>; status: string } | null) => {
       if (!data?.gameState) return;
 
       const gs = data.gameState as {
         turn: number;
-        teams: Array<{
-          id: 1 | 2;
-          userId: string;
-          name: string;
-          energy: number;
-          active: Array<{
-              uuid: string;
-              name: string;
-              hp: number;
-              maxHp: number;
-              speed: number;
-              attack: number;
-              position: { x: number; y: number } | null;
-              isKO: boolean;
-              imageUrl?: string;
-            }>;
-            bench: unknown[];
-            knocked: unknown[];
-        }>;
+        teams: RawTeam[];
         boardWidth: number;
         boardHeight: number;
         board: Array<{
@@ -107,56 +149,21 @@ export default function PlayPollingClient({
         })) ?? [],
       );
 
-      const yours = gs.teams.find((t) => t.userId === userId);
-      const opponent = gs.teams.find((t) => t.userId !== userId);
-
-      // For admin play-both-sides, pick team 1 as "yours"
-      const yourTeamData = yours ?? gs.teams[0];
-      const oppTeamData = opponent ?? gs.teams[1];
-
-      if (yourTeamData) {
-        setYourTeam({
-          id: yourTeamData.id,
-          name: yourTeamData.name,
-          energy: yourTeamData.energy,
-          active: yourTeamData.active.map((v) => ({
-            uuid: v.uuid,
-            name: v.name,
-            hp: v.hp,
-            maxHp: v.maxHp,
-            speed: v.speed,
-            attack: v.attack,
-            x: v.position?.x ?? 0,
-            y: v.position?.y ?? 0,
-            isKO: v.isKO,
-            imageUrl: v.imageUrl,
-          })),
-          benchCount: yourTeamData.bench.length,
-          knockedCount: yourTeamData.knocked.length,
-        });
+      // Store raw userIds for admin detection
+      if (gs.teams.length >= 2) {
+        setRawUserIds([gs.teams[0].userId, gs.teams[1].userId]);
       }
 
-      if (oppTeamData) {
-        setOpponentTeam({
-          id: oppTeamData.id,
-          name: oppTeamData.name,
-          energy: oppTeamData.energy,
-          active: oppTeamData.active.map((v) => ({
-              uuid: v.uuid,
-              name: v.name,
-              hp: v.hp,
-              maxHp: v.maxHp,
-              speed: v.speed,
-              attack: v.attack,
-              x: v.position?.x ?? 0,
-              y: v.position?.y ?? 0,
-              isKO: v.isKO,
-              imageUrl: v.imageUrl,
-            })),
-            benchCount: oppTeamData.bench.length,
-            knockedCount: oppTeamData.knocked.length,
-        });
+      // Figure out which team this user belongs to
+      const userTeam = gs.teams.find((t) => t.userId === userId);
+      if (userTeam && !isAdminSelfMatch) {
+        // Normal match: lock activeTeamId to user's team
+        setActiveTeamId(userTeam.id);
       }
+
+      const t1 = mapTeam(gs.teams[0]);
+      const t2 = gs.teams[1] ? mapTeam(gs.teams[1]) : t1;
+      setTeams([t1, t2]);
 
       if (gs.result) {
         const winnerTeam = gs.teams.find((t) => t.id === gs.result!.winner);
@@ -166,10 +173,10 @@ export default function PlayPollingClient({
         });
       }
     },
-    [userId],
+    [userId, isAdminSelfMatch],
   );
 
-  // Lock body scroll on mount
+  // Lock body scroll
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -178,10 +185,9 @@ export default function PlayPollingClient({
     };
   }, []);
 
-  // Poll for game state
+  // Poll game state
   useEffect(() => {
     let active = true;
-
     const poll = async () => {
       try {
         const data = await getGameStateAction(matchUuid);
@@ -197,7 +203,6 @@ export default function PlayPollingClient({
         }
       }
     };
-
     poll();
     const interval = setInterval(poll, 2000);
     return () => {
@@ -206,43 +211,66 @@ export default function PlayPollingClient({
     };
   }, [matchUuid, parseState]);
 
+  // Add command for a vellymon, then auto-deselect so user can pick the next one
   const addCommand = useCallback((cmd: PlayCommand) => {
     setPendingCommands((prev) => {
-      // Replace existing command for same vellymon
       const filtered = prev.filter((c) => c.vellymonUuid !== cmd.vellymonUuid);
       return [...filtered, cmd];
     });
+    // Auto-deselect after assigning a command
+    setSelectedVellymon(null);
   }, []);
 
   const handleSubmitTurn = useCallback(async () => {
     try {
-      const result = await submitCommandsAction(matchUuid, pendingCommands);
-      setCommandsSubmitted(true);
+      const result = await submitCommandsAction(
+        matchUuid,
+        pendingCommands,
+        isAdminSelfMatch ? activeTeamId : undefined,
+      );
       setPendingCommands([]);
       setSelectedVellymon(null);
-      if (result.resolved) {
+
+      if (isAdminSelfMatch && activeTeamId === 1) {
+        // Admin match: switch to P2's perspective
+        setActiveTeamId(2);
+        setWaitingForSwitch(true);
+        setTimeout(() => setWaitingForSwitch(false), 500);
+      } else if (result.resolved) {
+        // Turn resolved — refresh state
         const data = await getGameStateAction(matchUuid);
         parseState(data);
-        setCommandsSubmitted(false);
+        if (isAdminSelfMatch) {
+          setActiveTeamId(1); // Reset to P1 for next turn
+        }
+      } else if (isAdminSelfMatch && activeTeamId === 2) {
+        // P2 submitted in admin match — turn should resolve now
+        const data = await getGameStateAction(matchUuid);
+        parseState(data);
+        setActiveTeamId(1); // Reset to P1 for next turn
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to submit commands");
     }
-  }, [matchUuid, pendingCommands, parseState]);
+  }, [matchUuid, pendingCommands, parseState, isAdminSelfMatch, activeTeamId]);
 
-  // Build vellymons list with team IDs for the canvas
-  const allVellymons = [
-    ...(yourTeam?.active.map((v) => ({ ...v, teamId: yourTeam.id as 1 | 2 })) ?? []),
-    ...(opponentTeam?.active.map((v) => ({ ...v, teamId: opponentTeam.id as 1 | 2 })) ?? []),
-  ];
+  // Build all vellymons for the canvas
+  const allVellymons = useMemo(() => [
+    ...(teams?.[0]?.active.map((v) => ({ ...v, teamId: teams[0].id as 1 | 2 })) ?? []),
+    ...(teams?.[1]?.active.map((v) => ({ ...v, teamId: teams[1].id as 1 | 2 })) ?? []),
+  ], [teams]);
 
   const selectedVm = yourTeam?.active.find((v) => v.uuid === selectedVellymon && !v.isKO);
   const pendingForSelected = pendingCommands.find((c) => c.vellymonUuid === selectedVellymon);
 
-  // Fullscreen overlay — covers navbar
+  // Vellymons that have pending commands (for board indicators)
+  const commandedUuids = useMemo(
+    () => new Set(pendingCommands.map((c) => c.vellymonUuid)),
+    [pendingCommands],
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-[#0a0f1a] text-white flex flex-col">
-      {/* Loading state */}
       {loading && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -252,22 +280,17 @@ export default function PlayPollingClient({
         </div>
       )}
 
-      {/* Error state */}
       {error && !loading && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <p className="text-red-400 mb-4">{error}</p>
-            <Link
-              href={`/matches/${matchUuid}`}
-              className="text-blue-400 hover:underline"
-            >
+            <Link href={`/matches/${matchUuid}`} className="text-blue-400 hover:underline">
               Back to match
             </Link>
           </div>
         </div>
       )}
 
-      {/* Game Over */}
       {gameOver && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
@@ -275,39 +298,40 @@ export default function PlayPollingClient({
             <p className="text-xl mb-2">
               <span className="text-yellow-400">{gameOver.winner}</span> wins!
             </p>
-            <p className="text-gray-400 mb-6 capitalize">
-              Victory by {gameOver.condition}
-            </p>
-            <Link
-              href="/player"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
-            >
+            <p className="text-gray-400 mb-6 capitalize">Victory by {gameOver.condition}</p>
+            <Link href="/player" className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
               Back to Hub
             </Link>
           </div>
         </div>
       )}
 
-      {/* Main game view */}
       {!loading && !error && !gameOver && (
         <>
-          {/* Top bar — minimal, overlays the canvas */}
-          <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-4 py-3">
+          {/* ─── Top bar ─── */}
+          <div className="flex justify-between items-center px-4 py-2 shrink-0">
             <Link
               href={`/matches/${matchUuid}`}
-              className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm"
+              className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
             >
               ← Back
             </Link>
-            <span className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm font-mono">
-              Turn {turn}
-            </span>
+            <div className="flex items-center gap-2">
+              {isAdminSelfMatch && (
+                <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
+                  Playing as Team {activeTeamId}
+                </span>
+              )}
+              <span className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono">
+                Turn {turn}
+              </span>
+            </div>
           </div>
 
-          {/* Team HUDs — your team first (left), opponent second (right) */}
-          <div className="absolute top-12 left-0 right-0 z-10 flex gap-2 px-3">
+          {/* ─── Team HUDs ─── */}
+          <div className="flex gap-2 px-3 pb-2 shrink-0">
             {yourTeam && (
-              <div className="flex-1 bg-blue-950/60 border border-blue-500/30 rounded-lg px-3 py-2 backdrop-blur-sm">
+              <div className="flex-1 bg-blue-950/60 border border-blue-500/30 rounded-lg px-3 py-1.5">
                 <p className="font-bold text-sm truncate">{yourTeam.name}</p>
                 <div className="flex gap-2 text-xs text-gray-300">
                   <span>⚡{yourTeam.energy}</span>
@@ -317,7 +341,7 @@ export default function PlayPollingClient({
               </div>
             )}
             {opponentTeam && (
-              <div className="flex-1 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-2 backdrop-blur-sm">
+              <div className="flex-1 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-1.5">
                 <p className="font-bold text-sm truncate">{opponentTeam.name}</p>
                 <div className="flex gap-2 text-xs text-gray-300">
                   <span>⚡{opponentTeam.energy}</span>
@@ -328,8 +352,8 @@ export default function PlayPollingClient({
             )}
           </div>
 
-          {/* PixiJS Canvas — fills the middle */}
-          <div className="flex-1 relative mt-24 mb-44">
+          {/* ─── Canvas (flex-1, never overlapped by command panel) ─── */}
+          <div className="flex-1 relative min-h-0">
             <BattleCanvas
               boardWidth={boardWidth}
               boardHeight={boardHeight}
@@ -338,99 +362,131 @@ export default function PlayPollingClient({
               yourTeamId={yourTeam?.id ?? 1}
               selectedVellymon={selectedVellymon}
               onSelectVellymon={setSelectedVellymon}
+              commandedUuids={commandedUuids}
             />
           </div>
 
-          {/* Bottom command panel */}
-          <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-[#0a0f1a] via-[#0a0f1a]/95 to-transparent pt-8 pb-6 px-4">
-            {commandsSubmitted ? (
-              <div className="text-center py-3">
-                <p className="text-yellow-400 animate-pulse text-sm">
-                  ⏳ Waiting for opponent...
+          {/* ─── Command panel (below canvas, not overlapping) ─── */}
+          <div className="shrink-0 bg-[#0c1220] border-t border-gray-800 px-4 py-3">
+            {waitingForSwitch ? (
+              <div className="text-center py-2">
+                <p className="text-purple-400 text-sm animate-pulse">
+                  Switching to Team {activeTeamId}...
                 </p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Selected vellymon actions */}
-                {selectedVm ? (
-                  <div className="bg-blue-950/60 border border-blue-500/30 rounded-xl p-3 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <span className="font-bold">{selectedVm.name}</span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          HP {selectedVm.hp}/{selectedVm.maxHp} · ATK {selectedVm.attack} · SPD {selectedVm.speed}
-                        </span>
-                      </div>
-                      {pendingForSelected && (
-                        <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
-                          {pendingForSelected.type} {pendingForSelected.direction ?? ""}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      {/* Move buttons */}
-                      <div className="flex gap-1">
-                        {(["up", "down", "left", "right"] as const).map((dir) => (
-                          <button
-                            key={dir}
-                            onClick={() => addCommand({ type: "move", vellymonUuid: selectedVm.uuid, direction: dir })}
-                            className="w-10 h-10 text-lg bg-gray-800 rounded-lg hover:bg-gray-700 active:bg-gray-600 transition"
-                          >
-                            {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="w-px bg-gray-700" />
-                      {/* Attack */}
-                      <button
-                        onClick={() => addCommand({ type: "attack", vellymonUuid: selectedVm.uuid })}
-                        className="h-10 px-4 text-sm bg-red-900 rounded-lg hover:bg-red-800 active:bg-red-700 transition font-semibold"
-                      >
-                        ⚔️ Attack
-                      </button>
-                      {/* Harvest */}
-                      <button
-                        onClick={() => addCommand({ type: "harvest", vellymonUuid: selectedVm.uuid })}
-                        className="h-10 px-4 text-sm bg-yellow-900 rounded-lg hover:bg-yellow-800 active:bg-yellow-700 transition font-semibold"
-                      >
-                        ⚡ Harvest
-                      </button>
-                    </div>
+            ) : selectedVm ? (
+              <div className="space-y-2">
+                {/* Selected vellymon info + dismiss */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">{selectedVm.name}</span>
+                    <span className="text-xs text-gray-400">
+                      HP {selectedVm.hp}/{selectedVm.maxHp} · ATK {selectedVm.attack} · SPD {selectedVm.speed}
+                    </span>
                   </div>
-                ) : (
-                  <p className="text-center text-sm text-gray-500">
-                    Tap a vellymon on the board to issue commands
-                  </p>
+                  <button
+                    onClick={() => setSelectedVellymon(null)}
+                    className="text-gray-500 hover:text-white text-sm px-2"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Pending command badge */}
+                {pendingForSelected && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
+                      Queued: {pendingForSelected.type} {pendingForSelected.direction ?? ""}
+                    </span>
+                    <button
+                      onClick={() => setPendingCommands((prev) => prev.filter((c) => c.vellymonUuid !== selectedVm.uuid))}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 )}
 
+                {/* Action buttons — Move row */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 w-10">Move</span>
+                  <div className="flex gap-1">
+                    {(["up", "down", "left", "right"] as const).map((dir) => (
+                      <button
+                        key={`move-${dir}`}
+                        onClick={() => addCommand({ type: "move", vellymonUuid: selectedVm.uuid, direction: dir })}
+                        className="w-10 h-10 text-lg bg-gray-800 rounded-lg hover:bg-gray-700 active:bg-gray-600 transition"
+                      >
+                        {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action buttons — Attack row (directional) */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-red-400 w-10">Attack</span>
+                  <div className="flex gap-1">
+                    {(["up", "down", "left", "right"] as const).map((dir) => (
+                      <button
+                        key={`atk-${dir}`}
+                        onClick={() => addCommand({ type: "attack", vellymonUuid: selectedVm.uuid, direction: dir })}
+                        className="w-10 h-10 text-lg bg-red-950 rounded-lg hover:bg-red-900 active:bg-red-800 transition border border-red-800/50"
+                      >
+                        {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Harvest */}
+                <button
+                  onClick={() => addCommand({ type: "harvest", vellymonUuid: selectedVm.uuid })}
+                  className="w-full h-9 text-sm bg-yellow-900/60 rounded-lg hover:bg-yellow-800/60 active:bg-yellow-700/60 transition border border-yellow-700/30 font-semibold"
+                >
+                  ⚡ Harvest
+                </button>
+              </div>
+            ) : (
+              <div>
                 {/* Pending commands summary */}
-                {pendingCommands.length > 0 && (
-                  <div className="flex flex-wrap gap-1 justify-center">
+                {pendingCommands.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 mb-2 justify-center">
                     {pendingCommands.map((cmd) => {
                       const vm = yourTeam?.active.find((v) => v.uuid === cmd.vellymonUuid);
                       return (
-                        <span key={cmd.vellymonUuid} className="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">
-                          {vm?.name?.slice(0, 6)}: {cmd.type} {cmd.direction ?? ""}
-                        </span>
+                        <button
+                          key={cmd.vellymonUuid}
+                          onClick={() => setSelectedVellymon(cmd.vellymonUuid)}
+                          className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-300 transition"
+                        >
+                          {vm?.name?.slice(0, 8)}: {cmd.type} {cmd.direction ?? ""}
+                        </button>
                       );
                     })}
                   </div>
+                ) : (
+                  <p className="text-center text-sm text-gray-500 mb-2">
+                    Tap a vellymon to issue commands
+                  </p>
                 )}
-
-                {/* Submit / Skip */}
-                <button
-                  onClick={handleSubmitTurn}
-                  className={`w-full py-3.5 rounded-xl font-semibold transition text-lg ${
-                    pendingCommands.length > 0
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
-                      : "bg-gray-700 hover:bg-gray-600"
-                  }`}
-                >
-                  {pendingCommands.length > 0
-                    ? `Submit Turn (${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""})`
-                    : "End Turn (skip all)"}
-                </button>
               </div>
+            )}
+
+            {/* Submit button — always visible */}
+            {!waitingForSwitch && (
+              <button
+                onClick={handleSubmitTurn}
+                className={`w-full py-3 rounded-xl font-semibold transition text-base mt-1 ${
+                  pendingCommands.length > 0
+                    ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
+                    : "bg-gray-700 hover:bg-gray-600"
+                }`}
+              >
+                {pendingCommands.length > 0
+                  ? `Submit Turn (${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""})`
+                  : "End Turn (skip all)"}
+              </button>
             )}
           </div>
         </>
