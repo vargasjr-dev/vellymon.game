@@ -359,6 +359,15 @@ function Board({
   yourTeam: TeamDisplay | null;
   opponentTeam: TeamDisplay | null;
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const allVellymons = [
     ...(yourTeam?.active.map((v) => ({ ...v, teamId: yourTeam.id })) ?? []),
     ...(opponentTeam?.active.map((v) => ({ ...v, teamId: opponentTeam.id })) ?? []),
@@ -370,55 +379,75 @@ function Board({
     spaceMap.set(`${s.x},${s.y}`, { type: s.type, occupationCounter: s.occupationCounter });
   }
 
+  // Mobile: rotate 90° CW — columns become height, rows become width
+  // Player spawns (left/low-x) move to bottom, opponent (right/high-x) to top
+  const cols = isMobile ? height : width;
+  const rows = isMobile ? width : height;
+
+  // Build cell list in display order
+  const cells: Array<{ x: number; y: number; key: string }> = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (isMobile) {
+        // Rotated: row maps to x (reversed so player at bottom), col maps to y
+        const x = width - 1 - row;
+        const y = col;
+        cells.push({ x, y, key: `${x}-${y}` });
+      } else {
+        const x = col;
+        const y = row;
+        cells.push({ x, y, key: `${x}-${y}` });
+      }
+    }
+  }
+
   return (
     <div className="flex justify-center">
       <div
         className="grid gap-1"
         style={{
-          gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         }}
       >
-        {Array.from({ length: height }, (_, y) =>
-          Array.from({ length: width }, (_, x) => {
-            const vellymon = allVellymons.find(
-              (v) => v.x === x && v.y === y && !v.isKO,
-            );
-            const isYoursCell = vellymon && yourTeam && vellymon.teamId === yourTeam.id;
-            const space = spaceMap.get(`${x},${y}`);
-            const isOccupation = space?.type === "occupation";
-            const isHarvestable = space?.type === "harvestable";
+        {cells.map(({ x, y, key }) => {
+          const vellymon = allVellymons.find(
+            (v) => v.x === x && v.y === y && !v.isKO,
+          );
+          const isYoursCell = vellymon && yourTeam && vellymon.teamId === yourTeam.id;
+          const space = spaceMap.get(`${x},${y}`);
+          const isOccupation = space?.type === "occupation";
+          const isHarvestable = space?.type === "harvestable";
 
-            return (
-              <div
-                key={`${x}-${y}`}
-                className={`w-10 h-10 sm:w-12 sm:h-12 rounded border text-[10px] flex flex-col items-center justify-center ${
-                  vellymon
-                    ? isYoursCell
-                      ? "bg-blue-900/50 border-blue-500/50"
-                      : "bg-red-900/50 border-red-500/50"
-                    : isOccupation
-                      ? "bg-amber-900/40 border-amber-500/60"
-                      : isHarvestable
-                        ? "bg-green-900/20 border-green-800/40"
-                        : "bg-gray-900/50 border-gray-800"
-                }`}
-              >
-                {vellymon ? (
-                  <>
-                    <span className="font-bold truncate w-full text-center px-0.5">
-                      {vellymon.name.slice(0, 4)}
-                    </span>
-                    <span className="text-gray-300">
-                      {vellymon.hp}/{vellymon.maxHp}
-                    </span>
-                  </>
-                ) : isOccupation ? (
-                  <span className="text-amber-400 text-sm">⭐</span>
-                ) : null}
-              </div>
-            );
-          }),
-        )}
+          return (
+            <div
+              key={key}
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded border text-[10px] flex flex-col items-center justify-center ${
+                vellymon
+                  ? isYoursCell
+                    ? "bg-blue-900/50 border-blue-500/50"
+                    : "bg-red-900/50 border-red-500/50"
+                  : isOccupation
+                    ? "bg-amber-900/40 border-amber-500/60"
+                    : isHarvestable
+                      ? "bg-green-900/20 border-green-800/40"
+                      : "bg-gray-900/50 border-gray-800"
+              }`}
+            >
+              {vellymon ? (
+                <>
+                  <span className="font-bold truncate w-full text-center px-0.5">
+                    {vellymon.name.slice(0, 4)}
+                  </span>
+                  <span className="text-gray-300">
+                    {vellymon.hp}/{vellymon.maxHp}
+                  </span>
+                </>
+              ) : isOccupation ? (
+                <span className="text-amber-400 text-sm">⭐</span>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
