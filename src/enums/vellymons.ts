@@ -45,6 +45,7 @@ function templateToStats(t: VellymonTemplate): VellymonStats {
     })),
     flavor: t.flavor,
     imageUrl: t.imageUrl,
+    specialPowerId: t.specialPowerId,
   };
 }
 

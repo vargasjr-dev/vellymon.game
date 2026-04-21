@@ -16,6 +16,8 @@ interface MarketVellymon {
   flavor?: string;
   imageUrl?: string;
   isOwned: boolean;
+  powerName?: string;
+  powerDescription?: string;
 }
 
 const filters: { key: FilterKey; label: string }[] = [
@@ -160,12 +162,23 @@ export default function MarketGrid({
                   <StatBar label="SPD" value={selected.speed} max={10} color="blue" />
                 </div>
 
-                {/* Special Power hint */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-purple-700 text-center">
-                    ✨ Has a unique special power — discover it in battle!
-                  </p>
-                </div>
+                {/* Special Power */}
+                {selected.powerName ? (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                    <p className="text-xs font-bold text-purple-900 mb-1">
+                      ✨ {selected.powerName}
+                    </p>
+                    <p className="text-xs text-purple-700">
+                      {selected.powerDescription}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                    <p className="text-xs text-purple-700 text-center">
+                      ✨ Has a unique special power — discover it in battle!
+                    </p>
+                  </div>
+                )}
 
                 {/* Action */}
                 {selected.isOwned ? (
@@ -226,6 +239,16 @@ export default function MarketGrid({
                 <StatBar label="ATK" value={selected.attack} max={20} color="red" />
                 <StatBar label="SPD" value={selected.speed} max={10} color="blue" />
               </div>
+              {selected.powerName && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs font-bold text-purple-900 mb-1">
+                    ✨ {selected.powerName}
+                  </p>
+                  <p className="text-xs text-purple-700">
+                    {selected.powerDescription}
+                  </p>
+                </div>
+              )}
               {selected.isOwned ? (
                 <div className="w-full bg-green-100 text-green-700 px-4 py-2 rounded text-center font-medium text-sm">
                   ✓ Owned
