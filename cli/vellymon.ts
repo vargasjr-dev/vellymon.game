@@ -43,7 +43,7 @@ import type { Command, MoveCommand, AttackCommand, HarvestCommand } from "../ser
 
 // ─── State Storage ───────────────────────────────────────────────────────────
 
-const STATE_DIR = resolve(import.meta.dir, "../.vellymon");
+const STATE_DIR = resolve(new URL(".", import.meta.url).pathname, "../.vellymon");
 
 type MatchFile = {
   id: string;
