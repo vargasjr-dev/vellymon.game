@@ -376,76 +376,72 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               </div>
             ) : selectedVm ? (
               <div className="space-y-2">
-                {/* Selected vellymon info + dismiss */}
+                {/* Selected vellymon info + dismiss + queued badge */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold">{selectedVm.name}</span>
-                    <span className="text-xs text-gray-400">
-                      HP {selectedVm.hp}/{selectedVm.maxHp} · ATK {selectedVm.attack} · SPD {selectedVm.speed}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-bold truncate">{selectedVm.name}</span>
+                    <span className="text-xs text-gray-400 shrink-0">
+                      {selectedVm.hp}/{selectedVm.maxHp}
                     </span>
+                    {pendingForSelected && (
+                      <span className="text-xs text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded shrink-0">
+                        {pendingForSelected.type} {pendingForSelected.direction ?? ""}
+                      </span>
+                    )}
                   </div>
                   <button
                     onClick={() => setSelectedVellymon(null)}
-                    className="text-gray-500 hover:text-white text-sm px-2"
+                    className="text-gray-500 hover:text-white text-sm px-2 shrink-0"
                   >
                     ✕
                   </button>
                 </div>
 
-                {/* Pending command badge */}
-                {pendingForSelected && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
-                      Queued: {pendingForSelected.type} {pendingForSelected.direction ?? ""}
-                    </span>
+                {/* Compact action grid: Move | Attack | Harvest all visible */}
+                <div className="flex gap-2 items-start">
+                  {/* Move — 4 directional buttons */}
+                  <div className="flex-1">
+                    <p className="text-[10px] text-gray-500 mb-1 text-center">MOVE</p>
+                    <div className="grid grid-cols-4 gap-1">
+                      {(["up", "down", "left", "right"] as const).map((dir) => (
+                        <button
+                          key={`move-${dir}`}
+                          onClick={() => addCommand({ type: "move", vellymonUuid: selectedVm.uuid, direction: dir })}
+                          className="h-9 text-base bg-gray-800 rounded hover:bg-gray-700 active:bg-gray-600 transition"
+                        >
+                          {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Attack — 4 directional buttons */}
+                  <div className="flex-1">
+                    <p className="text-[10px] text-red-400 mb-1 text-center">ATTACK</p>
+                    <div className="grid grid-cols-4 gap-1">
+                      {(["up", "down", "left", "right"] as const).map((dir) => (
+                        <button
+                          key={`atk-${dir}`}
+                          onClick={() => addCommand({ type: "attack", vellymonUuid: selectedVm.uuid, direction: dir })}
+                          className="h-9 text-base bg-red-950 rounded hover:bg-red-900 active:bg-red-800 transition border border-red-800/50"
+                        >
+                          {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Harvest — single button */}
+                  <div className="w-16 shrink-0">
+                    <p className="text-[10px] text-yellow-500 mb-1 text-center">HARVEST</p>
                     <button
-                      onClick={() => setPendingCommands((prev) => prev.filter((c) => c.vellymonUuid !== selectedVm.uuid))}
-                      className="text-xs text-red-400 hover:text-red-300"
+                      onClick={() => addCommand({ type: "harvest", vellymonUuid: selectedVm.uuid })}
+                      className="w-full h-9 text-base bg-yellow-900/60 rounded hover:bg-yellow-800/60 active:bg-yellow-700/60 transition border border-yellow-700/30"
                     >
-                      Clear
+                      ⚡
                     </button>
                   </div>
-                )}
-
-                {/* Action buttons — Move row */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 w-10">Move</span>
-                  <div className="flex gap-1">
-                    {(["up", "down", "left", "right"] as const).map((dir) => (
-                      <button
-                        key={`move-${dir}`}
-                        onClick={() => addCommand({ type: "move", vellymonUuid: selectedVm.uuid, direction: dir })}
-                        className="w-10 h-10 text-lg bg-gray-800 rounded-lg hover:bg-gray-700 active:bg-gray-600 transition"
-                      >
-                        {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-
-                {/* Action buttons — Attack row (directional) */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-red-400 w-10">Attack</span>
-                  <div className="flex gap-1">
-                    {(["up", "down", "left", "right"] as const).map((dir) => (
-                      <button
-                        key={`atk-${dir}`}
-                        onClick={() => addCommand({ type: "attack", vellymonUuid: selectedVm.uuid, direction: dir })}
-                        className="w-10 h-10 text-lg bg-red-950 rounded-lg hover:bg-red-900 active:bg-red-800 transition border border-red-800/50"
-                      >
-                        {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Harvest */}
-                <button
-                  onClick={() => addCommand({ type: "harvest", vellymonUuid: selectedVm.uuid })}
-                  className="w-full h-9 text-sm bg-yellow-900/60 rounded-lg hover:bg-yellow-800/60 active:bg-yellow-700/60 transition border border-yellow-700/30 font-semibold"
-                >
-                  ⚡ Harvest
-                </button>
               </div>
             ) : (
               <div>
