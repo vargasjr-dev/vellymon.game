@@ -7,6 +7,43 @@ import { getGameStateAction, submitCommandsAction, type PlayCommand } from "./ac
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
 
+type Dir = "up" | "down" | "left" | "right";
+
+/**
+ * Translate a screen-space direction to a game-space direction.
+ *
+ * In landscape, screen = game (no transform).
+ * In portrait the board is rotated so:
+ *   Team 1 (x=0 spawns at bottom): screen↑ = game right, screen← = game up
+ *   Team 2 (x=8 spawns at bottom): screen↑ = game left, screen← = game down
+ */
+function screenToGameDir(screenDir: Dir, isPortrait: boolean, teamId: 1 | 2): Dir {
+  if (!isPortrait) return screenDir;
+
+  if (teamId === 1) {
+    const map: Record<Dir, Dir> = { up: "right", down: "left", left: "up", right: "down" };
+    return map[screenDir];
+  } else {
+    const map: Record<Dir, Dir> = { up: "left", down: "right", left: "down", right: "up" };
+    return map[screenDir];
+  }
+}
+
+/** Reverse: game-space direction → screen arrow symbol for display */
+function gameDirToScreenArrow(gameDir: Dir, isPortrait: boolean, teamId: 1 | 2): string {
+  const arrows: Record<Dir, string> = { up: "↑", down: "↓", left: "←", right: "→" };
+  if (!isPortrait) return arrows[gameDir];
+
+  // Invert the screen→game mapping
+  if (teamId === 1) {
+    const map: Record<Dir, Dir> = { right: "up", left: "down", up: "left", down: "right" };
+    return arrows[map[gameDir]];
+  } else {
+    const map: Record<Dir, Dir> = { left: "up", right: "down", down: "left", up: "right" };
+    return arrows[map[gameDir]];
+  }
+}
+
 type Props = {
   matchUuid: string;
   userId: string;
@@ -78,6 +115,16 @@ function mapTeam(t: RawTeam): TeamDisplay {
 }
 
 export default function PlayPollingClient({ matchUuid, userId }: Props) {
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  // Track orientation
+  useEffect(() => {
+    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
@@ -217,9 +264,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       const filtered = prev.filter((c) => c.vellymonUuid !== cmd.vellymonUuid);
       return [...filtered, cmd];
     });
-    // Auto-deselect after assigning a command
     setSelectedVellymon(null);
   }, []);
+
+  // Wrap addCommand with screen→game direction translation
+  const addDirectionalCommand = useCallback(
+    (type: "move" | "attack", vellymonUuid: string, screenDir: Dir) => {
+      const gameDir = screenToGameDir(screenDir, isPortrait, yourTeam?.id ?? 1);
+      addCommand({ type, vellymonUuid, direction: gameDir });
+    },
+    [addCommand, isPortrait, yourTeam?.id],
+  );
 
   const handleSubmitTurn = useCallback(async () => {
     try {
@@ -385,7 +440,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                     </span>
                     {pendingForSelected && (
                       <span className="text-xs text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded shrink-0">
-                        {pendingForSelected.type} {pendingForSelected.direction ?? ""}
+                        {pendingForSelected.type} {pendingForSelected.direction ? gameDirToScreenArrow(pendingForSelected.direction, isPortrait, yourTeam?.id ?? 1) : ""}
                       </span>
                     )}
                   </div>
@@ -406,8 +461,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                       {(["up", "down", "left", "right"] as const).map((dir) => (
                         <button
                           key={`move-${dir}`}
-                          onClick={() => addCommand({ type: "move", vellymonUuid: selectedVm.uuid, direction: dir })}
-                          className="h-9 text-base bg-gray-800 rounded hover:bg-gray-700 active:bg-gray-600 transition"
+                          onClick={() => addDirectionalCommand("move", selectedVm.uuid, dir)}
+                        className="h-9 text-base bg-gray-800 rounded hover:bg-gray-700 active:bg-gray-600 transition"
                         >
                           {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
                         </button>
@@ -422,8 +477,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                       {(["up", "down", "left", "right"] as const).map((dir) => (
                         <button
                           key={`atk-${dir}`}
-                          onClick={() => addCommand({ type: "attack", vellymonUuid: selectedVm.uuid, direction: dir })}
-                          className="h-9 text-base bg-red-950 rounded hover:bg-red-900 active:bg-red-800 transition border border-red-800/50"
+                          onClick={() => addDirectionalCommand("attack", selectedVm.uuid, dir)}
+                        className="h-9 text-base bg-red-950 rounded hover:bg-red-900 active:bg-red-800 transition border border-red-800/50"
                         >
                           {dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"}
                         </button>
@@ -456,7 +511,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                           onClick={() => setSelectedVellymon(cmd.vellymonUuid)}
                           className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-300 transition"
                         >
-                          {vm?.name?.slice(0, 8)}: {cmd.type} {cmd.direction ?? ""}
+                          {vm?.name?.slice(0, 8)}: {cmd.type} {cmd.direction ? gameDirToScreenArrow(cmd.direction, isPortrait, yourTeam?.id ?? 1) : ""}
                         </button>
                       );
                     })}

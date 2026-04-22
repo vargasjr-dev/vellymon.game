@@ -100,7 +100,7 @@ export const GAME_CONFIG: GameConfig = {
   },
 
   board: {
-    width: 8,
+    width: 9,
     height: 5,
     spawnsPerTeam: 4,
   },

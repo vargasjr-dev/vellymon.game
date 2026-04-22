@@ -21,17 +21,17 @@ import type { SpaceType } from "./config";
 /**
  * Generate the default board layout based on GAME_CONFIG dimensions.
  *
- * Default 8×5 layout:
+ * Default 9×5 layout:
  * ```
- * S . . . O . . S     (y=0)
- * S . . . . . . S     (y=1)
- * . . . O . . . .     (y=2)  ← center row
- * S . . . . . . S     (y=3)
- * S . . . O . . S     (y=4)
+ * S . . . . . . . S     (y=0)
+ * S . O . . . . . S     (y=1)
+ * . . . . O . . . .     (y=2)  ← center row
+ * S . . . . . O . S     (y=3)
+ * S . . . . . . . S     (y=4)
  * ```
  * S = spawn, O = occupation, . = harvestable
  * Team 1 spawns: left column (x=0)
- * Team 2 spawns: right column (x=7)
+ * Team 2 spawns: right column (x=8)
  */
 export function generateDefaultBoard(): BoardSpace[] {
   const { width, height } = GAME_CONFIG.board;
@@ -112,21 +112,23 @@ export function getDefaultSpawnPositions(
  * - One in the center
  * - One closer to team 2 (right side)
  *
- * For the default 8×5 board:
- *   Team 1 spawns at x=0, Team 2 at x=7
- *   Occupation at x=2 (near T1), x=4 (center), x=5 (near T2)
+ * For the default 9×5 board:
+ *   Team 1 spawns at x=0, Team 2 at x=8
+ *   Center column at x=4 (true center with odd width)
+ *   Occupation at x=2 (near T1), x=4 (center), x=6 (near T2)
  *   Spread across y for diagonal interest
  */
 function getDefaultOccupationPositions(
   width: number,
   height: number,
 ): Position[] {
+  const centerX = Math.floor(width / 2);
   const centerY = Math.floor(height / 2);
 
   return [
-    { x: Math.floor(width * 0.25), y: 1 },            // near team 1 side, upper
-    { x: Math.floor(width * 0.5), y: centerY },        // true center
-    { x: Math.floor(width * 0.75) - 1, y: height - 2 }, // near team 2 side, lower
+    { x: centerX - 2, y: 1 },           // near team 1 side, upper
+    { x: centerX, y: centerY },          // true center
+    { x: centerX + 2, y: height - 2 },   // near team 2 side, lower
   ];
 }
 
