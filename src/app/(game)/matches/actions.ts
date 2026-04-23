@@ -32,13 +32,18 @@ export async function cancelMatchAction(matchUuid: string) {
   return result;
 }
 
-export async function createMatchAction(teamUuid: string) {
+export async function createMatchAction(
+  teamUuid: string,
+  settings?: { timerSeconds?: number; mapId?: string },
+) {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
   const result = await createMatch({
     userId: session.user.id,
     teamUuid,
+    timerSeconds: settings?.timerSeconds,
+    mapId: settings?.mapId,
   });
 
   if (result.success) {

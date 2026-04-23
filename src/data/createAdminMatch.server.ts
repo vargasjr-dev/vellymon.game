@@ -36,7 +36,15 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-const createAdminMatch = async (adminUserId: string) => {
+type MatchSettingsInput = {
+  timerSeconds?: number;
+  mapId?: string;
+};
+
+const createAdminMatch = async (
+  adminUserId: string,
+  settings?: MatchSettingsInput,
+) => {
   try {
     // 1. Pick 16 random vellymons (no repeats)
     const shuffled = shuffle(VELLYMON_LIBRARY);
@@ -101,6 +109,11 @@ const createAdminMatch = async (adminUserId: string) => {
     // 5. Create game session (admin vs admin)
     // Both players added at creation — skip "waiting" and go straight to "ready"
     // so the WaitingRoom shows the Start Match button immediately.
+    // Store match settings in metadata so initializeMatchGame picks them up.
+    const matchSettings = {
+      timerSeconds: settings?.timerSeconds ?? 0,
+      mapId: settings?.mapId ?? "standard",
+    };
     const [session] = await db
       .insert(gameSession)
       .values({
@@ -108,6 +121,7 @@ const createAdminMatch = async (adminUserId: string) => {
         status: "ready",
         maxPlayers: 2,
         currentPlayers: 2,
+        metadata: { matchSettings },
       })
       .returning();
 

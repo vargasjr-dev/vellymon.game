@@ -5,9 +5,13 @@ import { eq, and } from "drizzle-orm";
 const createMatch = async ({
   userId,
   teamUuid,
+  timerSeconds,
+  mapId,
 }: {
   userId: string;
   teamUuid: string;
+  timerSeconds?: number;
+  mapId?: string;
 }) => {
   try {
     // Verify team ownership
@@ -20,7 +24,11 @@ const createMatch = async ({
       return { success: false, message: "Team not found" };
     }
 
-    // Create game session
+    // Create game session with settings stored in metadata
+    const matchSettings = {
+      timerSeconds: timerSeconds ?? 30,
+      mapId: mapId ?? "standard",
+    };
     const [session] = await db
       .insert(gameSession)
       .values({
@@ -28,6 +36,7 @@ const createMatch = async ({
         status: "waiting",
         maxPlayers: 2,
         currentPlayers: 1,
+        metadata: { matchSettings },
       })
       .returning();
 

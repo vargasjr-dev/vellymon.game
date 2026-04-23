@@ -38,15 +38,24 @@ export type TurnTimerState = {
 
 /**
  * Create a new turn timer for the given turn.
+ * Pass durationSeconds = 0 for no timer (turn never auto-expires).
  */
-export function createTurnTimer(turn: number): TurnTimerState {
+export function createTurnTimer(
+  turn: number,
+  durationOverride?: number,
+): TurnTimerState {
   const now = Date.now();
-  const durationSeconds = GAME_CONFIG.timing.turnTimerSeconds;
+  const durationSeconds =
+    durationOverride ?? GAME_CONFIG.timing.turnTimerSeconds;
 
   return {
     turn,
     startedAt: now,
-    expiresAt: now + durationSeconds * 1000,
+    // duration 0 = no timer — set expiry far in the future
+    expiresAt:
+      durationSeconds === 0
+        ? now + 365 * 24 * 60 * 60 * 1000
+        : now + durationSeconds * 1000,
     durationSeconds,
     team1Submitted: false,
     team2Submitted: false,
@@ -98,8 +107,10 @@ export function bothTeamsReady(timer: TurnTimerState): boolean {
 
 /**
  * Check if the timer has expired.
+ * Timers with durationSeconds=0 (no timer) never expire.
  */
 export function isExpired(timer: TurnTimerState): boolean {
+  if (timer.durationSeconds === 0) return false;
   return Date.now() >= timer.expiresAt;
 }
 
