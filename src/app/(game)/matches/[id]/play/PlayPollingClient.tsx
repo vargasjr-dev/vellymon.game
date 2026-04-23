@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getGameStateAction, submitCommandsAction, type PlayCommand } from "./actions";
+import { getGameStateAction, submitCommandsAction, concedeAction, type PlayCommand } from "./actions";
+import { useRouter } from "next/navigation";
+import VictoryModal from "./VictoryModal";
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
 import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
@@ -129,6 +131,9 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [loading, setLoading] = useState(true);
   const [turnHistory, setTurnHistory] = useState<TurnSnapshot[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [showVictory, setShowVictory] = useState<{ winner: string; condition: string } | null>(null);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
   const [teams, setTeams] = useState<[TeamDisplay, TeamDisplay] | null>(null);
@@ -221,11 +226,13 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       setTeams([t1, t2]);
 
       if (gs.result) {
-        const winnerTeam = gs.teams.find((t) => t.id === gs.result!.winner);
+        const winnerName = gs.teams.find((t) => t.id === gs.result!.winner)?.name ?? `Team ${gs.result.winner}`;
         setGameOver({
-          winner: winnerTeam?.name ?? `Team ${gs.result.winner}`,
+          winner: winnerName,
           condition: gs.result.condition,
         });
+        // Trigger victory modal if not already showing
+        setShowVictory((prev) => prev ?? { winner: winnerName, condition: gs.result!.condition });
       }
     },
     [userId, isAdminSelfMatch],
@@ -317,6 +324,20 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     }
   }, [matchUuid, pendingCommands, parseState, isAdminSelfMatch, activeTeamId]);
 
+  const handleConcede = useCallback(async () => {
+    try {
+      const result = await concedeAction(
+        matchUuid,
+        isAdminSelfMatch ? activeTeamId : undefined,
+      );
+      setShowConcedeConfirm(false);
+      setShowVictory({ winner: result.winner, condition: result.condition });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to concede");
+      setShowConcedeConfirm(false);
+    }
+  }, [matchUuid, isAdminSelfMatch, activeTeamId]);
+
   // Build all vellymons for the canvas
   const allVellymons = useMemo(() => [
     ...(teams?.[0]?.active.map((v) => ({ ...v, teamId: teams[0].id as 1 | 2 })) ?? []),
@@ -354,7 +375,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         </div>
       )}
 
-      {gameOver && (
+      {gameOver && !showVictory && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <h1 className="text-4xl font-bold mb-4">🏆 Game Over</h1>
@@ -362,8 +383,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               <span className="text-yellow-400">{gameOver.winner}</span> wins!
             </p>
             <p className="text-gray-400 mb-6 capitalize">Victory by {gameOver.condition}</p>
-            <Link href="/player" className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
-              Back to Hub
+            <Link href={`/matches/${matchUuid}`} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
+              Match Results
             </Link>
           </div>
         </div>
@@ -373,12 +394,20 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         <>
           {/* ─── Top bar ─── */}
           <div className="flex justify-between items-center px-4 py-2 shrink-0">
-            <Link
-              href={`/matches/${matchUuid}`}
-              className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
-            >
-              ← Back
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/matches/${matchUuid}`}
+                className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
+              >
+                ← Back
+              </Link>
+              <button
+                onClick={() => setShowConcedeConfirm(true)}
+                className="text-red-400 text-sm bg-red-950/40 hover:bg-red-900/60 active:bg-red-800/60 px-3 py-1.5 rounded-lg border border-red-800/30 transition"
+              >
+                Concede
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               {isAdminSelfMatch && (
                 <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
@@ -563,6 +592,45 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         isOpen={historyOpen}
         onToggle={() => setHistoryOpen(!historyOpen)}
       />
+
+      {/* Concede confirmation dialog */}
+      {showConcedeConfirm && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowConcedeConfirm(false)} />
+          <div className="relative bg-[#1a2035] border border-gray-700 rounded-2xl p-6 mx-6 max-w-sm w-full text-center">
+            <h3 className="text-lg font-bold text-white mb-2">Concede Match?</h3>
+            <p className="text-sm text-gray-400 mb-6">
+              Your opponent will be declared the winner. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConcedeConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConcede}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition"
+              >
+                Concede
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Victory celebration modal */}
+      {showVictory && (
+        <VictoryModal
+          winner={showVictory.winner}
+          condition={showVictory.condition}
+          onComplete={() => {
+            setShowVictory(null);
+            router.push(`/matches/${matchUuid}`);
+          }}
+        />
+      )}
     </div>
   );
 }
