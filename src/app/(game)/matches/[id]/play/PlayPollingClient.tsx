@@ -131,6 +131,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [loading, setLoading] = useState(true);
   const [turnHistory, setTurnHistory] = useState<TurnSnapshot[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showGameMenu, setShowGameMenu] = useState(false);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [showVictory, setShowVictory] = useState<{ winner: string; condition: string } | null>(null);
   const router = useRouter();
@@ -394,20 +395,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         <>
           {/* ─── Top bar ─── */}
           <div className="flex justify-between items-center px-4 py-2 shrink-0">
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/matches/${matchUuid}`}
-                className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
-              >
-                ← Back
-              </Link>
-              <button
-                onClick={() => setShowConcedeConfirm(true)}
-                className="text-red-400 text-sm bg-red-950/40 hover:bg-red-900/60 active:bg-red-800/60 px-3 py-1.5 rounded-lg border border-red-800/30 transition"
-              >
-                Concede
-              </button>
-            </div>
+            <Link
+              href={`/matches/${matchUuid}`}
+              className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
+            >
+              ← Back
+            </Link>
             <div className="flex items-center gap-2">
               {isAdminSelfMatch && (
                 <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
@@ -429,14 +422,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
           {/* ─── Team HUDs ─── */}
           <div className="flex gap-2 px-3 pb-2 shrink-0">
             {yourTeam && (
-              <div className="flex-1 bg-blue-950/60 border border-blue-500/30 rounded-lg px-3 py-1.5">
+              <button
+                onClick={() => setShowGameMenu(true)}
+                className="flex-1 bg-blue-950/60 border border-blue-500/30 rounded-lg px-3 py-1.5 text-left hover:bg-blue-900/40 active:bg-blue-900/60 transition"
+              >
                 <p className="font-bold text-sm truncate">{yourTeam.name}</p>
                 <div className="flex gap-2 text-xs text-gray-300">
                   <span>⚡{yourTeam.energy}</span>
                   <span>🗡️{yourTeam.active.filter((v) => !v.isKO).length}</span>
                   <span>💀{yourTeam.knockedCount}</span>
                 </div>
-              </div>
+              </button>
             )}
             {opponentTeam && (
               <div className="flex-1 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-1.5">
@@ -593,9 +589,50 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         onToggle={() => setHistoryOpen(!historyOpen)}
       />
 
+      {/* Game menu (opens from your team card) */}
+      {showGameMenu && !showConcedeConfirm && (
+        <div className="fixed inset-0 z-[90] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowGameMenu(false)} />
+          <div className="relative bg-[#1a2035] border-t border-gray-700 rounded-t-2xl w-full max-w-md mx-auto pb-safe">
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-600" />
+            </div>
+            <div className="px-4 pb-2 border-b border-gray-800">
+              <p className="text-sm font-semibold text-gray-200">{yourTeam?.name ?? "Your Team"}</p>
+            </div>
+            <div className="p-4 space-y-2">
+              {/* Team details */}
+              {yourTeam && (
+                <div className="grid grid-cols-3 gap-2 text-center text-xs text-gray-400 mb-3">
+                  <div><span className="block text-lg text-white font-bold">{yourTeam.active.filter(v => !v.isKO).length}</span>Active</div>
+                  <div><span className="block text-lg text-white font-bold">⚡{yourTeam.energy}</span>Energy</div>
+                  <div><span className="block text-lg text-white font-bold">{yourTeam.knockedCount}</span>KO&apos;d</div>
+                </div>
+              )}
+
+              {/* Concede */}
+              <button
+                onClick={() => { setShowGameMenu(false); setShowConcedeConfirm(true); }}
+                className="w-full py-3 rounded-xl bg-red-950/60 border border-red-800/30 text-red-400 font-medium hover:bg-red-900/60 active:bg-red-800/60 transition text-sm"
+              >
+                🏳️ Concede Match
+              </button>
+
+              {/* Close */}
+              <button
+                onClick={() => setShowGameMenu(false)}
+                className="w-full py-2.5 rounded-xl bg-gray-800 text-gray-400 font-medium hover:bg-gray-700 transition text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Concede confirmation dialog */}
       {showConcedeConfirm && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center">
+        <div className="fixed inset-0 z-[95] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowConcedeConfirm(false)} />
           <div className="relative bg-[#1a2035] border border-gray-700 rounded-2xl p-6 mx-6 max-w-sm w-full text-center">
             <h3 className="text-lg font-bold text-white mb-2">Concede Match?</h3>
