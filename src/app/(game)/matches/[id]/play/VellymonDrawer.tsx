@@ -1,7 +1,5 @@
 "use client";
 
-import { getVellymonInfo } from "~/lib/vellymonInfo";
-
 type Dir = "up" | "down" | "left" | "right";
 
 type AttackDisplay = {
@@ -29,8 +27,16 @@ type PendingCmd = {
   direction?: Dir;
 };
 
+type VellymonInfo = {
+  archetype: string;
+  flavor: string;
+  powerName: string;
+  powerDesc: string;
+};
+
 type Props = {
   vellymon: VellymonData;
+  info?: VellymonInfo;
   teamEnergy: number;
   pendingCommand: PendingCmd | null;
   /** Translate screen direction → display arrow */
@@ -51,6 +57,7 @@ const ARCHETYPE_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function VellymonDrawer({
   vellymon,
+  info,
   teamEnergy,
   pendingCommand,
   dirToArrow,
@@ -59,7 +66,6 @@ export default function VellymonDrawer({
   onHarvest,
   onClose,
 }: Props) {
-  const info = getVellymonInfo(vellymon.name);
   const archetype = info ? ARCHETYPE_LABELS[info.archetype] : null;
   const hpPct = vellymon.maxHp > 0 ? (vellymon.hp / vellymon.maxHp) * 100 : 0;
   const hpColor = hpPct > 50 ? "bg-green-500" : hpPct > 25 ? "bg-yellow-500" : "bg-red-500";

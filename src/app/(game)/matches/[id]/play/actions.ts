@@ -48,3 +48,40 @@ export async function concedeAction(matchUuid: string, asTeamId?: 1 | 2) {
   const session = (await auth.api.getSession({ headers: headersList }))!;
   return concedeMatch(matchUuid, session.user.id, asTeamId);
 }
+
+// ─── Vellymon info (reads from library + power registry at runtime) ──────────
+
+export type VellymonInfo = {
+  archetype: string;
+  flavor: string;
+  powerName: string;
+  powerDesc: string;
+};
+
+/**
+ * Look up display metadata for vellymons by name.
+ * Reads from the server-side library + power registry — always in sync.
+ */
+export async function getVellymonInfoAction(
+  names: string[],
+): Promise<Record<string, VellymonInfo>> {
+  const { VELLYMON_LIBRARY } = await import("../../../../../../server/vellymonLibrary");
+  await import("../../../../../../server/powers");
+  const { getPower } = await import("../../../../../../server/specialPowers");
+
+  const result: Record<string, VellymonInfo> = {};
+  for (const name of names) {
+    const template = VELLYMON_LIBRARY.find((v) => v.name === name);
+    if (!template) continue;
+    const power = template.specialPowerId
+      ? getPower(template.specialPowerId)
+      : undefined;
+    result[name] = {
+      archetype: template.archetype,
+      flavor: template.flavor,
+      powerName: power?.name ?? "",
+      powerDesc: power?.description ?? "",
+    };
+  }
+  return result;
+}

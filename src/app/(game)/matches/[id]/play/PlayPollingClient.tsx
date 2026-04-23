@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getGameStateAction, submitCommandsAction, concedeAction, type PlayCommand } from "./actions";
+import { getGameStateAction, submitCommandsAction, concedeAction, getVellymonInfoAction, type PlayCommand, type VellymonInfo } from "./actions";
 import { useRouter } from "next/navigation";
 import VictoryModal from "./VictoryModal";
 
@@ -169,6 +169,9 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [rawUserIds, setRawUserIds] = useState<[string, string] | null>(null);
   const isAdminSelfMatch = rawUserIds ? rawUserIds[0] === rawUserIds[1] : false;
 
+  // Vellymon display metadata — fetched once from server (library + power registry)
+  const [vellymonInfoCache, setVellymonInfoCache] = useState<Record<string, VellymonInfo>>({});
+
   // Your team = the one you're currently commanding
   const yourTeam = useMemo(() => {
     if (!teams) return null;
@@ -249,6 +252,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     },
     [userId, isAdminSelfMatch],
   );
+
+  // Fetch vellymon display metadata once when teams are known
+  useEffect(() => {
+    if (!teams) return;
+    const allNames = [...teams[0].active, ...teams[1].active].map((v) => v.name);
+    const uncached = allNames.filter((n) => !vellymonInfoCache[n]);
+    if (uncached.length === 0) return;
+    getVellymonInfoAction(uncached).then((info) => {
+      setVellymonInfoCache((prev) => ({ ...prev, ...info }));
+    });
+  }, [teams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lock body scroll
   useEffect(() => {
@@ -473,8 +487,9 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
             {/* Vellymon drawer — overlays the board when a vellymon is selected */}
             {selectedVm && !waitingForSwitch && (
               <VellymonDrawer
-                vellymon={selectedVm}
-                teamEnergy={yourTeam?.energy ?? 0}
+                  vellymon={selectedVm}
+                  info={vellymonInfoCache[selectedVm.name]}
+                  teamEnergy={yourTeam?.energy ?? 0}
                 pendingCommand={pendingForSelected ?? null}
                 dirToArrow={(dir) => gameDirToScreenArrow(dir, isPortrait, yourTeam?.id ?? 1)}
                 onMove={(dir) => addDirectionalCommand("move", selectedVm.uuid, dir)}
