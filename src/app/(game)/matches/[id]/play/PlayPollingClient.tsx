@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { getGameStateAction, submitCommandsAction, type PlayCommand } from "./actions";
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
+import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
 
 type Dir = "up" | "down" | "left" | "right";
 
@@ -126,6 +127,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   }, []);
 
   const [loading, setLoading] = useState(true);
+  const [turnHistory, setTurnHistory] = useState<TurnSnapshot[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
   const [teams, setTeams] = useState<[TeamDisplay, TeamDisplay] | null>(null);
@@ -167,8 +170,13 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   }, [teams, activeTeamId, isAdminSelfMatch]);
 
   const parseState = useCallback(
-    (data: { gameState: Record<string, unknown>; status: string } | null) => {
+    (data: { gameState: Record<string, unknown>; status: string; turnHistory?: TurnSnapshot[] } | null) => {
       if (!data?.gameState) return;
+
+      // Update turn history if provided
+      if (data.turnHistory && data.turnHistory.length > 0) {
+        setTurnHistory(data.turnHistory);
+      }
 
       const gs = data.gameState as {
         turn: number;
@@ -377,9 +385,15 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                   Playing as Team {activeTeamId}
                 </span>
               )}
-              <span className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono">
+              <button
+                onClick={() => setHistoryOpen(!historyOpen)}
+                className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 active:bg-black/80 transition flex items-center gap-1"
+              >
                 Turn {turn}
-              </span>
+                {turnHistory.length > 0 && (
+                  <span className="text-[10px] text-gray-500">▼</span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -542,6 +556,13 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
           </div>
         </>
       )}
+
+      {/* Turn History bottom sheet */}
+      <TurnHistory
+        history={turnHistory}
+        isOpen={historyOpen}
+        onToggle={() => setHistoryOpen(!historyOpen)}
+      />
     </div>
   );
 }

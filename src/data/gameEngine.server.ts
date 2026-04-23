@@ -21,6 +21,7 @@ import {
   isGameActive,
   type TeamSetup,
   type VellymonSetup,
+  type TurnLog,
 } from "../../server/engine";
 import {
   submitCommands as submitTimerCommands,
@@ -57,12 +58,26 @@ function getTemplate(modelUuid: string): VellymonTemplate {
 
 // ─── Metadata Shape ──────────────────────────────────────────────────────────
 
+/** Snapshot of board + team state at a point in time (for replay) */
+type TurnSnapshot = {
+  turn: number;
+  /** Deep copy of board state before this turn resolved */
+  boardBefore: GameState["board"];
+  /** Deep copy of team states before this turn resolved */
+  teamsBefore: Array<{ id: 1 | 2; name: string; energy: number; active: Array<{ uuid: string; name: string; hp: number; maxHp: number; position: { x: number; y: number } | null; isKO: boolean }>; benchCount: number; knockedCount: number }>;
+  /** The turn's resolution log */
+  log: TurnLog;
+};
+
 type MatchMetadata = {
   gameState: GameState;
   timer: TurnTimerState | null;
   /** Commands keyed by team ID (1 or 2) */
   pendingCommands: Record<string, Command[]>;
+  /** Most recent turn log (for backwards compat) */
   turnLog: unknown | null;
+  /** Full turn history with snapshots (for history UI + future replay) */
+  turnHistory: TurnSnapshot[];
 };
 
 // ─── Initialize ──────────────────────────────────────────────────────────────
@@ -96,6 +111,7 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
     timer,
     pendingCommands: {},
     turnLog: null,
+    turnHistory: [],
   };
 
   await db
@@ -184,6 +200,7 @@ export async function getMatchGameState(matchUuid: string) {
   return {
     gameState: meta.gameState,
     turnLog: meta.turnLog,
+    turnHistory: meta.turnHistory ?? [],
     status: match.status,
   };
 }
@@ -225,9 +242,36 @@ export async function submitMatchCommands(
   // Check if both teams have submitted
   const shouldResolve = bothTeamsReady(timer) || isExpired(timer);
   if (shouldResolve) {
+    // Snapshot board state BEFORE resolving (for history/replay)
+    const snapshot: TurnSnapshot = {
+      turn: gameState.turn,
+      boardBefore: JSON.parse(JSON.stringify(gameState.board)),
+      teamsBefore: gameState.teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        energy: t.energy,
+        active: t.active.map((v) => ({
+          uuid: v.uuid,
+          name: v.name,
+          hp: v.hp,
+          maxHp: v.maxHp,
+          position: v.position ? { ...v.position } : null,
+          isKO: v.isKO,
+        })),
+        benchCount: t.bench.length,
+        knockedCount: t.knocked.length,
+      })),
+      log: null as unknown as TurnLog, // filled after resolve
+    };
+
     // Resolve the turn
     const turnLog = resolveTurn(gameState, timer);
     meta.turnLog = turnLog;
+    snapshot.log = turnLog;
+
+    // Append to history
+    if (!meta.turnHistory) meta.turnHistory = [];
+    meta.turnHistory.push(snapshot);
     meta.pendingCommands = {};
 
     if (isGameActive(gameState)) {
