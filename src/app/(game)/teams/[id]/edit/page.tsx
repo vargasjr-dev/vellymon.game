@@ -42,6 +42,8 @@ export default async function EditTeamPage({
           speed: v.speed,
           energy: v.energy,
           modelUuid: v.modelUuid,
+          imageUrl: v.imageUrl,
+          flavor: v.flavor,
         }))}
         mode="edit"
         teamUuid={team.uuid}

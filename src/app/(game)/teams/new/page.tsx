@@ -26,6 +26,8 @@ export default async function NewTeamPage() {
           speed: v.speed,
           energy: v.energy,
           modelUuid: v.modelUuid,
+          imageUrl: v.imageUrl,
+          flavor: v.flavor,
         }))}
         mode="create"
       />
