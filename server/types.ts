@@ -74,7 +74,7 @@ export type TeamState = {
 
 // ─── Game State ──────────────────────────────────────────────────────────────
 
-export type WinCondition = "elimination" | "occupation" | "accumulation";
+export type WinCondition = "elimination" | "occupation" | "accumulation" | "concession";
 
 export type WinResult = {
   winner: 1 | 2;

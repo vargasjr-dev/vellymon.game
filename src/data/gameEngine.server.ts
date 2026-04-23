@@ -299,3 +299,50 @@ export async function submitMatchCommands(
     gameOver: false,
   };
 }
+
+// ─── Concede ─────────────────────────────────────────────────────────────────
+
+/**
+ * Player concedes — opponent wins immediately via "concession" condition.
+ */
+export async function concedeMatch(
+  matchUuid: string,
+  userId: string,
+  overrideTeamId?: 1 | 2,
+) {
+  const [match] = await db
+    .select({ metadata: gameSession.metadata })
+    .from(gameSession)
+    .where(eq(gameSession.uuid, matchUuid));
+
+  if (!match?.metadata) throw new Error("Game not initialized");
+  const meta = match.metadata as MatchMetadata;
+  const { gameState } = meta;
+
+  if (gameState.result) throw new Error("Game is already over");
+
+  // Determine which team is conceding
+  let concedingTeamId: 1 | 2;
+  if (overrideTeamId) {
+    concedingTeamId = overrideTeamId;
+  } else {
+    const teamIndex = gameState.teams.findIndex((t) => t.userId === userId);
+    if (teamIndex === -1) throw new Error("User is not in this match");
+    concedingTeamId = (teamIndex + 1) as 1 | 2;
+  }
+
+  // The OTHER team wins
+  const winnerId: 1 | 2 = concedingTeamId === 1 ? 2 : 1;
+
+  gameState.result = { winner: winnerId, condition: "concession" };
+  gameState.phase = "ended";
+  meta.timer = null;
+
+  await db
+    .update(gameSession)
+    .set({ metadata: meta, status: "completed" })
+    .where(eq(gameSession.uuid, matchUuid));
+
+  const winnerTeam = gameState.teams[winnerId - 1];
+  return { winner: winnerTeam.name, winnerId, condition: "concession" as const };
+}

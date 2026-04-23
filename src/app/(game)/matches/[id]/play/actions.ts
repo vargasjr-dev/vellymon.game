@@ -5,6 +5,7 @@ import { auth } from "~/lib/auth.server";
 import {
   getMatchGameState,
   submitMatchCommands,
+  concedeMatch,
 } from "~/data/gameEngine.server";
 
 // Command type for the play page
@@ -40,4 +41,10 @@ export async function submitCommandsAction(
   }));
 
   return submitMatchCommands(matchUuid, session.user.id, engineCommands as never[], asTeamId);
+}
+
+export async function concedeAction(matchUuid: string, asTeamId?: 1 | 2) {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+  return concedeMatch(matchUuid, session.user.id, asTeamId);
 }
