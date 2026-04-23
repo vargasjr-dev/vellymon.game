@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "~/components/Toast";
+import VellymonCard from "~/components/VellymonCard";
 import { createTeamAction, updateTeamAction } from "./actions";
 import type { SlotInput } from "~/data/createTeam.server";
 
@@ -14,6 +15,8 @@ type RosterVellymon = {
   speed: number;
   energy: number;
   modelUuid: string;
+  imageUrl?: string;
+  flavor?: string;
 };
 
 type ExistingSlot = {
@@ -167,32 +170,25 @@ export default function TeamBuilder({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {slots.map((slot, index) => {
               const v = getVellymon(slot.vellymonInstanceUuid);
+              if (!v) return null;
               return (
-                <div
-                  key={`${slot.vellymonInstanceUuid}-${index}`}
-                  className="border-2 border-gray-200 bg-white rounded-lg p-4 flex items-center justify-between"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-900 truncate">
-                        {v?.name ?? "Unknown"}
-                      </p>
-                    </div>
-                    {v && (
-                      <div className="flex gap-3 mt-1 text-xs text-gray-500">
-                        <span>HP {v.health}</span>
-                        <span>ATK {v.attack}</span>
-                        <span>SPD {v.speed}</span>
-                        <span>NRG {v.energy}</span>
-                      </div>
-                    )}
-                  </div>
+                <div key={`${slot.vellymonInstanceUuid}-${index}`} className="relative">
+                  <VellymonCard
+                    name={v.name}
+                    health={v.health}
+                    attack={v.attack}
+                    speed={v.speed}
+                    energy={v.energy}
+                    imageUrl={v.imageUrl}
+                    flavor={v.flavor}
+                    variant="compact"
+                  />
                   <button
                     onClick={() => removeSlot(index)}
-                    className="text-xs px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 font-medium transition ml-3"
+                    className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 text-xs font-bold transition"
                   >
                     ✕
                   </button>
@@ -230,17 +226,18 @@ export default function TeamBuilder({
                 key={v.uuid}
                 onClick={() => addVellymon(v.uuid)}
                 disabled={slots.length >= 8}
-                className="border border-gray-200 rounded-lg p-3 text-left hover:border-blue-400 hover:shadow-md transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 truncate">
-                  {v.name}
-                </p>
-                <div className="grid grid-cols-2 gap-1 mt-1 text-xs text-gray-500">
-                  <span>HP {v.health}</span>
-                  <span>ATK {v.attack}</span>
-                  <span>SPD {v.speed}</span>
-                  <span>NRG {v.energy}</span>
-                </div>
+                <VellymonCard
+                  name={v.name}
+                  health={v.health}
+                  attack={v.attack}
+                  speed={v.speed}
+                  energy={v.energy}
+                  imageUrl={v.imageUrl}
+                  flavor={v.flavor}
+                  variant="compact"
+                />
               </button>
             ))}
           </div>
