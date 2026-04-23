@@ -2,7 +2,7 @@ import { auth } from "~/lib/auth.server";
 import { isAdmin } from "~/lib/admin";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { createAdminMatchAction } from "./actions";
+import AdminMatchForm from "./AdminMatchForm";
 
 export default async function AdminPage() {
   const headersList = await headers();
@@ -31,20 +31,8 @@ export default async function AdminPage() {
           team, 4 active + 4 bench). You play as both sides — perfect for
           testing special powers and balance.
         </p>
-        <ul className="text-sm text-gray-500 mb-6 space-y-1">
-          <li>• 16 random vellymons drawn from the full library</li>
-          <li>• No market purchases required — instances created on the fly</li>
-          <li>• Both teams assigned to your account</li>
-          <li>• Match starts in &quot;waiting&quot; status, ready to play</li>
-        </ul>
-        <form action={createAdminMatchAction}>
-          <button
-            type="submit"
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition w-full"
-          >
-            🎲 Create Admin Match
-          </button>
-        </form>
+
+        <AdminMatchForm />
       </div>
     </div>
   );

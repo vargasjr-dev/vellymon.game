@@ -31,8 +31,10 @@ import {
 } from "../../server/turnTimer";
 import { getDefaultSpawnPositions } from "../../server/board";
 import { GAME_CONFIG } from "../../server/config";
+import { getMapById, parseBoardFromMap, getMapSpawnPositions } from "../../server/maps";
 import type { GameState } from "../../server/types";
 import type { Command } from "../../server/commands";
+import type { MatchSettings } from "../lib/matchSettings";
 
 // ─── Vellymon lookup ─────────────────────────────────────────────────────────
 
@@ -70,6 +72,8 @@ type TurnSnapshot = {
 };
 
 type MatchMetadata = {
+  /** Match settings selected at creation (timer, map). Optional for old matches. */
+  matchSettings?: MatchSettings;
   gameState: GameState;
   timer: TurnTimerState | null;
   /** Commands keyed by team ID (1 or 2) */
@@ -84,8 +88,27 @@ type MatchMetadata = {
 
 /**
  * Load teams from DB and initialize the game engine for a match.
+ * Reads matchSettings from existing metadata (set at creation time).
  */
 export async function initializeMatchGame(matchUuid: string): Promise<void> {
+  // Read existing metadata to get match settings
+  const [existingMatch] = await db
+    .select({ metadata: gameSession.metadata })
+    .from(gameSession)
+    .where(eq(gameSession.uuid, matchUuid));
+
+  const existingMeta = existingMatch?.metadata as
+    | { matchSettings?: MatchSettings }
+    | null;
+  const settings: MatchSettings = existingMeta?.matchSettings ?? {
+    timerSeconds: 30,
+    mapId: "standard",
+  };
+
+  // Resolve map
+  const map = getMapById(settings.mapId);
+  const board = parseBoardFromMap(map);
+
   // Load players
   const players = await db
     .select({
@@ -98,15 +121,30 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
 
   if (players.length < 2) throw new Error("Need 2 players to start");
 
-  // Build team setups
-  const team1Setup = await buildTeamSetup(players[0].userId, players[0].teamUuid, 1);
-  const team2Setup = await buildTeamSetup(players[1].userId, players[1].teamUuid, 2);
+  // Build team setups (using map-specific spawn positions)
+  const team1Setup = await buildTeamSetup(
+    players[0].userId,
+    players[0].teamUuid,
+    1,
+    map,
+  );
+  const team2Setup = await buildTeamSetup(
+    players[1].userId,
+    players[1].teamUuid,
+    2,
+    map,
+  );
 
-  // Initialize game state
-  const gameState = initializeGame(matchUuid, team1Setup, team2Setup);
-  const timer = startTurn(gameState);
+  // Initialize game state with custom board
+  const gameState = initializeGame(matchUuid, team1Setup, team2Setup, {
+    board,
+    width: map.width,
+    height: map.height,
+  });
+  const timer = startTurn(gameState, settings.timerSeconds);
 
   const metadata: MatchMetadata = {
+    matchSettings: settings,
     gameState,
     timer,
     pendingCommands: {},
@@ -124,6 +162,7 @@ async function buildTeamSetup(
   userId: string,
   teamUuid: string,
   teamId: 1 | 2,
+  map?: import("../../server/maps").MapConfig,
 ): Promise<TeamSetup> {
   // Load team slots with vellymon instances
   const slots = await db
@@ -137,11 +176,13 @@ async function buildTeamSetup(
     .where(eq(teamSlot.teamUuid, teamUuid))
     .orderBy(asc(teamSlot.slotIndex));
 
-  const spawns = getDefaultSpawnPositions(
-    teamId,
-    GAME_CONFIG.board.width,
-    GAME_CONFIG.board.height,
-  );
+  const spawns = map
+    ? getMapSpawnPositions(map, teamId)
+    : getDefaultSpawnPositions(
+        teamId,
+        GAME_CONFIG.board.width,
+        GAME_CONFIG.board.height,
+      );
 
   // First 4 slots = active, rest = bench
   const active: VellymonSetup[] = [];
@@ -275,9 +316,12 @@ export async function submitMatchCommands(
     meta.pendingCommands = {};
 
     if (isGameActive(gameState)) {
-      // Start next turn
-      meta.timer = startTurn(gameState);
-    } else {
+        // Start next turn (preserve timer settings from match creation)
+        meta.timer = startTurn(
+          gameState,
+          meta.matchSettings?.timerSeconds,
+        );
+      } else {
       // Game over
       meta.timer = null;
       await db

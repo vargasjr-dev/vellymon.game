@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "~/components/Toast";
 import { createMatchAction } from "../actions";
+import MatchSettingsPanel from "~/components/MatchSettingsPanel";
+import {
+  DEFAULT_MATCH_SETTINGS,
+  type MatchSettings,
+} from "~/lib/matchSettings";
 
 type TeamSlot = {
   uuid: string;
@@ -30,6 +35,10 @@ export default function TeamSelector({ teams }: { teams: Team[] }) {
   const { addToast } = useToast();
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [settings, setSettings] = useState<MatchSettings>({
+    ...DEFAULT_MATCH_SETTINGS,
+    timerSeconds: 30, // Default to 30s for PvP
+  });
 
   const handleCreate = async () => {
     if (!selectedTeam) {
@@ -39,7 +48,7 @@ export default function TeamSelector({ teams }: { teams: Team[] }) {
 
     setCreating(true);
     try {
-      const result = await createMatchAction(selectedTeam);
+      const result = await createMatchAction(selectedTeam, settings);
       if (result.success && result.matchUuid) {
         addToast("Match created! Waiting for opponent...", "success");
         router.push(`/matches/${result.matchUuid}`);
@@ -129,6 +138,11 @@ export default function TeamSelector({ teams }: { teams: Team[] }) {
             </button>
           );
         })}
+      </div>
+
+      {/* Match Settings */}
+      <div className="bg-white rounded-lg shadow-md p-5">
+        <MatchSettingsPanel settings={settings} onChange={setSettings} />
       </div>
 
       {/* Action Bar */}

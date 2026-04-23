@@ -62,13 +62,21 @@ export type VellymonSetup = {
 
 /**
  * Create a new game state from two team setups.
+ * Optionally pass a pre-built board + dimensions (for custom maps).
  */
 export function initializeGame(
   matchUuid: string,
   team1Setup: TeamSetup,
   team2Setup: TeamSetup,
+  boardOverride?: {
+    board: GameState["board"];
+    width: number;
+    height: number;
+  },
 ): GameState {
-  const board = generateDefaultBoard();
+  const board = boardOverride?.board ?? generateDefaultBoard();
+  const boardWidth = boardOverride?.width ?? GAME_CONFIG.board.width;
+  const boardHeight = boardOverride?.height ?? GAME_CONFIG.board.height;
 
   const team1 = createTeamState(1, team1Setup);
   const team2 = createTeamState(2, team2Setup);
@@ -80,8 +88,8 @@ export function initializeGame(
     turn: 0,
     teams: [team1, team2],
     board,
-    boardWidth: GAME_CONFIG.board.width,
-    boardHeight: GAME_CONFIG.board.height,
+    boardWidth,
+    boardHeight,
     result: null,
     matchUuid,
     phase: "playing",
@@ -127,10 +135,14 @@ export type TurnLog = {
 
 /**
  * Start a new turn. Advances the turn counter and creates a timer.
+ * Pass timerSeconds to override the default duration (0 = no timer).
  */
-export function startTurn(state: GameState): TurnTimerState {
+export function startTurn(
+  state: GameState,
+  timerSeconds?: number,
+): TurnTimerState {
   state.turn += 1;
-  return createTurnTimer(state.turn);
+  return createTurnTimer(state.turn, timerSeconds);
 }
 
 /**
@@ -164,42 +176,43 @@ export function resolveTurn(
     team2ActiveUuids,
   );
 
-  // Validate commands (invalid ones become no-ops)
-  const validatedT1 = t1Commands.filter(
-    (cmd) => validateCommand(cmd, team1, state) === null,
-  );
-  const validatedT2 = t2Commands.filter(
-    (cmd) => validateCommand(cmd, team2, state) === null,
-  );
-
-  // Pair commands with their team and vellymon speed for sorting
+  // Validate commands — invalid ones get logged with failure reason
   type TaggedCommand = {
     command: Command;
     team: TeamState;
     speed: number;
+    validationError: string | null;
   };
 
+  const tagCommands = (cmds: Command[], team: TeamState): TaggedCommand[] =>
+    cmds.map((cmd) => ({
+      command: cmd,
+      team,
+      speed: getVellymonSpeed(team, cmd.vellymonUuid),
+      validationError: validateCommand(cmd, team, state),
+    }));
+
   const allCommands: TaggedCommand[] = [
-    ...validatedT1.map((cmd) => ({
-      command: cmd,
-      team: team1,
-      speed: getVellymonSpeed(team1, cmd.vellymonUuid),
-    })),
-    ...validatedT2.map((cmd) => ({
-      command: cmd,
-      team: team2,
-      speed: getVellymonSpeed(team2, cmd.vellymonUuid),
-    })),
+    ...tagCommands(t1Commands, team1),
+    ...tagCommands(t2Commands, team2),
   ];
 
   // Sort by speed descending (highest speed acts first)
   allCommands.sort((a, b) => b.speed - a.speed);
 
-  // Resolve commands in speed order
+  // Resolve commands in speed order — invalid ones get logged as failures
   const commandResults: CommandResult[] = [];
-  for (const { command, team } of allCommands) {
-    const result = resolveCommand(command, team, state);
-    commandResults.push(result);
+  for (const { command, team, validationError } of allCommands) {
+    if (validationError) {
+      commandResults.push({
+        command,
+        success: false,
+        reason: validationError,
+      });
+    } else {
+      const result = resolveCommand(command, team, state);
+      commandResults.push(result);
+    }
   }
 
   // Process bench entries for KO'd vellymons
