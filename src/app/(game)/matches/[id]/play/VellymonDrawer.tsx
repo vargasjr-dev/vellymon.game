@@ -88,7 +88,6 @@ export default function VellymonDrawer({
             {/* Avatar */}
             <div className="w-14 h-14 rounded-xl bg-[#1a2535] border border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
               {vellymon.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={vellymon.imageUrl}
                   alt={vellymon.name}

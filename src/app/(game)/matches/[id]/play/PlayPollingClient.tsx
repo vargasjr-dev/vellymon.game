@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getGameStateAction, submitCommandsAction, concedeAction, getVellymonInfoAction, type PlayCommand, type VellymonInfo } from "./actions";
@@ -171,6 +171,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
 
   // Vellymon display metadata — fetched once from server (library + power registry)
   const [vellymonInfoCache, setVellymonInfoCache] = useState<Record<string, VellymonInfo>>({});
+  const fetchedNamesRef = useRef<Set<string>>(new Set());
 
   // Your team = the one you're currently commanding
   const yourTeam = useMemo(() => {
@@ -257,12 +258,13 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   useEffect(() => {
     if (!teams) return;
     const allNames = [...teams[0].active, ...teams[1].active].map((v) => v.name);
-    const uncached = allNames.filter((n) => !vellymonInfoCache[n]);
-    if (uncached.length === 0) return;
-    getVellymonInfoAction(uncached).then((info) => {
+    const unfetched = allNames.filter((n) => !fetchedNamesRef.current.has(n));
+    if (unfetched.length === 0) return;
+    unfetched.forEach((n) => fetchedNamesRef.current.add(n));
+    getVellymonInfoAction(unfetched).then((info) => {
       setVellymonInfoCache((prev) => ({ ...prev, ...info }));
     });
-  }, [teams]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [teams]);
 
   // Lock body scroll
   useEffect(() => {
