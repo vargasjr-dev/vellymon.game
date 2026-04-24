@@ -101,7 +101,7 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
     | { matchSettings?: MatchSettings }
     | null;
   const settings: MatchSettings = existingMeta?.matchSettings ?? {
-    timerSeconds: 30,
+    timerSeconds: 0,
     mapId: "standard",
   };
 
@@ -261,7 +261,8 @@ export async function submitMatchCommands(
 
   if (!match?.metadata) throw new Error("Game not initialized");
   const meta = match.metadata as MatchMetadata;
-  const { gameState, timer } = meta;
+  const { gameState } = meta;
+  let { timer } = meta;
 
   if (!timer) throw new Error("No active turn");
 
@@ -276,8 +277,19 @@ export async function submitMatchCommands(
     teamId = (teamIndex + 1) as 1 | 2;
   }
 
-  // Store commands in timer
-  submitTimerCommands(timer, teamId, commands);
+  // Store commands in timer — if rejected (e.g. expired), reset the timer
+  const submitResult = submitTimerCommands(timer, teamId, commands);
+  if (!submitResult.accepted) {
+    // Timer expired — reset it so the player can resubmit
+    const timerSeconds = meta.matchSettings?.timerSeconds ?? 0;
+    meta.timer = startTurn(gameState, timerSeconds);
+    // Re-set the turn number back (startTurn increments it)
+    gameState.turn -= 1;
+    meta.timer.turn = gameState.turn + 1;
+    // Store commands in the fresh timer
+    submitTimerCommands(meta.timer, teamId, commands);
+    timer = meta.timer;
+  }
   meta.pendingCommands[String(teamId)] = commands;
 
   // Check if both teams have submitted
@@ -319,7 +331,7 @@ export async function submitMatchCommands(
         // Start next turn (preserve timer settings from match creation)
         meta.timer = startTurn(
           gameState,
-          meta.matchSettings?.timerSeconds,
+          meta.matchSettings?.timerSeconds ?? 0,
         );
       } else {
       // Game over
