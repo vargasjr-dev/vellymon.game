@@ -110,14 +110,15 @@ export default function VictoryModal({ winner, condition, onComplete }: Props) {
     return () => cancelAnimationFrame(animFrameRef.current);
   }, []);
 
-  // Sequenced reveal
+  const [buttonVisible, setButtonVisible] = useState(false);
+
+  // Sequenced reveal — no auto-navigate, let the player tap when ready
   useEffect(() => {
     const t1 = setTimeout(() => { setPhase("display"); setTextVisible(true); }, 300);
     const t2 = setTimeout(() => setSubtextVisible(true), 900);
-    const t3 = setTimeout(() => setPhase("exit"), 4000);
-    const t4 = setTimeout(() => onComplete(), 4500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
-  }, [onComplete]);
+    const t3 = setTimeout(() => setButtonVisible(true), 1500);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
 
   const conditionLabel =
     condition === "concession" ? "Opponent Conceded"
@@ -126,11 +127,18 @@ export default function VictoryModal({ winner, condition, onComplete }: Props) {
     : condition === "accumulation" ? "Accumulation"
     : condition;
 
+  const handleDismiss = () => {
+    if (phase === "exit") return; // already leaving
+    setPhase("exit");
+    setTimeout(() => onComplete(), 400);
+  };
+
   return (
     <div
       className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-500 ${
         phase === "entrance" ? "opacity-0" : phase === "exit" ? "opacity-0" : "opacity-100"
       }`}
+      onClick={handleDismiss}
     >
       {/* Dark backdrop */}
       <div className="absolute inset-0 bg-black/80" />
@@ -168,12 +176,23 @@ export default function VictoryModal({ winner, condition, onComplete }: Props) {
 
         {/* Condition */}
         <p
-          className={`text-sm text-gray-400 uppercase tracking-wider transition-all duration-500 ${
+          className={`text-sm text-gray-400 uppercase tracking-wider mb-8 transition-all duration-500 ${
             subtextVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
         >
           {conditionLabel}
         </p>
+
+        {/* View Results button */}
+        <button
+          onClick={handleDismiss}
+          className={`px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl
+            text-lg shadow-lg shadow-yellow-500/30 transition-all duration-500 ${
+            buttonVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-6 opacity-0 scale-90"
+          }`}
+        >
+          View Results
+        </button>
       </div>
     </div>
   );
