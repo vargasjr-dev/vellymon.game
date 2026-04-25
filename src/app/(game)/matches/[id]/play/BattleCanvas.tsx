@@ -35,7 +35,7 @@ type Props = {
   commandedUuids: Set<string>;
 };
 
-// Colors
+// Colors — team colors are FIXED per team ID, never swap with perspective
 const COLORS = {
   bg: 0x0a0f1a,
   tile: 0x111b2e,
@@ -43,15 +43,20 @@ const COLORS = {
   occupation: 0x3d2800,
   occupationBorder: 0xb8860b,
   occupationStar: 0xffd700,
-  // Dimmed harvestable (was 0x0a2810 / 0x1a5c2a — too intense)
+  // Dimmed harvestable
   harvestable: 0x0a1a10,
   harvestableBorder: 0x142e1a,
   spawn: 0x0f1628,
   spawnBorder: 0x2a3a5c,
-  yourTeam: 0x2563eb,
-  yourTeamGlow: 0x3b82f6,
-  opponent: 0xdc2626,
-  opponentGlow: 0xef4444,
+  // Fixed team colors (team 1 = blue, team 2 = red — always)
+  team1: 0x2563eb,
+  team1Glow: 0x3b82f6,
+  team1Light: 0x1e3a5f,
+  team1Dark: 0x2563eb,
+  team2: 0xdc2626,
+  team2Glow: 0xef4444,
+  team2Light: 0x5f1e1e,
+  team2Dark: 0xdc2626,
   hpBarBg: 0x1f2937,
   hpBarGreen: 0x22c55e,
   hpBarYellow: 0xeab308,
@@ -59,6 +64,13 @@ const COLORS = {
   selected: 0xfbbf24,
   commanded: 0x22c55e,
 };
+
+function teamColor(teamId: 1 | 2) {
+  return teamId === 1 ? COLORS.team1 : COLORS.team2;
+}
+function teamGlow(teamId: 1 | 2) {
+  return teamId === 1 ? COLORS.team1Glow : COLORS.team2Glow;
+}
 
 // Track which URLs we've started loading (prevents duplicate loads)
 const loadingUrls = new Set<string>();
@@ -190,9 +202,22 @@ export default function BattleCanvas({
 
         let fillColor = COLORS.tile;
         let borderColor = COLORS.tileBorder;
+        const occCounter = space?.occupationCounter ?? 0;
         if (isOccupation) {
-          fillColor = COLORS.occupation;
-          borderColor = COLORS.occupationBorder;
+          // Color occupation tiles by controlling team
+          if (occCounter < 0) {
+            // Team 1 capturing (negative = team 1)
+            fillColor = COLORS.team1Light;
+            borderColor = COLORS.team1Dark;
+          } else if (occCounter > 0) {
+            // Team 2 capturing (positive = team 2)
+            fillColor = COLORS.team2Light;
+            borderColor = COLORS.team2Dark;
+          } else {
+            // Neutral
+            fillColor = COLORS.occupation;
+            borderColor = COLORS.occupationBorder;
+          }
         } else if (isHarvestable) {
           fillColor = COLORS.harvestable;
           borderColor = COLORS.harvestableBorder;
@@ -202,7 +227,7 @@ export default function BattleCanvas({
         }
 
         if (vm) {
-          borderColor = isYours ? COLORS.yourTeam : COLORS.opponent;
+          borderColor = teamColor(vm.teamId);
         }
 
         tile.roundRect(px, py, tileSize, tileSize, cornerRadius);
@@ -240,7 +265,7 @@ export default function BattleCanvas({
             // Fallback circle (either no imageUrl, or texture still loading)
             const circle = new Graphics();
             circle.circle(centerX, centerY - 2, avatarSize / 2);
-            circle.fill(isYours ? COLORS.yourTeamGlow : COLORS.opponentGlow);
+            circle.fill(teamGlow(vm.teamId));
             boardContainer.addChild(circle);
           }
 
@@ -265,11 +290,14 @@ export default function BattleCanvas({
           }
         }
 
-        // Occupation star
+        // Occupation star (color shifts with team control)
         if (!vm && isOccupation) {
+          const starColor = occCounter < 0 ? COLORS.team1Glow
+            : occCounter > 0 ? COLORS.team2Glow
+            : COLORS.occupationStar;
           const starStyle = new TextStyle({
             fontSize: Math.min(tileSize * 0.35, 20),
-            fill: COLORS.occupationStar,
+            fill: starColor,
             align: "center",
           });
           const star = new Text({ text: "⭐", style: starStyle });
@@ -277,20 +305,6 @@ export default function BattleCanvas({
           star.x = px + tileSize / 2;
           star.y = py + tileSize / 2;
           boardContainer.addChild(star);
-
-          if (space?.occupationCounter && space.occupationCounter !== 0) {
-            const counterStyle = new TextStyle({
-              fontSize: 9,
-              fill: COLORS.occupationStar,
-              fontFamily: "system-ui, sans-serif",
-              fontWeight: "bold",
-            });
-            const counter = new Text({ text: `${space.occupationCounter}`, style: counterStyle });
-            counter.anchor.set(0.5);
-            counter.x = px + tileSize / 2;
-            counter.y = py + tileSize - 8;
-            boardContainer.addChild(counter);
-          }
         }
 
         // Harvestable leaf (dimmed)
