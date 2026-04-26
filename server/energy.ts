@@ -48,7 +48,7 @@ export function harvestEnergy(
 ): number {
   if (space.type !== "harvestable") return 0;
 
-  const amount = GAME_CONFIG.energy.baseHarvestRate;
+  const amount = space.harvestYield ?? GAME_CONFIG.energy.baseHarvestRate;
   team.energy += amount;
   return amount;
 }

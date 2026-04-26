@@ -66,6 +66,7 @@ export function generateDefaultBoard(): BoardSpace[] {
       const space: BoardSpace = { position, type };
       if (team) space.team = team;
       if (type === "occupation") space.occupationCounter = 0;
+      if (type === "harvestable") space.harvestYield = 1;
 
       board.push(space);
     }

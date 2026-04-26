@@ -21,6 +21,8 @@ export type BoardSpace = {
   team?: 1 | 2;
   /** Occupation counter: negative = team 1, positive = team 2. 0 = neutral */
   occupationCounter?: number;
+  /** Harvest yield for harvestable spaces (default = baseHarvestRate from config) */
+  harvestYield?: number;
 };
 
 // ─── Vellymon State ──────────────────────────────────────────────────────────

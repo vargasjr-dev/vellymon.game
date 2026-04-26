@@ -1,14 +1,18 @@
 /**
  * Command set for vellymon matches.
  *
- * Three commands per vellymon per turn:
+ * Four action slots per vellymon per turn (Pokémon-style):
  * - Move — move one space in a cardinal direction (free)
- * - Attack — use a specific attack on a target (costs energy)
- * - Harvest — gather energy from current space (free, must be harvestable)
+ * - Attack 1 — use first attack in a direction (costs energy)
+ * - Attack 2 — use second attack in a direction (costs energy)
+ * - Harvest — gather energy from adjacent space in a direction (free, must be harvestable)
  *
- * Spawn is removed — bench vellymons auto-enter on KO.
+ * All actions are directional — player picks an action, then a direction.
+ * Attacks scan along the direction for the first enemy within range.
+ * Harvest targets the adjacent tile; blocked if an enemy occupies it.
+ *
  * One command per vellymon per turn.
- * At 0 team energy, Attack is unavailable.
+ * At 0 team energy, Attacks are unavailable.
  */
 
 import { GAME_CONFIG } from "./config";
@@ -23,22 +27,25 @@ import type {
 
 // ─── Command Types ───────────────────────────────────────────────────────────
 
+export type Direction = "up" | "down" | "left" | "right";
+
 export type MoveCommand = {
   type: "move";
   vellymonUuid: string;
-  direction: "up" | "down" | "left" | "right";
+  direction: Direction;
 };
 
 export type AttackCommand = {
   type: "attack";
   vellymonUuid: string;
   attackIndex: number;
-  targetPosition: Position;
+  direction: Direction;
 };
 
 export type HarvestCommand = {
   type: "harvest";
   vellymonUuid: string;
+  direction: Direction;
 };
 
 export type Command = MoveCommand | AttackCommand | HarvestCommand;
@@ -57,9 +64,7 @@ export type CommandResult = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function directionToOffset(
-  direction: "up" | "down" | "left" | "right",
-): Position {
+export function directionToOffset(direction: Direction): Position {
   switch (direction) {
     case "up":
       return { x: 0, y: -1 };
@@ -97,8 +102,50 @@ function getVellymonAtPosition(
   return undefined;
 }
 
-function manhattanDistance(a: Position, b: Position): number {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+/**
+ * Scan along a direction from a position for the first enemy within range.
+ * Returns the position of the first enemy found, or null if none.
+ */
+function scanForTarget(
+  state: GameState,
+  from: Position,
+  direction: Direction,
+  range: number,
+  ownTeam: TeamState,
+): { position: Position; target: VellymonState } | null {
+  const offset = directionToOffset(direction);
+
+  for (let dist = 1; dist <= range; dist++) {
+    const pos: Position = {
+      x: from.x + offset.x * dist,
+      y: from.y + offset.y * dist,
+    };
+
+    // Out of bounds — stop scanning
+    if (
+      pos.x < 0 ||
+      pos.x >= state.boardWidth ||
+      pos.y < 0 ||
+      pos.y >= state.boardHeight
+    ) {
+      break;
+    }
+
+    // Void space — stop scanning (can't shoot through walls)
+    const space = getSpace(state.board, pos);
+    if (!space || space.type === "void") break;
+
+    // Check for any vellymon at this position
+    const occupant = getVellymonAtPosition(state, pos);
+    if (occupant) {
+      // Skip own team (don't friendly-fire, but also stop scanning — can't shoot through allies)
+      const isOwnTeam = ownTeam.active.some((v) => v.uuid === occupant.uuid);
+      if (isOwnTeam) break;
+      return { position: pos, target: occupant };
+    }
+  }
+
+  return null;
 }
 
 // ─── Validation ──────────────────────────────────────────────────────────────
@@ -170,23 +217,38 @@ export function validateCommand(
         return `Not enough energy (need ${attack.energyCost}, have ${team.energy})`;
       }
 
-      // Range check
-      const dist = manhattanDistance(vellymon.position, command.targetPosition);
-      if (dist > attack.range) {
-        return `Target out of range (range ${attack.range}, distance ${dist})`;
-      }
-
-      if (dist === 0) {
-        return "Cannot attack own position";
-      }
-
       return null;
     }
 
     case "harvest": {
-      const space = getSpace(state.board, vellymon.position);
+      const offset = directionToOffset(command.direction);
+      const targetPos: Position = {
+        x: vellymon.position.x + offset.x,
+        y: vellymon.position.y + offset.y,
+      };
+
+      // Bounds check
+      if (
+        targetPos.x < 0 ||
+        targetPos.x >= state.boardWidth ||
+        targetPos.y < 0 ||
+        targetPos.y >= state.boardHeight
+      ) {
+        return "Harvest target out of bounds";
+      }
+
+      const space = getSpace(state.board, targetPos);
       if (!space || space.type !== "harvestable") {
-        return "Current space is not harvestable";
+        return "Target space is not harvestable";
+      }
+
+      // Check for enemy blocking
+      const blocker = getVellymonAtPosition(state, targetPos);
+      if (blocker) {
+        const isOwnTeam = team.active.some((v) => v.uuid === blocker.uuid);
+        if (!isOwnTeam) {
+          return "Harvest blocked by enemy";
+        }
       }
 
       return null;
@@ -200,7 +262,7 @@ export function validateCommand(
 export function getAvailableCommands(
   vellymon: VellymonState,
   team: TeamState,
-  state: GameState,
+  _state: GameState,
 ): ("move" | "attack" | "harvest")[] {
   if (vellymon.isKO || !vellymon.position) return [];
 
@@ -214,11 +276,8 @@ export function getAvailableCommands(
     available.push("attack");
   }
 
-  // Harvest available only on harvestable spaces
-  const space = getSpace(state.board, vellymon.position);
-  if (space?.type === "harvestable") {
-    available.push("harvest");
-  }
+  // Harvest is always shown — direction validation happens at resolution
+  available.push("harvest");
 
   return available;
 }
@@ -227,8 +286,6 @@ export function getAvailableCommands(
 
 /**
  * Resolve a single Move command.
- * Collision detection is handled at the turn level (resolveCommands),
- * but basic validation is re-checked here for safety.
  */
 export function resolveMove(
   command: MoveCommand,
@@ -273,6 +330,7 @@ export function resolveMove(
 
 /**
  * Resolve a single Attack command.
+ * Scans along the direction for the first enemy within the attack's range.
  */
 export function resolveAttack(
   command: AttackCommand,
@@ -299,9 +357,16 @@ export function resolveAttack(
     };
   }
 
-  // Find target at position
-  const target = getVellymonAtPosition(state, command.targetPosition);
-  if (!target) {
+  // Scan for first enemy in direction within range
+  const hit = scanForTarget(
+    state,
+    vellymon.position,
+    command.direction,
+    attack.range,
+    team,
+  );
+
+  if (!hit) {
     // Energy spent but no target — whiffed
     return {
       command,
@@ -311,26 +376,14 @@ export function resolveAttack(
     };
   }
 
-  // Don't attack own team
-  const isOwnTeam = team.active.some((v) => v.uuid === target.uuid);
-  if (isOwnTeam) {
-    // Energy spent but friendly fire blocked
-    return {
-      command,
-      success: false,
-      reason: "Cannot attack own team",
-      energyDelta: -attack.energyCost,
-    };
-  }
-
   // Deal damage
   const damage = attack.damage + vellymon.attack;
-  target.hp = Math.max(0, target.hp - damage);
-  const ko = target.hp === 0;
+  hit.target.hp = Math.max(0, hit.target.hp - damage);
+  const ko = hit.target.hp === 0;
 
   if (ko) {
-    target.isKO = true;
-    target.position = null;
+    hit.target.isKO = true;
+    hit.target.position = null;
   }
 
   return {
@@ -344,6 +397,8 @@ export function resolveAttack(
 
 /**
  * Resolve a single Harvest command.
+ * Harvests the adjacent tile in the given direction.
+ * Fails if blocked by an enemy or target isn't harvestable.
  */
 export function resolveHarvest(
   command: HarvestCommand,
@@ -357,13 +412,32 @@ export function resolveHarvest(
     return { command, success: false, reason: "Vellymon not found" };
   }
 
-  const space = getSpace(state.board, vellymon.position);
+  const offset = directionToOffset(command.direction);
+  const targetPos: Position = {
+    x: vellymon.position.x + offset.x,
+    y: vellymon.position.y + offset.y,
+  };
+
+  const space = getSpace(state.board, targetPos);
   if (!space || space.type !== "harvestable") {
     return {
       command,
       success: false,
-      reason: "Not on harvestable space",
+      reason: "Target not harvestable",
     };
+  }
+
+  // Check for enemy blocking the harvest tile
+  const blocker = getVellymonAtPosition(state, targetPos);
+  if (blocker) {
+    const isOwnTeam = team.active.some((v) => v.uuid === blocker.uuid);
+    if (!isOwnTeam) {
+      return {
+        command,
+        success: false,
+        reason: "Harvest blocked by enemy",
+      };
+    }
   }
 
   const gained = harvestEnergy(team, space);

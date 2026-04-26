@@ -341,19 +341,21 @@ function cmdCmd(matchId: string, teamIdStr: string, vellymonId: string, action: 
         console.error("Attack requires a direction: up, down, left, right");
         process.exit(1);
       }
-      // Use attack index 0 (primary attack) and compute target position from direction
-      const pos = vm.position!;
-      const delta = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } }[direction]!;
+      // Use attack index 0 (primary attack) — directional scan finds target
       cmd = {
         type: "attack",
         vellymonUuid: vm.uuid,
         attackIndex: 0,
-        targetPosition: { x: pos.x + delta.x, y: pos.y + delta.y },
-      } as AttackCommand;
+        direction: direction as AttackCommand["direction"],
+      };
       break;
     }
     case "harvest": {
-      cmd = { type: "harvest", vellymonUuid: vm.uuid };
+      if (!direction || !["up", "down", "left", "right"].includes(direction)) {
+        console.error("Harvest requires a direction: up, down, left, right");
+        process.exit(1);
+      }
+      cmd = { type: "harvest", vellymonUuid: vm.uuid, direction: direction as HarvestCommand["direction"] };
       break;
     }
     default: {

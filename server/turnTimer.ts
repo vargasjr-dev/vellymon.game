@@ -150,11 +150,12 @@ export function elapsedSeconds(timer: TurnTimerState): number {
 export function generateDefaultCommands(
   vellymonUuids: string[],
 ): Command[] {
-  // Default: all vellymons harvest (will be validated at resolution;
-  // if they're not on a harvestable space, the command will fail gracefully)
+  // Default: all vellymons harvest downward (will be validated at resolution;
+  // if the adjacent space isn't harvestable or is blocked, the command fails gracefully)
   return vellymonUuids.map((uuid) => ({
     type: "harvest" as const,
     vellymonUuid: uuid,
+    direction: "down" as const,
   }));
 }
 

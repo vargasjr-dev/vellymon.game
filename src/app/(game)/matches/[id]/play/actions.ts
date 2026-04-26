@@ -8,14 +8,12 @@ import {
   concedeMatch,
 } from "~/data/gameEngine.server";
 
-// Command type for the play page
+// Command type for the play page — all actions are directional
 export type PlayCommand = {
   type: "move" | "attack" | "harvest";
   vellymonUuid: string;
-  direction?: "up" | "down" | "left" | "right";
+  direction: "up" | "down" | "left" | "right";
   attackIndex?: number;
-  targetX?: number;
-  targetY?: number;
 };
 
 export async function getGameStateAction(matchUuid: string) {
@@ -30,14 +28,12 @@ export async function submitCommandsAction(
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  // Map to engine Command type
+  // Map to engine Command type — all commands are directional now
   const engineCommands = commands.map((c) => ({
     type: c.type,
     vellymonUuid: c.vellymonUuid,
     direction: c.direction,
     attackIndex: c.attackIndex,
-    targetX: c.targetX,
-    targetY: c.targetY,
   }));
 
   return submitMatchCommands(matchUuid, session.user.id, engineCommands as never[], asTeamId);

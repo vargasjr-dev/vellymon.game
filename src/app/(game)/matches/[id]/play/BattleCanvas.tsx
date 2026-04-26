@@ -22,6 +22,7 @@ type BoardSpace = {
   y: number;
   type: string;
   occupationCounter?: number;
+  harvestYield?: number;
 };
 
 type Props = {
@@ -307,14 +308,19 @@ export default function BattleCanvas({
           boardContainer.addChild(star);
         }
 
-        // Harvestable leaf (dimmed)
+        // Harvestable fern — scales by yield tier
         if (!vm && isHarvestable) {
+          const yield_ = space?.harvestYield ?? 1;
+          // Fern emoji scales: 🌱 (yield 1), 🌿 (yield 2), 🪴 (yield 3)
+          const fernEmoji = yield_ >= 3 ? "🪴" : yield_ >= 2 ? "🌿" : "🌱";
+          const fernScale = yield_ >= 3 ? 0.32 : yield_ >= 2 ? 0.26 : 0.20;
+          const fernColor = yield_ >= 3 ? 0x2d8c4a : yield_ >= 2 ? 0x1f7a3a : 0x1a5c2a;
           const leafStyle = new TextStyle({
-            fontSize: Math.min(tileSize * 0.22, 12),
-            fill: 0x1a5c2a,
+            fontSize: Math.min(tileSize * fernScale, yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11),
+            fill: fernColor,
             align: "center",
           });
-          const leaf = new Text({ text: "🌿", style: leafStyle });
+          const leaf = new Text({ text: fernEmoji, style: leafStyle });
           leaf.anchor.set(0.5);
           leaf.x = px + tileSize / 2;
           leaf.y = py + tileSize / 2;
