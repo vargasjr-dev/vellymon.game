@@ -135,6 +135,7 @@ export default function CommandInput({
               onSubmitCommand({
                 type: "harvest",
                 vellymonUuid: vellymon.uuid,
+                direction: "down",
               });
             }}
             color="green"

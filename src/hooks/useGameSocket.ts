@@ -22,14 +22,12 @@ export type ClientMessage =
   | { type: "submit_commands"; commands: CommandPayload[] }
   | { type: "request_state" };
 
-/** Simplified command for the wire */
+/** Simplified command for the wire — all actions are directional */
 export type CommandPayload = {
   type: "move" | "attack" | "harvest";
   vellymonUuid: string;
-  direction?: "up" | "down" | "left" | "right";
+  direction: "up" | "down" | "left" | "right";
   attackIndex?: number;
-  targetX?: number;
-  targetY?: number;
 };
 
 /** Game state as sent to client */
@@ -87,7 +85,7 @@ export type OpponentVellymonPayload = {
 export type BoardPayload = {
   width: number;
   height: number;
-  spaces: { x: number; y: number; type: string; team?: 1 | 2; occupationCounter?: number }[];
+  spaces: { x: number; y: number; type: string; team?: 1 | 2; occupationCounter?: number; harvestYield?: number }[];
 };
 
 export type TurnResultPayload = {

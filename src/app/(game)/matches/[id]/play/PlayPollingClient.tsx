@@ -152,7 +152,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [boardWidth, setBoardWidth] = useState(8);
   const [boardHeight, setBoardHeight] = useState(5);
   const [boardSpaces, setBoardSpaces] = useState<
-    Array<{ x: number; y: number; type: string; occupationCounter?: number }>
+    Array<{ x: number; y: number; type: string; occupationCounter?: number; harvestYield?: number }>
   >([]);
   const [selectedVellymon, setSelectedVellymon] = useState<string | null>(null);
   const [pendingCommands, setPendingCommands] = useState<PlayCommand[]>([]);
@@ -208,6 +208,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
           position: { x: number; y: number };
           type: string;
           occupationCounter?: number;
+          harvestYield?: number;
         }>;
         result: { winner: 1 | 2; condition: string } | null;
         phase: string;
@@ -222,6 +223,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
           y: s.position.y,
           type: s.type,
           occupationCounter: s.occupationCounter,
+          harvestYield: s.harvestYield,
         })) ?? [],
       );
 
@@ -310,11 +312,11 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     setSelectedVellymon(null);
   }, []);
 
-  // Wrap addCommand with screen→game direction translation
+  // Wrap addCommand with screen→game direction translation — all commands are directional now
   const addDirectionalCommand = useCallback(
-    (type: "move" | "attack", vellymonUuid: string, screenDir: Dir) => {
+    (type: "move" | "attack" | "harvest", vellymonUuid: string, screenDir: Dir, attackIndex?: number) => {
       const gameDir = screenToGameDir(screenDir, isPortrait, yourTeam?.id ?? 1);
-      addCommand({ type, vellymonUuid, direction: gameDir });
+      addCommand({ type, vellymonUuid, direction: gameDir, attackIndex });
     },
     [addCommand, isPortrait, yourTeam?.id],
   );
@@ -489,14 +491,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
             {/* Vellymon drawer — overlays the board when a vellymon is selected */}
             {selectedVm && !waitingForSwitch && (
               <VellymonDrawer
-                  vellymon={selectedVm}
-                  info={vellymonInfoCache[selectedVm.name]}
-                  teamEnergy={yourTeam?.energy ?? 0}
+                vellymon={selectedVm}
+                info={vellymonInfoCache[selectedVm.name]}
+                teamEnergy={yourTeam?.energy ?? 0}
                 pendingCommand={pendingForSelected ?? null}
                 dirToArrow={(dir) => gameDirToScreenArrow(dir, isPortrait, yourTeam?.id ?? 1)}
-                onMove={(dir) => addDirectionalCommand("move", selectedVm.uuid, dir)}
-                onAttack={(dir) => addDirectionalCommand("attack", selectedVm.uuid, dir)}
-                onHarvest={() => addCommand({ type: "harvest", vellymonUuid: selectedVm.uuid })}
+                onAction={(type, dir, attackIndex) => addDirectionalCommand(type, selectedVm.uuid, dir, attackIndex)}
                 onClose={() => setSelectedVellymon(null)}
               />
             )}

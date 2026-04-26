@@ -4,7 +4,9 @@
  * Each map defines its dimensions and a string-based layout:
  *   1 = Team 1 spawn
  *   2 = Team 2 spawn
- *   . = Harvestable
+ *   . = Harvestable (yield 1 — small fern)
+ *   f = Fertile (yield 2 — medium fern)
+ *   r = Rich (yield 3 — large fern)
  *   O = Occupation point
  *   V = Void (impassable)
  *
@@ -31,11 +33,14 @@ export type MapConfig = {
 /**
  * Standard — Classic 9×5 open battlefield.
  *
+ * Fertile (yield 2) tiles near the center reward aggressive positioning.
+ * Rich (yield 3) tile at dead center — high-value contest point.
+ *
  * ```
  * 1 . . . . . . . 2     y=0
- * 1 . O . . . . . 2     y=1
- * . . . . O . . . .     y=2
- * 1 . . . . . O . 2     y=3
+ * 1 . O . f . . . 2     y=1
+ * . . f . r . f . .     y=2  ← center row: rich middle, fertile flanks
+ * 1 . . . f . O . 2     y=3
  * 1 . . . . . . . 2     y=4
  * ```
  */
@@ -47,9 +52,9 @@ const STANDARD: MapConfig = {
   height: 5,
   layout: [
     "1 . . . . . . . 2",
-    "1 . O . . . . . 2",
-    ". . . . O . . . .",
-    "1 . . . . . O . 2",
+    "1 . O . f . . . 2",
+    ". . f . r . f . .",
+    "1 . . . f . O . 2",
     "1 . . . . . . . 2",
   ],
 };
@@ -57,17 +62,15 @@ const STANDARD: MapConfig = {
 /**
  * The Choke — 9×7 with void walls creating a chokepoint.
  *
- * Void spaces in the center column (x=4) at the top and bottom
- * force both teams through a 3-row-wide gap in the middle.
- * Two vellymons per team spawn on open rows and can rush
- * straight across; two spawn behind voids and must reposition.
+ * Fertile tiles line the chokepoint gap — harvesting near the fight is rewarding
+ * but risky. Rich tile at center.
  *
  * ```
  * 1 . . . V . . . 2     y=0  ← behind void
  * . . . . V . . . .     y=1
- * 1 . O . . . . . 2     y=2  ← open row
- * . . . . O . . . .     y=3  ← center
- * 1 . . . . . O . 2     y=4  ← open row
+ * 1 . O . f . . . 2     y=2  ← open row, fertile near gap
+ * . . f . r . f . .     y=3  ← center, rich middle
+ * 1 . . . f . O . 2     y=4  ← open row, fertile near gap
  * . . . . V . . . .     y=5
  * 1 . . . V . . . 2     y=6  ← behind void
  * ```
@@ -81,9 +84,9 @@ const THE_CHOKE: MapConfig = {
   layout: [
     "1 . . . V . . . 2",
     ". . . . V . . . .",
-    "1 . O . . . . . 2",
-    ". . . . O . . . .",
-    "1 . . . . . O . 2",
+    "1 . O . f . . . 2",
+    ". . f . r . f . .",
+    "1 . . . f . O . 2",
     ". . . . V . . . .",
     "1 . . . V . . . 2",
   ],
@@ -106,10 +109,14 @@ export function getMapById(id: string): MapConfig {
 
 // ─── Layout Parsing ──────────────────────────────────────────────────────────
 
-const CELL_MAP: Record<string, { type: SpaceType; team?: 1 | 2 }> = {
+type CellDef = { type: SpaceType; team?: 1 | 2; harvestYield?: number };
+
+const CELL_MAP: Record<string, CellDef> = {
   "1": { type: "spawn", team: 1 },
   "2": { type: "spawn", team: 2 },
-  ".": { type: "harvestable" },
+  ".": { type: "harvestable", harvestYield: 1 },
+  f: { type: "harvestable", harvestYield: 2 },
+  r: { type: "harvestable", harvestYield: 3 },
   O: { type: "occupation" },
   V: { type: "void" },
 };
@@ -140,6 +147,7 @@ export function parseBoardFromMap(map: MapConfig): BoardSpace[] {
       const space: BoardSpace = { position, type: cell.type };
       if (cell.team) space.team = cell.team;
       if (cell.type === "occupation") space.occupationCounter = 0;
+      if (cell.harvestYield !== undefined) space.harvestYield = cell.harvestYield;
 
       board.push(space);
     }
