@@ -207,3 +207,53 @@ export const teamSlotRelations = relations(teamSlot, ({ one }) => ({
     references: [vellymonInstance.uuid],
   }),
 }));
+
+// ─── Currency & Credits System ───────────────────────────────────────────────
+
+export const userCurrency = pgTable("userCurrency", {
+  userId: text("userId")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  balance: integer("balance").default(0).notNull(),
+  lifetimeEarned: integer("lifetimeEarned").default(0).notNull(),
+  lifetimeSpent: integer("lifetimeSpent").default(0).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const currencyTransaction = pgTable(
+  "currencyTransaction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(), // positive = credit, negative = debit
+    type: text("type").notNull(), // monthly_grant | purchase | spend | refund
+    description: text("description"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("currencyTransaction_userId_idx").on(table.userId),
+    index("currencyTransaction_createdAt_idx").on(table.createdAt),
+  ],
+);
+
+export const userCurrencyRelations = relations(userCurrency, ({ one }) => ({
+  user: one(user, {
+    fields: [userCurrency.userId],
+    references: [user.id],
+  }),
+}));
+
+export const currencyTransactionRelations = relations(
+  currencyTransaction,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [currencyTransaction.userId],
+      references: [user.id],
+    }),
+  }),
+);
