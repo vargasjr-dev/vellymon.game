@@ -14,9 +14,11 @@ const navLinks = [
 
 interface GameNavProps {
   user: { name: string; email: string } | null;
+  creditBalance?: number;
+  isSubscriber?: boolean;
 }
 
-export default function GameNav({ user }: GameNavProps) {
+export default function GameNav({ user, creditBalance, isSubscriber }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -102,6 +104,17 @@ export default function GameNav({ user }: GameNavProps) {
               </Link>
             ))}
           </div>
+
+          {/* Credit Balance (Desktop) */}
+          {isSubscriber && creditBalance !== undefined && (
+            <Link
+              href="/credits"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition"
+            >
+              <span>💎</span>
+              <span>{creditBalance.toLocaleString()}</span>
+            </Link>
+          )}
 
           {/* Account Dropdown (Desktop) */}
           <div className="hidden md:block relative" ref={dropdownRef}>
@@ -252,6 +265,17 @@ export default function GameNav({ user }: GameNavProps) {
                 {link.label}
               </Link>
             ))}
+
+            {/* Mobile Credit Balance */}
+            {isSubscriber && creditBalance !== undefined && (
+              <Link
+                href="/credits"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-yellow-500/20 text-yellow-300"
+              >
+                <span>💎</span>
+                <span>{creditBalance.toLocaleString()} credits</span>
+              </Link>
+            )}
 
             {/* Mobile Account Section */}
             <div className="border-t border-gray-800 mt-2 pt-2">
