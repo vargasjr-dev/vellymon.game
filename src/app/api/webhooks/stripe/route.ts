@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import { db } from "../../../../../data/db";
 import { user } from "../../../../../data/schema";
 import { eq } from "drizzle-orm";
+import { grantCredits, calculateMonthlyGrant } from "../../../../../lib/currency";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -130,15 +131,17 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
 
+  // Reset streak on cancellation — resubscribing starts fresh
   await db
     .update(user)
     .set({
       subscriptionStatus: "canceled",
       subscriptionId: null,
+      subscriptionStreakMonths: 0,
     })
     .where(eq(user.stripeCustomerId, customerId));
 
-  console.log(`Subscription deleted: customer=${customerId}`);
+  console.log(`Subscription deleted: customer=${customerId}, streak reset to 0`);
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -152,16 +155,27 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     .limit(1);
 
   if (existingUser) {
+    const newStreak = (existingUser.subscriptionStreakMonths ?? 0) + 1;
+
     await db
       .update(user)
       .set({
         subscriptionStatus: "active",
-        subscriptionStreakMonths: (existingUser.subscriptionStreakMonths ?? 0) + 1,
+        subscriptionStreakMonths: newStreak,
       })
       .where(eq(user.id, existingUser.id));
 
+    // Grant monthly credits based on loyalty streak
+    const grantAmount = calculateMonthlyGrant(newStreak);
+    const newBalance = await grantCredits(
+      existingUser.id,
+      grantAmount,
+      "monthly_grant",
+      `Monthly grant — ${grantAmount} credits (streak: ${newStreak} mo)`,
+    );
+
     console.log(
-      `Payment succeeded: customer=${customerId}, streak=${(existingUser.subscriptionStreakMonths ?? 0) + 1}`
+      `Payment succeeded: customer=${customerId}, streak=${newStreak}, granted=${grantAmount} credits, balance=${newBalance}`,
     );
   }
 }
