@@ -98,6 +98,13 @@ export const user = pgTable("user", {
   emailVerified: boolean("emailVerified").default(false).notNull(),
   image: text("image"),
   role: text("role").default("user").notNull(), // "user" | "admin"
+  // ─── Subscription fields ───────────────────────────────────────────────────
+  stripeCustomerId: text("stripeCustomerId").unique(),
+  subscriptionId: text("subscriptionId"),
+  subscriptionStatus: text("subscriptionStatus").default("none").notNull(), // none | active | past_due | canceled
+  subscribedAt: timestamp("subscribedAt"),
+  subscriptionStreakMonths: integer("subscriptionStreakMonths").default(0).notNull(),
+  // ───────────────────────────────────────────────────────────────────────────
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
