@@ -4,6 +4,8 @@ import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
 import getTeams from "~/data/getTeams.server";
 import getUserMatches from "~/data/getUserMatches.server";
+import { getSubscriptionInfo } from "../../../../lib/subscription";
+import SubscriptionCard from "~/components/SubscriptionCard";
 
 
 export default async function PlayerHubPage() {
@@ -11,10 +13,11 @@ export default async function PlayerHubPage() {
   // Session guaranteed by (game)/layout.tsx auth gate
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const [roster, teams, matches] = await Promise.all([
+  const [roster, teams, matches, subInfo] = await Promise.all([
     getVellymonRoster(session.user.id),
     getTeams(session.user.id),
     getUserMatches(session.user.id),
+    getSubscriptionInfo(session.user.id),
   ]);
   const activeMatchCount = matches.filter(
     (m) => m.status === "waiting" || m.status === "ready" || m.status === "playing",
@@ -93,6 +96,14 @@ export default async function PlayerHubPage() {
               : `active match${activeMatchCount !== 1 ? "es" : ""}`}
           </p>
         </Link>
+      </div>
+
+      {/* Subscription */}
+      <div className="mb-8">
+        <SubscriptionCard
+          subscriptionStatus={subInfo?.subscriptionStatus ?? "none"}
+          subscriptionStreakMonths={subInfo?.subscriptionStreakMonths ?? 0}
+        />
       </div>
 
       {/* Quick Actions */}
