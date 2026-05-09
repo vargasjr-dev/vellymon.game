@@ -257,3 +257,72 @@ export const currencyTransactionRelations = relations(
     }),
   }),
 );
+
+// ─── Cosmetic System ─────────────────────────────────────────────────────────
+
+export const cosmetic = pgTable(
+  "cosmetic",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    vellymonId: uuid("vellymonId"), // nullable — global cosmetics (board themes, profile borders)
+    type: text("type").notNull(), // skin | vfx_harvest | vfx_attack | vfx_ko | board_theme | profile_border | title
+    name: text("name").notNull(),
+    imageUrl: text("imageUrl"), // URL to generated/stored asset
+    metadata: json("metadata"), // { prompt, styleParams, generationId, ... }
+    source: text("source").notNull(), // generated | seasonal | monthly_drop | ranked_reward
+    seasonId: text("seasonId"), // nullable — ties cosmetic to a specific season
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("cosmetic_userId_idx").on(table.userId),
+    index("cosmetic_vellymonId_idx").on(table.vellymonId),
+    index("cosmetic_type_idx").on(table.type),
+  ],
+);
+
+export const cosmeticLoadout = pgTable(
+  "cosmeticLoadout",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    vellymonId: uuid("vellymonId").notNull(), // which vellymon this loadout applies to
+    equippedSkinId: uuid("equippedSkinId").references(() => cosmetic.id, {
+      onDelete: "set null",
+    }),
+    equippedVfxIds: json("equippedVfxIds").$type<string[]>().default([]), // array of cosmetic IDs
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("cosmeticLoadout_userId_idx").on(table.userId),
+    index("cosmeticLoadout_vellymonId_idx").on(table.vellymonId),
+  ],
+);
+
+export const cosmeticRelations = relations(cosmetic, ({ one }) => ({
+  user: one(user, {
+    fields: [cosmetic.userId],
+    references: [user.id],
+  }),
+}));
+
+export const cosmeticLoadoutRelations = relations(
+  cosmeticLoadout,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [cosmeticLoadout.userId],
+      references: [user.id],
+    }),
+    equippedSkin: one(cosmetic, {
+      fields: [cosmeticLoadout.equippedSkinId],
+      references: [cosmetic.id],
+    }),
+  }),
+);
