@@ -156,7 +156,7 @@ export async function getSeasonDetailAction(seasonId: string) {
  * - New vellymon at free tier 5 (unlocked day 15 for free players)
  * - Premium launch skin at tier 15
  */
-export function generateDefaultTrack(): TierDef[] {
+export async function generateDefaultTrack(): Promise<TierDef[]> {
   const tiers: TierDef[] = [];
 
   for (let i = 1; i <= 25; i++) {

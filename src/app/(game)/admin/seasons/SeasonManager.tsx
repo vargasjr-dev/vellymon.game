@@ -37,7 +37,7 @@ export default function SeasonManager({ seasons }: SeasonManagerProps) {
     if (!name || !startDate || !endDate) return;
     setCreating(true);
 
-    const tiers: TierDef[] = generateDefaultTrack();
+    const tiers: TierDef[] = await generateDefaultTrack();
     const result = await createSeasonAction({
       name,
       startDate,
