@@ -405,3 +405,48 @@ export const userSeasonProgressRelations = relations(
     }),
   }),
 );
+
+// ─── Ranked Ladder ───────────────────────────────────────────────────────────
+
+export const userRank = pgTable(
+  "userRank",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    seasonId: uuid("seasonId")
+      .notNull()
+      .references(() => season.id, { onDelete: "cascade" }),
+    rank: text("rank").default("bronze").notNull(), // bronze | silver | gold | platinum | diamond | legend
+    stars: integer("stars").default(0).notNull(),
+    peakRank: text("peakRank").default("bronze").notNull(),
+    peakStars: integer("peakStars").default(0).notNull(),
+    legendEntry: integer("legendEntry"), // null unless legend — order of legend entry
+    gamesPlayed: integer("gamesPlayed").default(0).notNull(),
+    wins: integer("wins").default(0).notNull(),
+    losses: integer("losses").default(0).notNull(),
+    mmr: integer("mmr").default(1000).notNull(), // matchmaking rating
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("userRank_userId_idx").on(table.userId),
+    index("userRank_seasonId_idx").on(table.seasonId),
+    index("userRank_rank_idx").on(table.rank),
+    index("userRank_mmr_idx").on(table.mmr),
+  ],
+);
+
+export const userRankRelations = relations(userRank, ({ one }) => ({
+  user: one(user, {
+    fields: [userRank.userId],
+    references: [user.id],
+  }),
+  season: one(season, {
+    fields: [userRank.seasonId],
+    references: [season.id],
+  }),
+}));
