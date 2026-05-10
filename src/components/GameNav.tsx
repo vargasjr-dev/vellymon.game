@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/market", label: "Market" },
   { href: "/teams", label: "Teams" },
   { href: "/matches", label: "Matches" },
+  { href: "/practice", label: "🤖 Practice", premium: true },
   { href: "/season", label: "🏆 Season" },
   { href: "/ranked", label: "⚔️ Ranked" },
 ];
@@ -92,19 +93,29 @@ export default function GameNav({ user, creditBalance, isSubscriber }: GameNavPr
 
           {/* Desktop Links */}
           <div className="hidden md:flex items-center space-x-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                  isActive(link.href)
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    isActive(link.href)
+                      ? "bg-blue-600 text-white"
+                      : isPremiumLocked
+                        ? "text-gray-500 hover:bg-gray-800 hover:text-gray-400"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  }`}
+                >
+                  {link.label}
+                  {"premium" in link && link.premium && (
+                    <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
+                      {isSubscriber ? "⭐" : "PRO"}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Credit Balance (Desktop) */}
@@ -254,19 +265,29 @@ export default function GameNav({ user, creditBalance, isSubscriber }: GameNavPr
         {/* Mobile Menu */}
         {menuOpen && (
           <div className="md:hidden pb-4 space-y-1 border-t border-gray-800 pt-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  isActive(link.href)
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    isActive(link.href)
+                      ? "bg-blue-600 text-white"
+                      : isPremiumLocked
+                        ? "text-gray-500 hover:bg-gray-800 hover:text-gray-400"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  }`}
+                >
+                  {link.label}
+                  {"premium" in link && link.premium && (
+                    <span className="ml-2 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
+                      {isSubscriber ? "⭐" : "PRO"}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
 
             {/* Mobile Credit Balance */}
             {isSubscriber && creditBalance !== undefined && (
