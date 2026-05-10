@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/teams", label: "Teams" },
   { href: "/matches", label: "Matches" },
   { href: "/season", label: "🏆 Season" },
+  { href: "/ranked", label: "⚔️ Ranked" },
 ];
 
 interface GameNavProps {
