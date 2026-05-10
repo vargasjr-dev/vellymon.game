@@ -326,3 +326,82 @@ export const cosmeticLoadoutRelations = relations(
     }),
   }),
 );
+
+// ─── Season & Track System ───────────────────────────────────────────────────
+
+export const season = pgTable("season", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  status: text("status").default("upcoming").notNull(), // upcoming | active | archived
+  newVellymonId: integer("newVellymonId"), // ID in vellymon library for this season's new vellymon
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const seasonTrack = pgTable(
+  "seasonTrack",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    seasonId: uuid("seasonId")
+      .notNull()
+      .references(() => season.id, { onDelete: "cascade" }),
+    tier: integer("tier").notNull(), // 1-25
+    freeReward: json("freeReward"), // { type, description, cosmeticId?, credits?, ... }
+    premiumReward: json("premiumReward"), // same shape, premium track
+  },
+  (table) => [
+    index("seasonTrack_seasonId_idx").on(table.seasonId),
+  ],
+);
+
+export const userSeasonProgress = pgTable(
+  "userSeasonProgress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    seasonId: uuid("seasonId")
+      .notNull()
+      .references(() => season.id, { onDelete: "cascade" }),
+    xp: integer("xp").default(0).notNull(),
+    currentTier: integer("currentTier").default(0).notNull(),
+    claimedFreeTiers: json("claimedFreeTiers").$type<number[]>().default([]),
+    claimedPremiumTiers: json("claimedPremiumTiers").$type<number[]>().default([]),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("userSeasonProgress_userId_idx").on(table.userId),
+    index("userSeasonProgress_seasonId_idx").on(table.seasonId),
+  ],
+);
+
+export const seasonRelations = relations(season, ({ many }) => ({
+  tracks: many(seasonTrack),
+  progress: many(userSeasonProgress),
+}));
+
+export const seasonTrackRelations = relations(seasonTrack, ({ one }) => ({
+  season: one(season, {
+    fields: [seasonTrack.seasonId],
+    references: [season.id],
+  }),
+}));
+
+export const userSeasonProgressRelations = relations(
+  userSeasonProgress,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userSeasonProgress.userId],
+      references: [user.id],
+    }),
+    season: one(season, {
+      fields: [userSeasonProgress.seasonId],
+      references: [season.id],
+    }),
+  }),
+);
