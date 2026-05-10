@@ -103,6 +103,7 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
   const settings: MatchSettings = existingMeta?.matchSettings ?? {
     timerSeconds: 0,
     mapId: "standard",
+    mode: "casual",
   };
 
   // Resolve map

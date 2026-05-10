@@ -2,9 +2,12 @@
  * Match settings types and constants — shared between server and client.
  */
 
+export type MatchMode = "casual" | "ranked";
+
 export type MatchSettings = {
   timerSeconds: 0 | 30 | 90;
   mapId: string;
+  mode: MatchMode;
 };
 
 export const TIMER_OPTIONS = [
@@ -31,4 +34,11 @@ export const MAP_OPTIONS = [
 export const DEFAULT_MATCH_SETTINGS: MatchSettings = {
   timerSeconds: 0,
   mapId: "standard",
+  mode: "casual",
+};
+
+export const RANKED_MATCH_SETTINGS: MatchSettings = {
+  timerSeconds: 30,
+  mapId: "standard",
+  mode: "ranked",
 };
