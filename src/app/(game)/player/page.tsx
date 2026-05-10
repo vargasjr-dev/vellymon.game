@@ -107,7 +107,30 @@ export default async function PlayerHubPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link
+          href="/practice"
+          className={`rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center ${
+            subInfo?.subscriptionStatus === "active"
+              ? "bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200"
+              : "bg-gray-50 border-2 border-gray-200"
+          }`}
+        >
+          <p className="text-3xl mb-2">🤖</p>
+          <p className="font-semibold text-gray-900 group-hover:text-purple-600">
+            AI Sparring
+            {subInfo?.subscriptionStatus !== "active" && (
+              <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">
+                PRO
+              </span>
+            )}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            {subInfo?.subscriptionStatus === "active"
+              ? "Practice against AI opponents"
+              : "Subscribe to unlock AI practice"}
+          </p>
+        </Link>
         <Link
           href="/market"
           className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center"
