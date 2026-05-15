@@ -3,13 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-const MIN_PASSWORD_LENGTH = 8;
-
 function mapErrorMessage(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes('too_small') || lower.includes('too short')) {
-    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
-  }
   if (lower.includes('user not found') || lower.includes('no user')) {
     return 'No account found with this email address';
   }
@@ -37,12 +32,6 @@ export default function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -102,7 +91,6 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your password"
             />
