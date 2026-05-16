@@ -10,8 +10,25 @@
  */
 
 import { NextResponse } from "next/server";
+import { neon } from "@neondatabase/serverless";
 import { db } from "../../../../../data/db";
 import { matchSnapshot } from "../../../../../data/schema";
+
+// ── Auto-create table ────────────────────────────────────────────────────────
+// DATABASE_URL is a runtime-only env var on Vercel, so drizzle-kit push
+// can't run reliably at build time. Create the table lazily on first upload.
+async function ensureMatchSnapshotTable() {
+  const sql = neon(process.env.DATABASE_URL!);
+  await sql`
+    CREATE TABLE IF NOT EXISTS "matchSnapshot" (
+      "id"          text        PRIMARY KEY,
+      "gameState"   json        NOT NULL,
+      "status"      varchar(32) NOT NULL DEFAULT 'playing',
+      "uploadedAt"  timestamp   NOT NULL DEFAULT now(),
+      "updatedAt"   timestamp   NOT NULL DEFAULT now()
+    )
+  `;
+}
 
 export async function POST(req: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -48,6 +65,7 @@ export async function POST(req: Request) {
 
   // ── Upsert ────────────────────────────────────────────────────────────────
   try {
+    await ensureMatchSnapshotTable();
     await db
       .insert(matchSnapshot)
       .values({ id, gameState, status })
