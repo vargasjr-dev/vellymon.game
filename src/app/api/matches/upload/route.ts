@@ -47,13 +47,18 @@ export async function POST(req: Request) {
   }
 
   // ── Upsert ────────────────────────────────────────────────────────────────
-  await db
-    .insert(matchSnapshot)
-    .values({ id, gameState, status })
-    .onConflictDoUpdate({
-      target: matchSnapshot.id,
-      set: { gameState, status, updatedAt: new Date() },
-    });
+  try {
+    await db
+      .insert(matchSnapshot)
+      .values({ id, gameState, status })
+      .onConflictDoUpdate({
+        target: matchSnapshot.id,
+        set: { gameState, status, updatedAt: new Date() },
+      });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: "DB upsert failed", detail: msg }, { status: 500 });
+  }
 
   const origin = req.headers.get("origin") ?? req.headers.get("host") ?? "vellymon.game";
   const spectateUrl = `${origin.startsWith("http") ? "" : "https://"}${origin}/matches/${id}/spectate`;
