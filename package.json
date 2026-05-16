@@ -6,7 +6,7 @@
   "repository": "vargasjr-dev/vellymon.game",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "drizzle-kit push --force && next build",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"**/*.tsx\"",
