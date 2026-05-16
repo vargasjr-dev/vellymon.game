@@ -295,7 +295,7 @@ export default function SpectateClient({ matchId }: Props) {
           vellymons={allVellymons}
           yourTeamId={1}
           selectedVellymon={null}
-          onSelectVellymon={() => {}}
+          onSelectVellymon={() => { /* spectate mode: selection disabled */ }}
           commandedUuids={new Set()}
         />
       </div>
