@@ -12,7 +12,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../data/db";
 import { matchSnapshot } from "../../../../../data/schema";
-import { eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
