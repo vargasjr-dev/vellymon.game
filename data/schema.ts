@@ -450,3 +450,18 @@ export const userRankRelations = relations(userRank, ({ one }) => ({
     references: [season.id],
   }),
 }));
+
+// ─── Match Snapshot ──────────────────────────────────────────────────────────
+// Lightweight store for CLI-uploaded matches — no user FK, no player tracking.
+// Lets the spectate view work for matches played outside the web client.
+
+export const matchSnapshot = pgTable("matchSnapshot", {
+  id: text("id").primaryKey(),
+  gameState: json("gameState").notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("playing"),
+  uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
