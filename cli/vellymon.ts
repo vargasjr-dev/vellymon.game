@@ -482,6 +482,81 @@ function cmdReport(matchId: string) {
   console.log(JSON.stringify(report, null, 2));
 }
 
+// ─── Upload ──────────────────────────────────────────────────────────────────
+
+/**
+ * Upload a local match to the vellymon.game server so the spectate view
+ * works from the deployed site.
+ *
+ * Usage:
+ *   vellymon upload <matchId> [--url <baseUrl>] [--key <apiKey>]
+ *
+ * Config (in priority order):
+ *   1. CLI flags: --url, --key
+ *   2. Env vars: VELLYMON_URL, VELLYMON_UPLOAD_API_KEY
+ *   3. .vellymon/config.json: { "url": "...", "apiKey": "..." }
+ */
+async function cmdUpload(matchId: string, cliUrl?: string, cliKey?: string) {
+  // ── Load config ──────────────────────────────────────────────────────────
+  let fileUrl: string | undefined;
+  let fileKey: string | undefined;
+  const configPath = join(STATE_DIR, "config.json");
+  if (existsSync(configPath)) {
+    try {
+      const cfg = JSON.parse(readFileSync(configPath, "utf-8")) as Record<string, string>;
+      fileUrl = cfg.url;
+      fileKey = cfg.apiKey;
+    } catch { /* ignore malformed config */ }
+  }
+
+  const baseUrl = (cliUrl ?? process.env.VELLYMON_URL ?? fileUrl ?? "https://vellymon.game").replace(/\/$/, "");
+  const apiKey  = cliKey ?? process.env.VELLYMON_UPLOAD_API_KEY ?? fileKey;
+
+  if (!apiKey) {
+    console.error("❌  No API key found. Provide one via:");
+    console.error("    --key <apiKey>");
+    console.error("    VELLYMON_UPLOAD_API_KEY=<key> in env");
+    console.error("    .vellymon/config.json → { \"apiKey\": \"...\" }");
+    process.exit(1);
+  }
+
+  // ── Load match ───────────────────────────────────────────────────────────
+  const match = loadMatch(matchId);
+
+  // ── POST to server ───────────────────────────────────────────────────────
+  const url = `${baseUrl}/api/matches/upload`;
+  console.log(`Uploading match ${matchId} → ${url} ...`);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        id: match.id,
+        gameState: match.gameState,
+        status: match.gameState.result ? "completed" : "playing",
+      }),
+    });
+  } catch (e) {
+    console.error(`❌  Network error: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`❌  Upload failed (HTTP ${res.status}): ${body}`);
+    process.exit(1);
+  }
+
+  const result = await res.json() as { ok: boolean; id: string; spectateUrl: string };
+  console.log(`✅  Match uploaded successfully!`);
+  console.log(`🔗  Spectate: ${result.spectateUrl}`);
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -528,23 +603,40 @@ switch (cmd) {
     cmdReport(sub);
     break;
 
+  case "upload": {
+    if (!sub) { console.error("Usage: vellymon upload <matchId> [--url <baseUrl>] [--key <apiKey>]"); process.exit(1); }
+    // Parse optional --url and --key flags
+    const uploadArgs = args.slice(2);
+    let uploadUrl: string | undefined;
+    let uploadKey: string | undefined;
+    for (let i = 0; i < uploadArgs.length; i++) {
+      if (uploadArgs[i] === "--url" && uploadArgs[i + 1]) uploadUrl = uploadArgs[++i];
+      else if (uploadArgs[i] === "--key" && uploadArgs[i + 1]) uploadKey = uploadArgs[++i];
+    }
+    await cmdUpload(sub, uploadUrl, uploadKey);
+    break;
+  }
+
   default:
     console.log(`
 vellymon CLI — playtest matches from the terminal
 
 Commands:
-  vellymon match create                         Create a new match
-  vellymon match list                           List local matches
-  vellymon board <matchId>                      Show the board
-  vellymon status <matchId>                     One-line summary
-  vellymon cmd <id> <team> <vellymon> <action> [dir]  Issue a command
-  vellymon submit <matchId> <teamId>            Submit team's turn
-  vellymon report <matchId>                     Generate match report
+  vellymon match create                              Create a new match
+  vellymon match list                                List local matches
+  vellymon board <matchId>                           Show the board
+  vellymon status <matchId>                          One-line summary
+  vellymon cmd <id> <team> <vellymon> <action> [dir] Issue a command
+  vellymon submit <matchId> <teamId>                 Submit team's turn
+  vellymon report <matchId>                          Generate match report
+  vellymon upload <matchId> [--url <url>] [--key <key>]
+                                                     Upload match to server for spectating
 
 Examples:
   vellymon match create
   vellymon cmd abc123 1 aerobolt move right
   vellymon cmd abc123 1 1-0 attack down
   vellymon submit abc123 1
+  vellymon upload abc123 --key myapikey
 `);
 }

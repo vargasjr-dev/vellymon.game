@@ -11,6 +11,9 @@
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { db } from "../../../../../data/db";
+import { matchSnapshot } from "../../../../../data/schema";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   _req: Request,
@@ -41,10 +44,23 @@ export async function GET(
     // File not found — fall through to DB
   }
 
-  // ── 2. DB fallback (for production web matches) ───────────────────────────
-  // TODO: import getMatchGameState and serve DB-backed matches
-  // const state = await getMatchGameState(id);
-  // if (state) return NextResponse.json(state);
+  // ── 2. DB fallback — matchSnapshot table (for CLI-uploaded matches) ────────
+  try {
+    const [row] = await db
+      .select()
+      .from(matchSnapshot)
+      .where(eq(matchSnapshot.id, id));
+
+    if (row) {
+      return NextResponse.json({
+        gameState: row.gameState,
+        status: row.status,
+        turnHistory: [],
+      });
+    }
+  } catch {
+    // DB unavailable — fall through
+  }
 
   return NextResponse.json({ error: "Match not found" }, { status: 404 });
 }
