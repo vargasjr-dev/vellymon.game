@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getGameStateAction, submitCommandsAction, concedeAction, getVellymonInfoAction, type PlayCommand, type VellymonInfo } from "./actions";
+import {
+  getGameStateAction,
+  submitCommandsAction,
+  concedeAction,
+  getVellymonInfoAction,
+  type PlayCommand,
+  type VellymonInfo,
+} from "./actions";
 import { useRouter } from "next/navigation";
 import VictoryModal from "./VictoryModal";
 
@@ -21,29 +28,62 @@ type Dir = "up" | "down" | "left" | "right";
  *   Team 1 (x=0 spawns at bottom): screen↑ = game right, screen← = game up
  *   Team 2 (x=8 spawns at bottom): screen↑ = game left, screen← = game down
  */
-function screenToGameDir(screenDir: Dir, isPortrait: boolean, teamId: 1 | 2): Dir {
+function screenToGameDir(
+  screenDir: Dir,
+  isPortrait: boolean,
+  teamId: 1 | 2,
+): Dir {
   if (!isPortrait) return screenDir;
 
   if (teamId === 1) {
-    const map: Record<Dir, Dir> = { up: "right", down: "left", left: "up", right: "down" };
+    const map: Record<Dir, Dir> = {
+      up: "right",
+      down: "left",
+      left: "up",
+      right: "down",
+    };
     return map[screenDir];
   } else {
-    const map: Record<Dir, Dir> = { up: "left", down: "right", left: "down", right: "up" };
+    const map: Record<Dir, Dir> = {
+      up: "left",
+      down: "right",
+      left: "down",
+      right: "up",
+    };
     return map[screenDir];
   }
 }
 
 /** Reverse: game-space direction → screen arrow symbol for display */
-function gameDirToScreenArrow(gameDir: Dir, isPortrait: boolean, teamId: 1 | 2): string {
-  const arrows: Record<Dir, string> = { up: "↑", down: "↓", left: "←", right: "→" };
+function gameDirToScreenArrow(
+  gameDir: Dir,
+  isPortrait: boolean,
+  teamId: 1 | 2,
+): string {
+  const arrows: Record<Dir, string> = {
+    up: "↑",
+    down: "↓",
+    left: "←",
+    right: "→",
+  };
   if (!isPortrait) return arrows[gameDir];
 
   // Invert the screen→game mapping
   if (teamId === 1) {
-    const map: Record<Dir, Dir> = { right: "up", left: "down", up: "left", down: "right" };
+    const map: Record<Dir, Dir> = {
+      right: "up",
+      left: "down",
+      up: "left",
+      down: "right",
+    };
     return arrows[map[gameDir]];
   } else {
-    const map: Record<Dir, Dir> = { left: "up", right: "down", down: "left", up: "right" };
+    const map: Record<Dir, Dir> = {
+      left: "up",
+      right: "down",
+      down: "left",
+      up: "right",
+    };
     return arrows[map[gameDir]];
   }
 }
@@ -144,7 +184,10 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showGameMenu, setShowGameMenu] = useState(false);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
-  const [showVictory, setShowVictory] = useState<{ winner: string; condition: string } | null>(null);
+  const [showVictory, setShowVictory] = useState<{
+    winner: string;
+    condition: string;
+  } | null>(null);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
@@ -152,7 +195,13 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [boardWidth, setBoardWidth] = useState(8);
   const [boardHeight, setBoardHeight] = useState(5);
   const [boardSpaces, setBoardSpaces] = useState<
-    Array<{ x: number; y: number; type: string; occupationCounter?: number; harvestYield?: number }>
+    Array<{
+      x: number;
+      y: number;
+      type: string;
+      occupationCounter?: number;
+      harvestYield?: number;
+    }>
   >([]);
   const [selectedVellymon, setSelectedVellymon] = useState<string | null>(null);
   const [pendingCommands, setPendingCommands] = useState<PlayCommand[]>([]);
@@ -169,8 +218,14 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [rawUserIds, setRawUserIds] = useState<[string, string] | null>(null);
   const isAdminSelfMatch = rawUserIds ? rawUserIds[0] === rawUserIds[1] : false;
 
+  // Sparring (AI opponent) metadata
+  const [isSparring, setIsSparring] = useState(false);
+  const [aiDifficulty, setAiDifficulty] = useState<string | null>(null);
+
   // Vellymon display metadata — fetched once from server (library + power registry)
-  const [vellymonInfoCache, setVellymonInfoCache] = useState<Record<string, VellymonInfo>>({});
+  const [vellymonInfoCache, setVellymonInfoCache] = useState<
+    Record<string, VellymonInfo>
+  >({});
   const fetchedNamesRef = useRef<Set<string>>(new Set());
 
   // Your team = the one you're currently commanding
@@ -191,7 +246,15 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   }, [teams, activeTeamId, isAdminSelfMatch]);
 
   const parseState = useCallback(
-    (data: { gameState: Record<string, unknown>; status: string; turnHistory?: TurnSnapshot[] } | null) => {
+    (
+      data: {
+        gameState: Record<string, unknown>;
+        status: string;
+        turnHistory?: TurnSnapshot[];
+        sparring?: boolean;
+        aiDifficulty?: string | null;
+      } | null,
+    ) => {
       if (!data?.gameState) return;
 
       // Update turn history if provided
@@ -232,6 +295,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         setRawUserIds([gs.teams[0].userId, gs.teams[1].userId]);
       }
 
+      // Sparring metadata — set once on first poll
+      if (data.sparring) {
+        setIsSparring(true);
+        setAiDifficulty(data.aiDifficulty ?? null);
+      }
+
       // Figure out which team this user belongs to
       const userTeam = gs.teams.find((t) => t.userId === userId);
       if (userTeam && !isAdminSelfMatch) {
@@ -244,13 +313,18 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       setTeams([t1, t2]);
 
       if (gs.result) {
-        const winnerName = gs.teams.find((t) => t.id === gs.result!.winner)?.name ?? `Team ${gs.result.winner}`;
+        const winnerName =
+          gs.teams.find((t) => t.id === gs.result!.winner)?.name ??
+          `Team ${gs.result.winner}`;
         setGameOver({
           winner: winnerName,
           condition: gs.result.condition,
         });
         // Trigger victory modal if not already showing
-        setShowVictory((prev) => prev ?? { winner: winnerName, condition: gs.result!.condition });
+        setShowVictory(
+          (prev) =>
+            prev ?? { winner: winnerName, condition: gs.result!.condition },
+        );
       }
     },
     [userId, isAdminSelfMatch],
@@ -259,7 +333,9 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   // Fetch vellymon display metadata once when teams are known
   useEffect(() => {
     if (!teams) return;
-    const allNames = [...teams[0].active, ...teams[1].active].map((v) => v.name);
+    const allNames = [...teams[0].active, ...teams[1].active].map(
+      (v) => v.name,
+    );
     const unfetched = allNames.filter((n) => !fetchedNamesRef.current.has(n));
     if (unfetched.length === 0) return;
     unfetched.forEach((n) => fetchedNamesRef.current.add(n));
@@ -290,7 +366,9 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         }
       } catch (e) {
         if (active) {
-          setError(e instanceof Error ? e.message : "Failed to load game state");
+          setError(
+            e instanceof Error ? e.message : "Failed to load game state",
+          );
           setLoading(false);
         }
       }
@@ -314,7 +392,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
 
   // Wrap addCommand with screen→game direction translation — all commands are directional now
   const addDirectionalCommand = useCallback(
-    (type: "move" | "attack" | "harvest", vellymonUuid: string, screenDir: Dir, attackIndex?: number) => {
+    (
+      type: "move" | "attack" | "harvest",
+      vellymonUuid: string,
+      screenDir: Dir,
+      attackIndex?: number,
+    ) => {
       const gameDir = screenToGameDir(screenDir, isPortrait, yourTeam?.id ?? 1);
       addCommand({ type, vellymonUuid, direction: gameDir, attackIndex });
     },
@@ -369,13 +452,26 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   }, [matchUuid, isAdminSelfMatch, activeTeamId]);
 
   // Build all vellymons for the canvas
-  const allVellymons = useMemo(() => [
-    ...(teams?.[0]?.active.map((v) => ({ ...v, teamId: teams[0].id as 1 | 2 })) ?? []),
-    ...(teams?.[1]?.active.map((v) => ({ ...v, teamId: teams[1].id as 1 | 2 })) ?? []),
-  ], [teams]);
+  const allVellymons = useMemo(
+    () => [
+      ...(teams?.[0]?.active.map((v) => ({
+        ...v,
+        teamId: teams[0].id as 1 | 2,
+      })) ?? []),
+      ...(teams?.[1]?.active.map((v) => ({
+        ...v,
+        teamId: teams[1].id as 1 | 2,
+      })) ?? []),
+    ],
+    [teams],
+  );
 
-  const selectedVm = yourTeam?.active.find((v) => v.uuid === selectedVellymon && !v.isKO);
-  const pendingForSelected = pendingCommands.find((c) => c.vellymonUuid === selectedVellymon);
+  const selectedVm = yourTeam?.active.find(
+    (v) => v.uuid === selectedVellymon && !v.isKO,
+  );
+  const pendingForSelected = pendingCommands.find(
+    (c) => c.vellymonUuid === selectedVellymon,
+  );
 
   // Vellymons that have pending commands (for board indicators)
   const commandedUuids = useMemo(
@@ -398,7 +494,10 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <p className="text-red-400 mb-4">{error}</p>
-            <Link href={`/matches/${matchUuid}`} className="text-blue-400 hover:underline">
+            <Link
+              href={`/matches/${matchUuid}`}
+              className="text-blue-400 hover:underline"
+            >
               Back to match
             </Link>
           </div>
@@ -412,8 +511,13 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
             <p className="text-xl mb-2">
               <span className="text-yellow-400">{gameOver.winner}</span> wins!
             </p>
-            <p className="text-gray-400 mb-6 capitalize">Victory by {gameOver.condition}</p>
-            <Link href={`/matches/${matchUuid}`} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
+            <p className="text-gray-400 mb-6 capitalize">
+              Victory by {gameOver.condition}
+            </p>
+            <Link
+              href={`/matches/${matchUuid}`}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
+            >
               Match Results
             </Link>
           </div>
@@ -465,11 +569,20 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
             )}
             {opponentTeam && (
               <div className="flex-1 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-1.5">
-                <p className="font-bold text-sm truncate">{opponentTeam.name}</p>
+                <p className="font-bold text-sm truncate">
+                  {opponentTeam.name}
+                </p>
                 <div className="flex gap-2 text-xs text-gray-300">
                   <span>⚡{opponentTeam.energy}</span>
-                  <span>🗡️{opponentTeam.active.filter((v) => !v.isKO).length}</span>
+                  <span>
+                    🗡️{opponentTeam.active.filter((v) => !v.isKO).length}
+                  </span>
                   <span>💀{opponentTeam.knockedCount}</span>
+                  {isSparring && aiDifficulty && (
+                    <span className="ml-auto text-xs font-medium text-gray-400 uppercase tracking-wide">
+                      🤖 {aiDifficulty}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -495,8 +608,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                 info={vellymonInfoCache[selectedVm.name]}
                 teamEnergy={yourTeam?.energy ?? 0}
                 pendingCommand={pendingForSelected ?? null}
-                dirToArrow={(dir) => gameDirToScreenArrow(dir, isPortrait, yourTeam?.id ?? 1)}
-                onAction={(type, dir, attackIndex) => addDirectionalCommand(type, selectedVm.uuid, dir, attackIndex)}
+                dirToArrow={(dir) =>
+                  gameDirToScreenArrow(dir, isPortrait, yourTeam?.id ?? 1)
+                }
+                onAction={(type, dir, attackIndex) =>
+                  addDirectionalCommand(type, selectedVm.uuid, dir, attackIndex)
+                }
                 onClose={() => setSelectedVellymon(null)}
               />
             )}
@@ -516,14 +633,23 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                 {pendingCommands.length > 0 ? (
                   <div className="flex flex-wrap gap-1 mb-2 justify-center">
                     {pendingCommands.map((cmd) => {
-                      const vm = yourTeam?.active.find((v) => v.uuid === cmd.vellymonUuid);
+                      const vm = yourTeam?.active.find(
+                        (v) => v.uuid === cmd.vellymonUuid,
+                      );
                       return (
                         <button
                           key={cmd.vellymonUuid}
                           onClick={() => setSelectedVellymon(cmd.vellymonUuid)}
                           className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-300 transition"
                         >
-                          {vm?.name?.slice(0, 8)}: {cmd.type} {cmd.direction ? gameDirToScreenArrow(cmd.direction, isPortrait, yourTeam?.id ?? 1) : ""}
+                          {vm?.name?.slice(0, 8)}: {cmd.type}{" "}
+                          {cmd.direction
+                            ? gameDirToScreenArrow(
+                                cmd.direction,
+                                isPortrait,
+                                yourTeam?.id ?? 1,
+                              )
+                            : ""}
                         </button>
                       );
                     })}
@@ -565,27 +691,50 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       {/* Game menu (opens from your team card) */}
       {showGameMenu && !showConcedeConfirm && (
         <div className="fixed inset-0 z-[90] flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowGameMenu(false)} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowGameMenu(false)}
+          />
           <div className="relative bg-[#1a2035] border-t border-gray-700 rounded-t-2xl w-full max-w-md mx-auto pb-safe">
             <div className="flex justify-center pt-2 pb-1">
               <div className="w-10 h-1 rounded-full bg-gray-600" />
             </div>
             <div className="px-4 pb-2 border-b border-gray-800">
-              <p className="text-sm font-semibold text-gray-200">{yourTeam?.name ?? "Your Team"}</p>
+              <p className="text-sm font-semibold text-gray-200">
+                {yourTeam?.name ?? "Your Team"}
+              </p>
             </div>
             <div className="p-4 space-y-2">
               {/* Team details */}
               {yourTeam && (
                 <div className="grid grid-cols-3 gap-2 text-center text-xs text-gray-400 mb-3">
-                  <div><span className="block text-lg text-white font-bold">{yourTeam.active.filter(v => !v.isKO).length}</span>Active</div>
-                  <div><span className="block text-lg text-white font-bold">⚡{yourTeam.energy}</span>Energy</div>
-                  <div><span className="block text-lg text-white font-bold">{yourTeam.knockedCount}</span>KO&apos;d</div>
+                  <div>
+                    <span className="block text-lg text-white font-bold">
+                      {yourTeam.active.filter((v) => !v.isKO).length}
+                    </span>
+                    Active
+                  </div>
+                  <div>
+                    <span className="block text-lg text-white font-bold">
+                      ⚡{yourTeam.energy}
+                    </span>
+                    Energy
+                  </div>
+                  <div>
+                    <span className="block text-lg text-white font-bold">
+                      {yourTeam.knockedCount}
+                    </span>
+                    KO&apos;d
+                  </div>
                 </div>
               )}
 
               {/* Concede */}
               <button
-                onClick={() => { setShowGameMenu(false); setShowConcedeConfirm(true); }}
+                onClick={() => {
+                  setShowGameMenu(false);
+                  setShowConcedeConfirm(true);
+                }}
                 className="w-full py-3 rounded-xl bg-red-950/60 border border-red-800/30 text-red-400 font-medium hover:bg-red-900/60 active:bg-red-800/60 transition text-sm"
               >
                 🏳️ Concede Match
@@ -606,9 +755,14 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       {/* Concede confirmation dialog */}
       {showConcedeConfirm && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowConcedeConfirm(false)} />
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowConcedeConfirm(false)}
+          />
           <div className="relative bg-[#1a2035] border border-gray-700 rounded-2xl p-6 mx-6 max-w-sm w-full text-center">
-            <h3 className="text-lg font-bold text-white mb-2">Concede Match?</h3>
+            <h3 className="text-lg font-bold text-white mb-2">
+              Concede Match?
+            </h3>
             <p className="text-sm text-gray-400 mb-6">
               Your opponent will be declared the winner. This cannot be undone.
             </p>
