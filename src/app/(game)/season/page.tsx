@@ -32,7 +32,10 @@ export default async function SeasonPage() {
             🏆 {data.seasonName}
           </h1>
           <p className="text-gray-600 mt-1">
-            Earn XP from matches to unlock rewards.
+            Earn XP from matches to unlock rewards.{" "}
+            <Link href="/season/history" className="text-blue-600 hover:underline text-sm">
+              View history →
+            </Link>
           </p>
         </div>
         {!data.subscribed && (
