@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { auth } from "~/lib/auth.server";
 import getPlayerProfile from "~/data/getPlayerProfile.server";
+import getUserAchievements from "~/data/getUserAchievements.server";
 import type { Rank } from "../../../../../lib/ranked";
 
 // ─── Rank display helpers ─────────────────────────────────────────────────────
@@ -65,7 +66,10 @@ export default async function PlayerProfilePage({
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const profile = await getPlayerProfile(userId);
+  const [profile, achievementData] = await Promise.all([
+    getPlayerProfile(userId),
+    getUserAchievements(userId),
+  ]);
   if (!profile) notFound();
 
   const isOwnProfile = session.user.id === userId;
@@ -77,6 +81,12 @@ export default async function PlayerProfilePage({
     .slice(0, 2);
 
   const joinedYear = profile.joinedAt.getFullYear();
+
+  // Top 6 most recently unlocked achievements to show as badges
+  const recentBadges = achievementData.achievements
+    .filter((a) => a.unlocked && a.unlockedAt != null)
+    .sort((a, b) => (b.unlockedAt!.getTime() - a.unlockedAt!.getTime()))
+    .slice(0, 6);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -153,7 +163,55 @@ export default async function PlayerProfilePage({
             </div>
           </div>
         </div>
+
+        {/* Achievement points row */}
+        {achievementData.earnedPoints > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏅</span>
+              <span className="text-sm font-semibold text-gray-700">
+                {achievementData.unlockedCount} / {achievementData.totalCount} achievements
+              </span>
+              <span className="text-xs text-yellow-600 font-bold bg-yellow-50 px-2 py-0.5 rounded-full">
+                {achievementData.earnedPoints} pts
+              </span>
+            </div>
+            {isOwnProfile && (
+              <Link
+                href="/achievements"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View all →
+              </Link>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Recent achievement badges */}
+      {recentBadges.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
+            🏅 Recent Badges
+          </h2>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {recentBadges.map((badge) => (
+              <div
+                key={badge.id}
+                title={`${badge.name} — ${badge.description}`}
+                className="flex flex-col items-center gap-1 text-center"
+              >
+                <div className="w-12 h-12 rounded-xl bg-yellow-50 border border-yellow-200 flex items-center justify-center text-2xl">
+                  {badge.icon}
+                </div>
+                <p className="text-xs text-gray-600 leading-tight font-medium">
+                  {badge.name}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
