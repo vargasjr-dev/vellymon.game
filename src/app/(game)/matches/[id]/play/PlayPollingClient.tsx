@@ -13,6 +13,7 @@ import {
 } from "./actions";
 import { useRouter } from "next/navigation";
 import VictoryModal from "./VictoryModal";
+import { useSoundEffects } from "./useSoundEffects";
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
 import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
@@ -228,6 +229,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   >({});
   const fetchedNamesRef = useRef<Set<string>>(new Set());
 
+  // ─── Sound & animation ───────────────────────────────────────────────────
+  const { play } = useSoundEffects();
+  /** True while a turn submission is in-flight — shows "Submitting…" on button */
+  const [submitting, setSubmitting] = useState(false);
+  /** Briefly true after a turn resolves — pulses the Turn counter */
+  const [turnFlash, setTurnFlash] = useState(false);
+  /** Tracks previous KO counts to detect new KOs after turn resolve */
+  const prevKnockedRef = useRef<{ t1: number; t2: number }>({ t1: 0, t2: 0 });
+  /** Tracks whether victory/defeat sound has already been played */
+  const resultSoundPlayedRef = useRef(false);
+
   // Your team = the one you're currently commanding
   const yourTeam = useMemo(() => {
     if (!teams) return null;
@@ -312,6 +324,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       const t2 = gs.teams[1] ? mapTeam(gs.teams[1]) : t1;
       setTeams([t1, t2]);
 
+      // KO detection — play KO sound if either team gained a new KO
+      const newT1Knocked = gs.teams[0]?.knocked?.length ?? 0;
+      const newT2Knocked = gs.teams[1]?.knocked?.length ?? 0;
+      if (
+        newT1Knocked > prevKnockedRef.current.t1 ||
+        newT2Knocked > prevKnockedRef.current.t2
+      ) {
+        play("ko");
+      }
+      prevKnockedRef.current = { t1: newT1Knocked, t2: newT2Knocked };
+
       if (gs.result) {
         const winnerName =
           gs.teams.find((t) => t.id === gs.result!.winner)?.name ??
@@ -325,9 +348,19 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
           (prev) =>
             prev ?? { winner: winnerName, condition: gs.result!.condition },
         );
+        // Play victory or defeat sound once
+        if (!resultSoundPlayedRef.current) {
+          resultSoundPlayedRef.current = true;
+          const userTeamId = gs.teams.find((t) => t.userId === userId)?.id;
+          if (userTeamId === gs.result.winner) {
+            play("victory");
+          } else {
+            play("defeat");
+          }
+        }
       }
     },
-    [userId, isAdminSelfMatch],
+    [userId, isAdminSelfMatch, play],
   );
 
   // Fetch vellymon display metadata once when teams are known
@@ -388,7 +421,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       return [...filtered, cmd];
     });
     setSelectedVellymon(null);
-  }, []);
+    play("blip");
+  }, [play]);
 
   // Wrap addCommand with screen→game direction translation — all commands are directional now
   const addDirectionalCommand = useCallback(
@@ -405,6 +439,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   );
 
   const handleSubmitTurn = useCallback(async () => {
+    play("submit");
+    setSubmitting(true);
     try {
       const result = await submitCommandsAction(
         matchUuid,
@@ -423,6 +459,10 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         // Turn resolved — refresh state
         const data = await getGameStateAction(matchUuid);
         parseState(data);
+        play("resolve");
+        // Brief flash on the Turn counter
+        setTurnFlash(true);
+        setTimeout(() => setTurnFlash(false), 400);
         if (isAdminSelfMatch) {
           setActiveTeamId(1); // Reset to P1 for next turn
         }
@@ -430,12 +470,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         // P2 submitted in admin match — turn should resolve now
         const data = await getGameStateAction(matchUuid);
         parseState(data);
+        play("resolve");
+        setTurnFlash(true);
+        setTimeout(() => setTurnFlash(false), 400);
         setActiveTeamId(1); // Reset to P1 for next turn
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to submit commands");
+    } finally {
+      setSubmitting(false);
     }
-  }, [matchUuid, pendingCommands, parseState, isAdminSelfMatch, activeTeamId]);
+  }, [matchUuid, pendingCommands, parseState, isAdminSelfMatch, activeTeamId, play]);
 
   const handleConcede = useCallback(async () => {
     try {
@@ -542,7 +587,11 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               )}
               <button
                 onClick={() => setHistoryOpen(!historyOpen)}
-                className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 active:bg-black/80 transition flex items-center gap-1"
+                className={`text-sm px-3 py-1.5 rounded-lg font-mono transition flex items-center gap-1 ${
+                  turnFlash
+                    ? "bg-green-600/80 text-white scale-105"
+                    : "text-gray-300 bg-black/40 hover:bg-black/60 active:bg-black/80"
+                }`}
               >
                 Turn {turn}
                 {turnHistory.length > 0 && (
@@ -666,15 +715,25 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
             {!waitingForSwitch && (
               <button
                 onClick={handleSubmitTurn}
+                disabled={submitting}
                 className={`w-full py-3 rounded-xl font-semibold transition text-base mt-1 ${
-                  pendingCommands.length > 0
-                    ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
-                    : "bg-gray-700 hover:bg-gray-600"
+                  submitting
+                    ? "bg-gray-600 cursor-not-allowed opacity-70"
+                    : pendingCommands.length > 0
+                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
+                      : "bg-gray-700 hover:bg-gray-600"
                 }`}
               >
-                {pendingCommands.length > 0
-                  ? `Submit Turn (${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""})`
-                  : "End Turn (skip all)"}
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Submitting…
+                  </span>
+                ) : pendingCommands.length > 0 ? (
+                  `Submit Turn (${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""})`
+                ) : (
+                  "End Turn (skip all)"
+                )}
               </button>
             )}
           </div>
