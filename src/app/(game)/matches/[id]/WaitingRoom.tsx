@@ -6,6 +6,50 @@ import Link from "next/link";
 import { useToast } from "~/components/Toast";
 import { getMatchAction, cancelMatchAction, startMatchAction, deleteMatchAction } from "../actions";
 
+// ─── Invite Link Button ───────────────────────────────────────────────────────
+
+function InviteLinkButton({ matchUuid }: { matchUuid: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const url = `${window.location.origin}/matches/${matchUuid}/join`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const el = document.createElement("textarea");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-2 px-3 py-1.5 bg-white border border-yellow-300 hover:bg-yellow-50 rounded-lg text-sm font-medium text-yellow-800 transition"
+    >
+      {copied ? (
+        <>
+          <span>✅</span>
+          <span>Copied!</span>
+        </>
+      ) : (
+        <>
+          <span>🔗</span>
+          <span>Copy Invite Link</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 type Player = {
   uuid: string;
   userId: string;
@@ -118,12 +162,14 @@ export default function WaitingRoom({
 
       {/* Waiting pulse */}
       {match.status === "waiting" && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
-          <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
-          <p className="text-sm text-yellow-800">
-            Waiting for an opponent to join. Share the match link or wait for
-            someone to find it in the lobby.
-          </p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse flex-shrink-0" />
+            <p className="text-sm text-yellow-800">
+              Waiting for an opponent to join.
+            </p>
+          </div>
+          <InviteLinkButton matchUuid={match.uuid} />
         </div>
       )}
 
