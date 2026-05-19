@@ -8,6 +8,10 @@ import { getSubscriptionInfo } from "../../../../lib/subscription";
 import SubscriptionCard from "~/components/SubscriptionCard";
 import { getActiveRank, STARS_PER_RANK, type Rank } from "../../../../lib/ranked";
 import { getBalance } from "../../../../lib/currency";
+import { db } from "../../../../data/db";
+import { user as userTable } from "../../../../data/schema";
+import { eq } from "drizzle-orm";
+import UsernameForm from "./UsernameForm";
 
 // ─── Rank helpers ─────────────────────────────────────────────────────────────
 
@@ -57,14 +61,16 @@ export default async function PlayerHubPage() {
   // Session guaranteed by (game)/layout.tsx auth gate
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const [roster, teams, matches, subInfo, activeRank, creditBalance] = await Promise.all([
+  const [roster, teams, matches, subInfo, activeRank, creditBalance, userRow] = await Promise.all([
     getVellymonRoster(session.user.id),
     getTeams(session.user.id),
     getUserMatches(session.user.id),
     getSubscriptionInfo(session.user.id),
     getActiveRank(session.user.id),
     getBalance(session.user.id),
+    db.select({ username: userTable.username }).from(userTable).where(eq(userTable.id, session.user.id)).limit(1).then(r => r[0] ?? null),
   ]);
+  const currentUsername = userRow?.username ?? null;
   const activeMatchCount = matches.filter(
     (m) => m.status === "waiting" || m.status === "ready" || m.status === "playing",
   ).length;
@@ -204,6 +210,23 @@ export default async function PlayerHubPage() {
           subscriptionStatus={subInfo?.subscriptionStatus ?? "none"}
           subscriptionStreakMonths={subInfo?.subscriptionStreakMonths ?? 0}
         />
+      </div>
+
+      {/* Username / Profile */}
+      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+        <UsernameForm currentUsername={currentUsername} />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
+          <h3 className="font-semibold text-gray-900">Your Profile</h3>
+          <p className="text-sm text-gray-500">
+            View your public profile — stats, rank, and vellymon count visible to other trainers.
+          </p>
+          <Link
+            href={`/profile/${session.user.id}`}
+            className="inline-block text-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-sm py-2 px-4 rounded-lg transition"
+          >
+            👤 View My Profile
+          </Link>
+        </div>
       </div>
 
       {/* Quick Actions */}
