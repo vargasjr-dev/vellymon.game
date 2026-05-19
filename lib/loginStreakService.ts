@@ -56,6 +56,13 @@ export async function getLoginStreak(userId: string): Promise<LoginStreakRow> {
   };
 }
 
+/** Number of days between two YYYY-MM-DD UTC date strings (b - a). */
+function daysBetween(a: string, b: string): number {
+  if (!a) return Infinity;
+  const msPerDay = 86_400_000;
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / msPerDay);
+}
+
 /**
  * Claim the daily check-in reward for today.
  *
@@ -65,9 +72,18 @@ export async function getLoginStreak(userId: string): Promise<LoginStreakRow> {
  * Awards BASE_DAILY_XP + BASE_DAILY_CREDITS every day, plus milestone bonuses
  * when the new streak exactly hits a milestone day count.
  *
- * @param userId — the authenticated player
+ * **Streak freeze (subscriber perk):**
+ * - Subscribers automatically receive 1 freeze per week (granted on claim when eligible).
+ * - If a subscriber missed yesterday AND has at least 1 freeze, the freeze is consumed
+ *   instead of resetting the streak. The result includes `usedFreeze: true`.
+ *
+ * @param userId      — the authenticated player
+ * @param isSubscriber — whether the player has an active subscription (enables freeze logic)
  */
-export async function claimDailyCheckIn(userId: string): Promise<DailyCheckInResult> {
+export async function claimDailyCheckIn(
+  userId: string,
+  isSubscriber = false,
+): Promise<DailyCheckInResult> {
   const today = todayUTCDate();
   const yesterday = yesterdayUTCDate();
 
@@ -81,12 +97,40 @@ export async function claimDailyCheckIn(userId: string): Promise<DailyCheckInRes
       newStreak: existing.currentStreak,
       xpAwarded: 0,
       creditsAwarded: 0,
+      freezeCount: existing.streakFreezeCount,
     };
   }
 
-  // Determine new streak value
+  // ── Freeze grant (subscriber weekly perk) ──────────────────────────────────
+  // Grant 1 freeze if subscriber and last grant was >7 days ago (or never granted).
+  let newFreezeCount = existing.streakFreezeCount;
+  let newFreezeGrantDate = existing.lastFreezeGrantDate;
+  if (isSubscriber) {
+    const daysSinceGrant = daysBetween(existing.lastFreezeGrantDate, today);
+    if (daysSinceGrant >= 7) {
+      newFreezeCount += 1;
+      newFreezeGrantDate = today;
+    }
+  }
+
+  // ── Streak determination ───────────────────────────────────────────────────
   const isConsecutive = existing.lastClaimedDate === yesterday;
-  const newStreak = isConsecutive ? existing.currentStreak + 1 : 1;
+  let newStreak: number;
+  let usedFreeze = false;
+
+  if (isConsecutive) {
+    // Normal consecutive day
+    newStreak = existing.currentStreak + 1;
+  } else if (newFreezeCount > 0) {
+    // Missed a day but freeze available — consume it to preserve streak
+    newStreak = existing.currentStreak;
+    newFreezeCount -= 1;
+    usedFreeze = true;
+  } else {
+    // Missed day, no freeze — reset
+    newStreak = 1;
+  }
+
   const newLongest = Math.max(existing.longestStreak, newStreak);
   const newTotal = existing.totalClaimed + 1;
 
@@ -104,8 +148,8 @@ export async function claimDailyCheckIn(userId: string): Promise<DailyCheckInRes
       longestStreak: newLongest,
       lastClaimedDate: today,
       totalClaimed: newTotal,
-      streakFreezeCount: existing.streakFreezeCount,
-      lastFreezeGrantDate: existing.lastFreezeGrantDate,
+      streakFreezeCount: newFreezeCount,
+      lastFreezeGrantDate: newFreezeGrantDate,
     })
     .onConflictDoUpdate({
       target: userLoginStreak.userId,
@@ -114,13 +158,17 @@ export async function claimDailyCheckIn(userId: string): Promise<DailyCheckInRes
         longestStreak: newLongest,
         lastClaimedDate: today,
         totalClaimed: newTotal,
+        streakFreezeCount: newFreezeCount,
+        lastFreezeGrantDate: newFreezeGrantDate,
       },
     });
 
   // Award XP and credits in parallel
-  const label = milestone
-    ? `Daily check-in (Day ${newStreak} — ${milestone.label})`
-    : `Daily check-in (Day ${newStreak})`;
+  const label = usedFreeze
+    ? `Daily check-in (Day ${newStreak} — freeze used)`
+    : milestone
+      ? `Daily check-in (Day ${newStreak} — ${milestone.label})`
+      : `Daily check-in (Day ${newStreak})`;
 
   await Promise.all([
     awardXP(userId, xpAwarded, "daily_checkin"),
@@ -132,6 +180,8 @@ export async function claimDailyCheckIn(userId: string): Promise<DailyCheckInRes
     newStreak,
     xpAwarded,
     creditsAwarded,
+    freezeCount: newFreezeCount,
     ...(milestone ? { milestoneHit: milestone } : {}),
+    ...(usedFreeze ? { usedFreeze: true } : {}),
   };
 }
