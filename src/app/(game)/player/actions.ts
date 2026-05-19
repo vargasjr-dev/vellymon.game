@@ -1,10 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
 import { auth } from "~/lib/auth.server";
+import { headers } from "next/headers";
 import { db } from "../../../../data/db";
 import { user } from "../../../../data/schema";
 import { eq, and, ne } from "drizzle-orm";
+import { claimDailyCheckIn } from "../../../../lib/loginStreakService";
+import type { DailyCheckInResult } from "../../../../lib/loginStreak";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 
@@ -41,4 +43,14 @@ export async function setUsernameAction(
     .where(eq(user.id, session.user.id));
 
   return { success: true };
+}
+
+/**
+ * Claim the daily check-in reward for the authenticated player.
+ * Idempotent — safe to call multiple times per day.
+ */
+export async function claimDailyCheckInAction(): Promise<DailyCheckInResult> {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+  return claimDailyCheckIn(session.user.id);
 }

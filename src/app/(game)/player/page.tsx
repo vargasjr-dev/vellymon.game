@@ -12,6 +12,8 @@ import { db } from "../../../../data/db";
 import { user as userTable } from "../../../../data/schema";
 import { eq } from "drizzle-orm";
 import UsernameForm from "./UsernameForm";
+import { DailyCheckIn } from "./DailyCheckIn";
+import { getLoginStreak } from "../../../../lib/loginStreakService";
 
 // ─── Rank helpers ─────────────────────────────────────────────────────────────
 
@@ -61,7 +63,7 @@ export default async function PlayerHubPage() {
   // Session guaranteed by (game)/layout.tsx auth gate
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const [roster, teams, matches, subInfo, activeRank, creditBalance, userRow] = await Promise.all([
+  const [roster, teams, matches, subInfo, activeRank, creditBalance, userRow, loginStreak] = await Promise.all([
     getVellymonRoster(session.user.id),
     getTeams(session.user.id),
     getUserMatches(session.user.id),
@@ -69,6 +71,7 @@ export default async function PlayerHubPage() {
     getActiveRank(session.user.id),
     getBalance(session.user.id),
     db.select({ username: userTable.username }).from(userTable).where(eq(userTable.id, session.user.id)).limit(1).then(r => r[0] ?? null),
+    getLoginStreak(session.user.id),
   ]);
   const currentUsername = userRow?.username ?? null;
   const activeMatchCount = matches.filter(
@@ -202,6 +205,11 @@ export default async function PlayerHubPage() {
               : `active match${activeMatchCount !== 1 ? "es" : ""}`}
           </p>
         </Link>
+      </div>
+
+      {/* Daily Check-In */}
+      <div className="mb-8">
+        <DailyCheckIn initialStreak={loginStreak} />
       </div>
 
       {/* Subscription */}
