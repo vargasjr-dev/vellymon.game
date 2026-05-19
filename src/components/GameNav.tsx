@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/season", label: "🏆 Season" },
   { href: "/ranked", label: "⚔️ Ranked" },
   { href: "/achievements", label: "🏅 Badges" },
+  { href: "/quests", label: "📋 Quests" },
 ];
 
 interface GameNavProps {
@@ -22,9 +23,11 @@ interface GameNavProps {
   isSubscriber?: boolean;
   /** Count of achievements unlocked in the last 24 hours — drives notification dot */
   newAchievementCount?: number;
+  /** Count of today's quests still incomplete — drives quest notification badge */
+  activeQuestCount?: number;
 }
 
-export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount }: GameNavProps) {
+export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount, activeQuestCount }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -99,6 +102,7 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
             {navLinks.map((link) => {
               const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
               const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
+              const questCount = link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
               return (
                 <Link
                   key={link.href}
@@ -121,6 +125,11 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                     <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                    </span>
+                  )}
+                  {questCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
+                      {questCount}
                     </span>
                   )}
                 </Link>
@@ -278,6 +287,7 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
             {navLinks.map((link) => {
               const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
               const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
+              const questCount = link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
               return (
                 <Link
                   key={link.href}
@@ -301,6 +311,11 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                       <span className="flex h-2.5 w-2.5">
                         <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                      </span>
+                    )}
+                    {questCount > 0 && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+                        {questCount}
                       </span>
                     )}
                   </span>
