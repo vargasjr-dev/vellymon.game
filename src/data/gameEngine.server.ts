@@ -13,6 +13,7 @@ import {
   teamSlot,
   team,
   vellymonInstance,
+  matchStats,
 } from "../../data/schema";
 import { eq, asc } from "drizzle-orm";
 import {
@@ -456,6 +457,71 @@ export async function getMatchGameState(matchUuid: string) {
   };
 }
 
+// ─── Match Stats ─────────────────────────────────────────────────────────────
+
+/**
+ * Write per-player match stats once a game session completes.
+ *
+ * Called from both turn-resolution and concede paths. Inserts one row per
+ * human player (AI bots with userId "ai-bot" are skipped).
+ *
+ * Stats captured:
+ *   result       — "win" | "loss"
+ *   turns        — total turns played
+ *   enemyKOs     — opponent vellymons knocked out by this player's team
+ *   ownKOs       — own vellymons knocked out
+ *   winCondition — engine win condition string (or "concession")
+ *   isSparring   — true for AI practice matches
+ *   aiDifficulty — difficulty tier if sparring
+ */
+async function writeMatchStats(
+  matchUuid: string,
+  gameState: GameState,
+  meta: MatchMetadata,
+): Promise<void> {
+  const result = gameState.result;
+  if (!result) return; // no-op if game not actually over
+
+  const winCondition = result.condition ?? "unknown";
+
+  // Collect human player records (skip AI sentinel)
+  const players = await db
+    .select({ userId: gamePlayer.userId })
+    .from(gamePlayer)
+    .where(eq(gamePlayer.gameSessionUuid, matchUuid));
+
+  const rows = players
+    .filter((p) => p.userId !== "ai-bot")
+    .map((p) => {
+      const teamIndex = gameState.teams.findIndex((t) => t.userId === p.userId);
+      if (teamIndex === -1) return null;
+
+      const myTeam = gameState.teams[teamIndex];
+      const enemyTeam = gameState.teams[teamIndex === 0 ? 1 : 0];
+
+      const isWinner = result.winner === myTeam.id;
+      const ownKOs = myTeam.knocked.length;
+      const enemyKOs = enemyTeam.knocked.length;
+
+      return {
+        gameSessionUuid: matchUuid,
+        userId: p.userId,
+        result: isWinner ? "win" : "loss",
+        turns: gameState.turn,
+        enemyKOs,
+        ownKOs,
+        winCondition,
+        isSparring: meta.sparring ?? false,
+        aiDifficulty: meta.aiDifficulty ?? null,
+      } as const;
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  if (rows.length > 0) {
+    await db.insert(matchStats).values(rows).onConflictDoNothing();
+  }
+}
+
 // ─── Submit Commands ─────────────────────────────────────────────────────────
 
 export async function submitMatchCommands(
@@ -558,6 +624,10 @@ export async function submitMatchCommands(
         .update(gameSession)
         .set({ metadata: meta, status: "completed" })
         .where(eq(gameSession.uuid, matchUuid));
+      // Persist per-player match stats (fire-and-forget — don't block the response)
+      writeMatchStats(matchUuid, gameState, meta).catch((e) =>
+        console.error("[matchStats] write failed:", e),
+      );
       return { resolved: true, turnLog, gameOver: true };
     }
   }
@@ -616,6 +686,11 @@ export async function concedeMatch(
     .update(gameSession)
     .set({ metadata: meta, status: "completed" })
     .where(eq(gameSession.uuid, matchUuid));
+
+  // Persist per-player match stats
+  writeMatchStats(matchUuid, gameState, meta).catch((e) =>
+    console.error("[matchStats] write failed (concede):", e),
+  );
 
   const winnerTeam = gameState.teams[winnerId - 1];
   return {
