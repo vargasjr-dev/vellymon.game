@@ -20,9 +20,11 @@ interface GameNavProps {
   user: { name: string; email: string } | null;
   creditBalance?: number;
   isSubscriber?: boolean;
+  /** Count of achievements unlocked in the last 24 hours — drives notification dot */
+  newAchievementCount?: number;
 }
 
-export default function GameNav({ user, creditBalance, isSubscriber }: GameNavProps) {
+export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -96,11 +98,12 @@ export default function GameNav({ user, creditBalance, isSubscriber }: GameNavPr
           <div className="hidden md:flex items-center space-x-1">
             {navLinks.map((link) => {
               const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
+              const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition ${
                     isActive(link.href)
                       ? "bg-blue-600 text-white"
                       : isPremiumLocked
@@ -112,6 +115,12 @@ export default function GameNav({ user, creditBalance, isSubscriber }: GameNavPr
                   {"premium" in link && link.premium && (
                     <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
                       {isSubscriber ? "⭐" : "PRO"}
+                    </span>
+                  )}
+                  {showNewDot && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
                     </span>
                   )}
                 </Link>
@@ -268,11 +277,12 @@ export default function GameNav({ user, creditBalance, isSubscriber }: GameNavPr
           <div className="md:hidden pb-4 space-y-1 border-t border-gray-800 pt-2">
             {navLinks.map((link) => {
               const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
+              const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`relative flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition ${
                     isActive(link.href)
                       ? "bg-blue-600 text-white"
                       : isPremiumLocked
@@ -280,12 +290,20 @@ export default function GameNav({ user, creditBalance, isSubscriber }: GameNavPr
                         : "text-gray-300 hover:bg-gray-800 hover:text-white"
                   }`}
                 >
-                  {link.label}
-                  {"premium" in link && link.premium && (
-                    <span className="ml-2 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
-                      {isSubscriber ? "⭐" : "PRO"}
-                    </span>
-                  )}
+                  <span>{link.label}</span>
+                  <span className="flex items-center gap-2">
+                    {"premium" in link && link.premium && (
+                      <span className="text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
+                        {isSubscriber ? "⭐" : "PRO"}
+                      </span>
+                    )}
+                    {showNewDot && (
+                      <span className="flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                      </span>
+                    )}
+                  </span>
                 </Link>
               );
             })}
