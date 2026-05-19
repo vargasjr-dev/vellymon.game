@@ -31,8 +31,8 @@
  */
 
 import { db } from "../data/db";
-import { userRank, gamePlayer } from "../data/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { userRank, gamePlayer, matchStats } from "../data/schema";
+import { eq, and, sql, gte, lt } from "drizzle-orm";
 import { awardXP, calculateMatchXP, getActiveSeason } from "./seasons";
 import { grantCredits } from "./currency";
 import type { GameState, TeamState } from "../server/types";
@@ -85,6 +85,37 @@ function calculateNewStars(
   }
 }
 
+// ─── First-win detection ──────────────────────────────────────────────────────
+
+/**
+ * Returns true if the user has no prior WIN in matchStats today (UTC day).
+ * "Today" is midnight-to-midnight UTC — simple, consistent across timezones.
+ * The current in-flight match has not been written yet when this is called,
+ * so any existing win row for today means this is NOT the first win.
+ */
+async function checkIsFirstWinToday(userId: string): Promise<boolean> {
+  const now = new Date();
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const tomorrowStart = new Date(todayStart.getTime() + 86_400_000);
+
+  const [existing] = await db
+    .select({ uuid: matchStats.uuid })
+    .from(matchStats)
+    .where(
+      and(
+        eq(matchStats.userId, userId),
+        eq(matchStats.result, "win"),
+        gte(matchStats.completedAt, todayStart),
+        lt(matchStats.completedAt, tomorrowStart),
+      ),
+    )
+    .limit(1);
+
+  return !existing; // No prior win today → this is the first
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
@@ -125,10 +156,15 @@ export async function awardMatchProgression(
 
       // ── 1. Season XP ───────────────────────────────────────────────────────
       if (activeSeason) {
+        // Only check first-win for actual wins (spares a DB query on losses)
+        const isFirstWinToday = won
+          ? await checkIsFirstWinToday(p.userId)
+          : false;
+
         const { total } = calculateMatchXP({
           won,
           isRanked: !isSparring,
-          isFirstWinToday: false, // TODO: first-win-today detection (Phase 12)
+          isFirstWinToday,
         });
         await awardXP(p.userId, total, won ? "match_win" : "match_loss").catch(
           (e) => console.error("[progression] XP award failed:", e),
