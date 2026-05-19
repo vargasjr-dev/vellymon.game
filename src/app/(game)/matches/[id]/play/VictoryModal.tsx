@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import type { MatchRewards } from "./actions";
 import type { Achievement } from "../../../../../../lib/achievements";
+import type { QuestWithProgress } from "../../../../../../lib/questService";
 
 type Props = {
   winner: string;
@@ -248,6 +249,33 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
                     <span className="text-xs font-bold text-yellow-300 bg-yellow-500/25 border border-yellow-500/30 px-2 py-1 rounded-full flex-shrink-0">
                       +{achievement.points} pts
                     </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Quest Complete! toast cards */}
+            {rewards.newlyCompletedQuests && rewards.newlyCompletedQuests.length > 0 && (
+              <div className="mt-3 flex flex-col gap-2 max-w-xs mx-auto">
+                {rewards.newlyCompletedQuests.map((quest: QuestWithProgress, index: number) => (
+                  <div
+                    key={quest.id}
+                    className="flex items-center gap-3 bg-orange-500/15 border border-orange-500/40 backdrop-blur-sm rounded-xl px-4 py-3"
+                    style={{ animationDelay: `${(rewards.newAchievements?.length ?? 0) * 150 + index * 150}ms` }}
+                  >
+                    <span className="text-2xl flex-shrink-0">{quest.icon}</span>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-orange-400 leading-none mb-1 uppercase tracking-wide">
+                        Quest Complete!
+                      </p>
+                      <p className="text-sm font-bold text-white leading-none truncate">
+                        {quest.name}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                      <span className="text-xs font-bold text-yellow-300">+{quest.xpReward} XP</span>
+                      <span className="text-xs font-bold text-orange-300">+{quest.creditsReward} 💎</span>
+                    </div>
                   </div>
                 ))}
               </div>
