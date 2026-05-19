@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import type { MatchRewards } from "./actions";
+import type { Achievement } from "../../../../../../lib/achievements";
 
 type Props = {
   winner: string;
@@ -188,38 +189,67 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
 
         {/* Progression rewards — shown once fetched */}
         {rewards && subtextVisible && (
-          <div className="mb-6 flex justify-center gap-3 flex-wrap animate-fade-in">
-            {/* XP */}
-            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-              <span className="text-lg">⭐</span>
-              <div className="text-left">
-                <p className="text-xs text-gray-400 leading-none">XP</p>
-                <p className="text-sm font-bold text-yellow-300">+{rewards.xpAwarded}</p>
-              </div>
-            </div>
-            {/* Credits */}
-            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-              <span className="text-lg">💰</span>
-              <div className="text-left">
-                <p className="text-xs text-gray-400 leading-none">Credits</p>
-                <p className="text-sm font-bold text-yellow-300">+{rewards.creditsAwarded}</p>
-              </div>
-            </div>
-            {/* Rank change (future) */}
-            {rewards.rankChange && (
+          <div className="mb-6 animate-fade-in">
+            {/* XP / Credits / Rank / Sparring badges */}
+            <div className="flex justify-center gap-3 flex-wrap">
+              {/* XP */}
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-lg">🏅</span>
+                <span className="text-lg">⭐</span>
                 <div className="text-left">
-                  <p className="text-xs text-gray-400 leading-none">Rank</p>
-                  <p className="text-sm font-bold text-blue-300">{rewards.rankChange}</p>
+                  <p className="text-xs text-gray-400 leading-none">XP</p>
+                  <p className="text-sm font-bold text-yellow-300">+{rewards.xpAwarded}</p>
                 </div>
               </div>
-            )}
-            {/* Sparring label */}
-            {rewards.isSparring && (
+              {/* Credits */}
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-lg">🤖</span>
-                <p className="text-xs text-gray-400">Practice match</p>
+                <span className="text-lg">💰</span>
+                <div className="text-left">
+                  <p className="text-xs text-gray-400 leading-none">Credits</p>
+                  <p className="text-sm font-bold text-yellow-300">+{rewards.creditsAwarded}</p>
+                </div>
+              </div>
+              {/* Rank change (future) */}
+              {rewards.rankChange && (
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                  <span className="text-lg">🏅</span>
+                  <div className="text-left">
+                    <p className="text-xs text-gray-400 leading-none">Rank</p>
+                    <p className="text-sm font-bold text-blue-300">{rewards.rankChange}</p>
+                  </div>
+                </div>
+              )}
+              {/* Sparring label */}
+              {rewards.isSparring && (
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                  <span className="text-lg">🤖</span>
+                  <p className="text-xs text-gray-400">Practice match</p>
+                </div>
+              )}
+            </div>
+
+            {/* Achievement Unlocked! toast cards */}
+            {rewards.newAchievements && rewards.newAchievements.length > 0 && (
+              <div className="mt-4 flex flex-col gap-2 max-w-xs mx-auto">
+                {rewards.newAchievements.map((achievement: Achievement, index: number) => (
+                  <div
+                    key={achievement.id}
+                    className="flex items-center gap-3 bg-yellow-500/15 border border-yellow-500/40 backdrop-blur-sm rounded-xl px-4 py-3"
+                    style={{ animationDelay: `${index * 150}ms` }}
+                  >
+                    <span className="text-2xl flex-shrink-0">{achievement.icon}</span>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-yellow-400 leading-none mb-1 uppercase tracking-wide">
+                        Achievement Unlocked!
+                      </p>
+                      <p className="text-sm font-bold text-white leading-none truncate">
+                        {achievement.name}
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-yellow-300 bg-yellow-500/25 border border-yellow-500/30 px-2 py-1 rounded-full flex-shrink-0">
+                      +{achievement.points} pts
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
