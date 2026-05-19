@@ -209,7 +209,10 @@ export default async function PlayerHubPage() {
 
       {/* Daily Check-In */}
       <div className="mb-8">
-        <DailyCheckIn initialStreak={loginStreak} />
+        <DailyCheckIn
+          initialStreak={loginStreak}
+          isSubscriber={subInfo?.subscriptionStatus === "active"}
+        />
       </div>
 
       {/* Subscription */}
