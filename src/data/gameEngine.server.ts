@@ -7,7 +7,13 @@
  */
 
 import { db } from "../../data/db";
-import { gameSession, gamePlayer, teamSlot, team, vellymonInstance } from "../../data/schema";
+import {
+  gameSession,
+  gamePlayer,
+  teamSlot,
+  team,
+  vellymonInstance,
+} from "../../data/schema";
 import { eq, asc } from "drizzle-orm";
 import {
   VELLYMON_LIBRARY,
@@ -31,10 +37,18 @@ import {
 } from "../../server/turnTimer";
 import { getDefaultSpawnPositions } from "../../server/board";
 import { GAME_CONFIG } from "../../server/config";
-import { getMapById, parseBoardFromMap, getMapSpawnPositions } from "../../server/maps";
+import {
+  getMapById,
+  parseBoardFromMap,
+  getMapSpawnPositions,
+} from "../../server/maps";
 import type { GameState } from "../../server/types";
 import type { Command } from "../../server/commands";
 import type { MatchSettings } from "../lib/matchSettings";
+import {
+  generateAICommands,
+  type AIDifficulty,
+} from "../../server/ai-opponent";
 
 // ─── Vellymon lookup ─────────────────────────────────────────────────────────
 
@@ -66,7 +80,21 @@ type TurnSnapshot = {
   /** Deep copy of board state before this turn resolved */
   boardBefore: GameState["board"];
   /** Deep copy of team states before this turn resolved */
-  teamsBefore: Array<{ id: 1 | 2; name: string; energy: number; active: Array<{ uuid: string; name: string; hp: number; maxHp: number; position: { x: number; y: number } | null; isKO: boolean }>; benchCount: number; knockedCount: number }>;
+  teamsBefore: Array<{
+    id: 1 | 2;
+    name: string;
+    energy: number;
+    active: Array<{
+      uuid: string;
+      name: string;
+      hp: number;
+      maxHp: number;
+      position: { x: number; y: number } | null;
+      isKO: boolean;
+    }>;
+    benchCount: number;
+    knockedCount: number;
+  }>;
   /** The turn's resolution log */
   log: TurnLog;
 };
@@ -82,6 +110,15 @@ type MatchMetadata = {
   turnLog: unknown | null;
   /** Full turn history with snapshots (for history UI + future replay) */
   turnHistory: TurnSnapshot[];
+  // ─── Sparring (AI opponent) fields ────────────────────────────────
+  /** True when this is an AI sparring match (practice mode). */
+  sparring?: boolean;
+  /** AI difficulty tier. Only present when sparring === true. */
+  aiDifficulty?: AIDifficulty;
+  /** Which team the AI controls (1 or 2). Only present when sparring === true. */
+  aiTeamId?: 1 | 2;
+  /** The human player's team UUID — used to build the human team setup. */
+  playerTeamUuid?: string;
 };
 
 // ─── Initialize ──────────────────────────────────────────────────────────────
@@ -97,9 +134,9 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
     .from(gameSession)
     .where(eq(gameSession.uuid, matchUuid));
 
-  const existingMeta = existingMatch?.metadata as
-    | { matchSettings?: MatchSettings }
-    | null;
+  const existingMeta = existingMatch?.metadata as {
+    matchSettings?: MatchSettings;
+  } | null;
   const settings: MatchSettings = existingMeta?.matchSettings ?? {
     timerSeconds: 0,
     mapId: "standard",
@@ -159,6 +196,144 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
     .where(eq(gameSession.uuid, matchUuid));
 }
 
+// ─── Sparring Initialization ─────────────────────────────────────────────────
+
+/**
+ * Initialize a sparring (AI opponent) match.
+ *
+ * Called the first time a sparring match's game state is requested.
+ * Unlike initializeMatchGame, sparring matches:
+ *   - Have only one human gamePlayer row in the DB
+ *   - Use a randomly selected AI team from VELLYMON_LIBRARY
+ *   - Store aiTeamId / aiDifficulty in metadata for auto-turn resolution
+ *
+ * AI team is always team 2. Human is always team 1.
+ */
+export async function initializeSparringGame(matchUuid: string): Promise<void> {
+  const [row] = await db
+    .select({ metadata: gameSession.metadata })
+    .from(gameSession)
+    .where(eq(gameSession.uuid, matchUuid));
+
+  if (!row?.metadata) throw new Error("Sparring match not found");
+  const meta = row.metadata as Partial<MatchMetadata> & {
+    sparring?: boolean;
+    aiDifficulty?: AIDifficulty;
+    aiTeamId?: 1 | 2;
+    playerTeamUuid?: string;
+    matchSettings?: MatchSettings;
+  };
+
+  if (!meta.sparring) throw new Error("Not a sparring match");
+  if (!meta.playerTeamUuid)
+    throw new Error("playerTeamUuid missing from sparring metadata");
+
+  const settings: MatchSettings = meta.matchSettings ?? {
+    timerSeconds: 0,
+    mapId: "standard",
+    mode: "casual",
+  };
+  const map = getMapById(settings.mapId);
+  const board = parseBoardFromMap(map);
+
+  // Load the human player's user ID
+  const [humanPlayer] = await db
+    .select({ userId: gamePlayer.userId })
+    .from(gamePlayer)
+    .where(eq(gamePlayer.gameSessionUuid, matchUuid));
+
+  if (!humanPlayer) throw new Error("Human player not found in sparring match");
+
+  const humanTeamSetup = await buildTeamSetup(
+    humanPlayer.userId,
+    meta.playerTeamUuid,
+    1,
+    map,
+  );
+
+  const aiTeamSetup = buildAITeamSetup(2, map);
+
+  const gameState = initializeGame(matchUuid, humanTeamSetup, aiTeamSetup, {
+    board,
+    width: map.width,
+    height: map.height,
+  });
+  const timer = startTurn(gameState, settings.timerSeconds);
+
+  const newMeta: MatchMetadata = {
+    matchSettings: settings,
+    gameState,
+    timer,
+    pendingCommands: {},
+    turnLog: null,
+    turnHistory: [],
+    sparring: true,
+    aiDifficulty: meta.aiDifficulty ?? "medium",
+    aiTeamId: 2,
+    playerTeamUuid: meta.playerTeamUuid,
+  };
+
+  await db
+    .update(gameSession)
+    .set({ metadata: newMeta })
+    .where(eq(gameSession.uuid, matchUuid));
+}
+
+/**
+ * Build an AI team setup by randomly selecting vellymons from the library.
+ * 4 active + 2 bench, using map spawn positions.
+ */
+function buildAITeamSetup(
+  teamId: 1 | 2,
+  map?: import("../../server/maps").MapConfig,
+): TeamSetup {
+  // Shuffle the library and pick 6 (or fewer if library is small)
+  const shuffled = [...VELLYMON_LIBRARY].sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, 6);
+
+  const spawns = map
+    ? getMapSpawnPositions(map, teamId)
+    : getDefaultSpawnPositions(
+        teamId,
+        GAME_CONFIG.board.width,
+        GAME_CONFIG.board.height,
+      );
+
+  const active: VellymonSetup[] = [];
+  const bench: VellymonSetup[] = [];
+
+  selected.forEach((template, index) => {
+    const setup: VellymonSetup = {
+      uuid: `ai-${teamId}-${index}`,
+      name: template.name,
+      maxHp: template.hp,
+      speed: template.speed,
+      attack: template.attack,
+      attacks: template.attacks.map((a) => ({
+        name: a.name,
+        damage: calculateDamage(a, template.attack),
+        energyCost: a.energyCost,
+        range: a.range,
+      })),
+      spawnPosition:
+        index < 4 ? (spawns[index] ?? { x: 0, y: 0 }) : { x: 0, y: 0 },
+      imageUrl: undefined,
+    };
+    if (index < 4) {
+      active.push(setup);
+    } else {
+      bench.push(setup);
+    }
+  });
+
+  return {
+    userId: "ai-bot",
+    teamName: "AI Opponent",
+    active,
+    bench,
+  };
+}
+
 async function buildTeamSetup(
   userId: string,
   teamUuid: string,
@@ -173,7 +348,10 @@ async function buildTeamSetup(
       modelUuid: vellymonInstance.modelUuid,
     })
     .from(teamSlot)
-    .innerJoin(vellymonInstance, eq(teamSlot.vellymonInstanceUuid, vellymonInstance.uuid))
+    .innerJoin(
+      vellymonInstance,
+      eq(teamSlot.vellymonInstanceUuid, vellymonInstance.uuid),
+    )
     .where(eq(teamSlot.teamUuid, teamUuid))
     .orderBy(asc(teamSlot.slotIndex));
 
@@ -239,6 +417,27 @@ export async function getMatchGameState(matchUuid: string) {
   if (!match?.metadata) return null;
   const meta = match.metadata as MatchMetadata;
 
+  // ── Lazy sparring init ──────────────────────────────────────────────────────
+  // Sparring matches are created with status "playing" but no gameState yet.
+  // Initialize on first poll instead of at creation time (avoids blocking the
+  // practice setup action on potentially slow team DB queries).
+  if (meta.sparring && !meta.gameState) {
+    await initializeSparringGame(matchUuid);
+    // Re-read the freshly initialized state
+    const [refreshed] = await db
+      .select({ metadata: gameSession.metadata, status: gameSession.status })
+      .from(gameSession)
+      .where(eq(gameSession.uuid, matchUuid));
+    if (!refreshed?.metadata) return null;
+    const freshMeta = refreshed.metadata as MatchMetadata;
+    return {
+      gameState: freshMeta.gameState,
+      turnLog: freshMeta.turnLog,
+      turnHistory: freshMeta.turnHistory ?? [],
+      status: refreshed.status,
+    };
+  }
+
   return {
     gameState: meta.gameState,
     turnLog: meta.turnLog,
@@ -293,6 +492,17 @@ export async function submitMatchCommands(
   }
   meta.pendingCommands[String(teamId)] = commands;
 
+  // ── AI auto-submit ──────────────────────────────────────────────────────────
+  // In sparring matches, after the human submits their commands, immediately
+  // generate and submit AI commands so the turn resolves without a second poll.
+  if (meta.sparring && meta.aiTeamId && meta.aiTeamId !== teamId) {
+    const aiTeamId = meta.aiTeamId;
+    const difficulty = meta.aiDifficulty ?? "medium";
+    const aiCommands = generateAICommands(gameState, aiTeamId, difficulty);
+    submitTimerCommands(timer, aiTeamId, aiCommands);
+    meta.pendingCommands[String(aiTeamId)] = aiCommands;
+  }
+
   // Check if both teams have submitted
   const shouldResolve = bothTeamsReady(timer) || isExpired(timer);
   if (shouldResolve) {
@@ -329,12 +539,9 @@ export async function submitMatchCommands(
     meta.pendingCommands = {};
 
     if (isGameActive(gameState)) {
-        // Start next turn (preserve timer settings from match creation)
-        meta.timer = startTurn(
-          gameState,
-          meta.matchSettings?.timerSeconds ?? 0,
-        );
-      } else {
+      // Start next turn (preserve timer settings from match creation)
+      meta.timer = startTurn(gameState, meta.matchSettings?.timerSeconds ?? 0);
+    } else {
       // Game over
       meta.timer = null;
       await db
@@ -401,5 +608,9 @@ export async function concedeMatch(
     .where(eq(gameSession.uuid, matchUuid));
 
   const winnerTeam = gameState.teams[winnerId - 1];
-  return { winner: winnerTeam.name, winnerId, condition: "concession" as const };
+  return {
+    winner: winnerTeam.name,
+    winnerId,
+    condition: "concession" as const,
+  };
 }
