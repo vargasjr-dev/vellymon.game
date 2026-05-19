@@ -591,3 +591,36 @@ export const userQuestProgressRelations = relations(userQuestProgress, ({ one })
     references: [user.id],
   }),
 }));
+
+// ─── Daily Login Streak ───────────────────────────────────────────────────────
+
+/**
+ * One row per user — tracks their consecutive-day check-in streak.
+ * lastClaimedDate uses YYYY-MM-DD UTC format (matches quest date pattern).
+ * streakFreezeCount and lastFreezeGrantDate support the subscriber streak-freeze perk.
+ */
+export const userLoginStreak = pgTable("userLoginStreak", {
+  /** Foreign key — one row per user */
+  userId: text("userId")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  /** Current consecutive check-in streak (days) */
+  currentStreak: integer("currentStreak").notNull().default(0),
+  /** Longest streak ever achieved */
+  longestStreak: integer("longestStreak").notNull().default(0),
+  /** UTC date (YYYY-MM-DD) of the most recent successful check-in */
+  lastClaimedDate: text("lastClaimedDate").notNull().default(""),
+  /** Total lifetime check-ins */
+  totalClaimed: integer("totalClaimed").notNull().default(0),
+  /** Remaining streak-freeze charges (subscriber perk) */
+  streakFreezeCount: integer("streakFreezeCount").notNull().default(0),
+  /** UTC date (YYYY-MM-DD) a freeze was last granted — throttles weekly grant */
+  lastFreezeGrantDate: text("lastFreezeGrantDate").notNull().default(""),
+});
+
+export const userLoginStreakRelations = relations(userLoginStreak, ({ one }) => ({
+  user: one(user, {
+    fields: [userLoginStreak.userId],
+    references: [user.id],
+  }),
+}));

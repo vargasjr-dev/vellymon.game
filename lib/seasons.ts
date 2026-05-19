@@ -113,6 +113,7 @@ export type XpSource =
   | "daily_first_win_bonus"
   | "ranked_bonus"
   | "daily_quest"
+  | "daily_checkin"
   | "admin_grant";
 
 export type AwardXpResult = {
