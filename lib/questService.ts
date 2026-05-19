@@ -9,7 +9,7 @@
  */
 
 import { db } from "../data/db";
-import { userQuestProgress } from "../data/schema";
+import { userQuestProgress, matchStats } from "../data/schema";
 import { eq, and } from "drizzle-orm";
 import {
   DAILY_QUESTS,
@@ -177,4 +177,110 @@ export async function claimQuestReward(
   ]);
 
   return { xpAwarded: quest.xpReward, creditsAwarded: quest.creditsReward };
+}
+
+// ─── Match progress hook ──────────────────────────────────────────────────────
+
+/**
+ * Update quest progress for a user after a match completes.
+ *
+ * Called fire-and-forget from matchProgression.ts after writeMatchStats commits.
+ * Lazy-inits today's quests if not yet assigned (handles players who play before
+ * visiting /quests for the first time).
+ *
+ * @param userId    — the player whose quests to update
+ * @param matchUuid — the completed game session UUID
+ */
+export async function updateQuestProgressOnMatch(
+  userId: string,
+  matchUuid: string,
+): Promise<void> {
+  const date = todayUTC();
+
+  // Lazy-init today's quests and get current progress state
+  const todayQuests = await getTodayQuests(userId);
+  const incomplete = todayQuests.filter((q) => !q.completed);
+  if (incomplete.length === 0) return;
+
+  // Fetch this match's stats row
+  const [match] = await db
+    .select()
+    .from(matchStats)
+    .where(
+      and(
+        eq(matchStats.userId, userId),
+        eq(matchStats.gameSessionUuid, matchUuid),
+      ),
+    )
+    .limit(1);
+
+  if (!match) return;
+
+  const won = match.result === "win";
+  const isSparring = match.isSparring;
+  const isRanked = !isSparring;
+  const isHardAIWin = won && isSparring && match.aiDifficulty === "hard";
+
+  // Determine progress delta per incomplete quest
+  type Update = { quest: QuestWithProgress; delta: number };
+  const updates: Update[] = [];
+
+  for (const quest of incomplete) {
+    let delta = 0;
+
+    switch (quest.id) {
+      case "play_1":
+      case "play_3":
+      case "play_5":
+        delta = 1; // any completed match
+        break;
+      case "ranked_match":
+        if (isRanked) delta = 1;
+        break;
+      case "try_sparring":
+        if (isSparring) delta = 1;
+        break;
+      case "win_1":
+        if (won) delta = 1;
+        break;
+      case "win_2_ranked":
+        if (won && isRanked) delta = 1;
+        break;
+      case "beat_hard_ai":
+        if (isHardAIWin) delta = 1;
+        break;
+      case "ko_5":
+        if (match.enemyKOs >= 5) delta = 1;
+        break;
+      case "perfect_win":
+        if (won && match.ownKOs === 0) delta = 1;
+        break;
+    }
+
+    if (delta > 0) updates.push({ quest, delta });
+  }
+
+  if (updates.length === 0) return;
+
+  // Apply all updates in parallel
+  await Promise.all(
+    updates.map(({ quest, delta }) => {
+      const newProgress = Math.min(quest.progress + delta, quest.target);
+      const nowCompleted = newProgress >= quest.target;
+      return db
+        .update(userQuestProgress)
+        .set({
+          progress: newProgress,
+          completed: nowCompleted,
+          ...(nowCompleted ? { completedAt: new Date() } : {}),
+        })
+        .where(
+          and(
+            eq(userQuestProgress.userId, userId),
+            eq(userQuestProgress.questId, quest.id),
+            eq(userQuestProgress.date, date),
+          ),
+        );
+    }),
+  );
 }
