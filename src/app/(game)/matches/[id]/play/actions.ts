@@ -12,6 +12,8 @@ import { matchStats } from "../../../../../../data/schema";
 import { eq, and, desc, gte, lt, count } from "drizzle-orm";
 import { checkAndAwardAchievements } from "../../../../../../lib/achievementService";
 import type { Achievement } from "../../../../../../lib/achievements";
+import { getQuestsCompletedAroundMatch } from "../../../../../../lib/questService";
+import type { QuestWithProgress } from "../../../../../../lib/questService";
 
 // Command type for the play page — all actions are directional
 export type PlayCommand = {
@@ -97,6 +99,8 @@ export type MatchRewards = {
   isSparring: boolean;
   /** Achievements newly unlocked by this match — empty array if none */
   newAchievements: Achievement[];
+  /** Daily quests completed by this match — empty array if none */
+  newlyCompletedQuests: QuestWithProgress[];
 };
 
 /**
@@ -160,11 +164,14 @@ export async function getMatchRewardsAction(
     }
   }
 
-  // Check and award any newly unlocked achievements
-  const newAchievements = await checkAndAwardAchievements({
-    userId: session.user.id,
-    latestMatchUuid: matchUuid,
-  });
+  // Check and award any newly unlocked achievements + fetch newly completed quests
+  const [newAchievements, newlyCompletedQuests] = await Promise.all([
+    checkAndAwardAchievements({
+      userId: session.user.id,
+      latestMatchUuid: matchUuid,
+    }),
+    getQuestsCompletedAroundMatch(session.user.id, row.completedAt),
+  ]);
 
   return {
     result: row.result as "win" | "loss",
@@ -173,5 +180,6 @@ export async function getMatchRewardsAction(
     rankChange: null, // Phase 12 item 1 will surface this from userRank
     isSparring,
     newAchievements,
+    newlyCompletedQuests,
   };
 }
