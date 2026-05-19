@@ -13,18 +13,21 @@ import { claimDailyCheckInAction } from "./actions";
 
 type Props = {
   initialStreak: LoginStreakRow;
+  isSubscriber?: boolean;
 };
 
-export function DailyCheckIn({ initialStreak }: Props) {
+export function DailyCheckIn({ initialStreak, isSubscriber = false }: Props) {
   const alreadyClaimedToday = initialStreak.lastClaimedDate === todayUTCDate();
 
   const [streak, setStreak] = useState(initialStreak.currentStreak);
+  const [freezeCount, setFreezeCount] = useState(initialStreak.streakFreezeCount);
   const [claimed, setClaimed] = useState(alreadyClaimedToday);
   const [claiming, setClaiming] = useState(false);
   const [result, setResult] = useState<{
     xpAwarded: number;
     creditsAwarded: number;
     milestoneHit?: StreakMilestone;
+    usedFreeze?: boolean;
   } | null>(null);
 
   const nextMilestone = getNextMilestone(streak);
@@ -35,11 +38,13 @@ export function DailyCheckIn({ initialStreak }: Props) {
       const res = await claimDailyCheckInAction();
       if (!res.alreadyClaimed) {
         setStreak(res.newStreak);
+        if (res.freezeCount !== undefined) setFreezeCount(res.freezeCount);
         setClaimed(true);
         setResult({
           xpAwarded: res.xpAwarded,
           creditsAwarded: res.creditsAwarded,
           milestoneHit: res.milestoneHit,
+          usedFreeze: res.usedFreeze,
         });
       } else {
         setClaimed(true);
@@ -110,20 +115,40 @@ export function DailyCheckIn({ initialStreak }: Props) {
 
       {/* Claim result banner */}
       {result && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-3">
-          <span className="text-xl">✅</span>
+        <div className={`mb-4 rounded-lg px-4 py-3 flex items-center gap-3 ${
+          result.usedFreeze
+            ? "bg-blue-50 border border-blue-200"
+            : "bg-green-50 border border-green-200"
+        }`}>
+          <span className="text-xl">{result.usedFreeze ? "🧊" : "✅"}</span>
           <div className="flex-1">
-            {result.milestoneHit ? (
+            {result.usedFreeze ? (
+              <p className="text-sm font-bold text-blue-700">
+                Streak freeze used! Your streak is safe. ❄️
+              </p>
+            ) : result.milestoneHit ? (
               <p className="text-sm font-bold text-green-700">
                 {result.milestoneHit.icon} {result.milestoneHit.label} reached!
               </p>
             ) : (
               <p className="text-sm font-semibold text-green-700">Check-in claimed!</p>
             )}
-            <p className="text-xs text-green-600">
+            <p className={`text-xs ${result.usedFreeze ? "text-blue-600" : "text-green-600"}`}>
               +{result.xpAwarded} XP &nbsp;·&nbsp; +{result.creditsAwarded} 💎
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Subscriber freeze count */}
+      {isSubscriber && (
+        <div className="mb-3 flex items-center gap-2 text-xs text-blue-600 font-medium">
+          <span>🧊</span>
+          <span>
+            {freezeCount > 0
+              ? `${freezeCount} streak freeze${freezeCount === 1 ? "" : "s"} available`
+              : "No streak freezes — earned weekly as a subscriber"}
+          </span>
         </div>
       )}
 
