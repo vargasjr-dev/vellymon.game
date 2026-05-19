@@ -15,6 +15,7 @@ import {
   vellymonInstance,
   matchStats,
 } from "../../data/schema";
+import { awardMatchProgression } from "../../lib/matchProgression";
 import { eq, asc } from "drizzle-orm";
 import {
   VELLYMON_LIBRARY,
@@ -624,9 +625,12 @@ export async function submitMatchCommands(
         .update(gameSession)
         .set({ metadata: meta, status: "completed" })
         .where(eq(gameSession.uuid, matchUuid));
-      // Persist per-player match stats (fire-and-forget — don't block the response)
+      // Persist per-player match stats + award progression (fire-and-forget)
       writeMatchStats(matchUuid, gameState, meta).catch((e) =>
         console.error("[matchStats] write failed:", e),
+      );
+      awardMatchProgression(matchUuid, gameState, meta.sparring ?? false).catch(
+        (e) => console.error("[progression] award failed:", e),
       );
       return { resolved: true, turnLog, gameOver: true };
     }
@@ -687,9 +691,12 @@ export async function concedeMatch(
     .set({ metadata: meta, status: "completed" })
     .where(eq(gameSession.uuid, matchUuid));
 
-  // Persist per-player match stats
+  // Persist per-player match stats + award progression
   writeMatchStats(matchUuid, gameState, meta).catch((e) =>
     console.error("[matchStats] write failed (concede):", e),
+  );
+  awardMatchProgression(matchUuid, gameState, meta.sparring ?? false).catch(
+    (e) => console.error("[progression] award failed (concede):", e),
   );
 
   const winnerTeam = gameState.teams[winnerId - 1];
