@@ -465,3 +465,53 @@ export const matchSnapshot = pgTable("matchSnapshot", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+// ─── Match Stats ─────────────────────────────────────────────────────────────
+// Per-player statistics written once when a match completes.
+// Persists outcome, turn count, KO tallies, and sparring metadata.
+// Used for match history display, progression hooks, and future ML features.
+
+export const matchStats = pgTable(
+  "matchStats",
+  {
+    uuid: uuid("uuid").primaryKey().defaultRandom(),
+    /** The completed game session */
+    gameSessionUuid: uuid("gameSessionUuid")
+      .notNull()
+      .references(() => gameSession.uuid, { onDelete: "cascade" }),
+    /** Player whose stats this row records */
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id),
+    /** "win" | "loss" | "draw" */
+    result: varchar("result", { length: 16 }).notNull(),
+    /** Number of turns the match lasted */
+    turns: integer("turns").notNull().default(0),
+    /** Enemy vellymons KO'd by this player's team */
+    enemyKOs: integer("enemyKOs").notNull().default(0),
+    /** Own vellymons KO'd */
+    ownKOs: integer("ownKOs").notNull().default(0),
+    /** Win condition: "elimination" | "occupation" | "accumulation" | "concession" */
+    winCondition: varchar("winCondition", { length: 32 }),
+    /** True when this was an AI sparring match */
+    isSparring: boolean("isSparring").notNull().default(false),
+    /** AI difficulty: "easy" | "medium" | "hard" — null for PvP */
+    aiDifficulty: varchar("aiDifficulty", { length: 16 }),
+    completedAt: timestamp("completedAt").notNull().defaultNow(),
+  },
+  (table) => [
+    index("matchStats_userId_idx").on(table.userId),
+    index("matchStats_gameSessionUuid_idx").on(table.gameSessionUuid),
+  ],
+);
+
+export const matchStatsRelations = relations(matchStats, ({ one }) => ({
+  gameSession: one(gameSession, {
+    fields: [matchStats.gameSessionUuid],
+    references: [gameSession.uuid],
+  }),
+  user: one(user, {
+    fields: [matchStats.userId],
+    references: [user.id],
+  }),
+}));
