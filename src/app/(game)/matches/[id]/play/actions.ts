@@ -10,6 +10,8 @@ import {
 import { db } from "../../../../../../data/db";
 import { matchStats } from "../../../../../../data/schema";
 import { eq, and, desc, gte, lt, count } from "drizzle-orm";
+import { checkAndAwardAchievements } from "../../../../../../lib/achievementService";
+import type { Achievement } from "../../../../../../lib/achievements";
 
 // Command type for the play page — all actions are directional
 export type PlayCommand = {
@@ -93,6 +95,8 @@ export type MatchRewards = {
   /** e.g. "Silver ★★" — null if not a ranked match or rank data unavailable */
   rankChange: string | null;
   isSparring: boolean;
+  /** Achievements newly unlocked by this match — empty array if none */
+  newAchievements: Achievement[];
 };
 
 /**
@@ -156,11 +160,18 @@ export async function getMatchRewardsAction(
     }
   }
 
+  // Check and award any newly unlocked achievements
+  const newAchievements = await checkAndAwardAchievements({
+    userId: session.user.id,
+    latestMatchUuid: matchUuid,
+  });
+
   return {
     result: row.result as "win" | "loss",
     xpAwarded,
     creditsAwarded,
     rankChange: null, // Phase 12 item 1 will surface this from userRank
     isSparring,
+    newAchievements,
   };
 }
