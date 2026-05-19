@@ -25,9 +25,11 @@ interface GameNavProps {
   newAchievementCount?: number;
   /** Count of today's quests still incomplete — drives quest notification badge */
   activeQuestCount?: number;
+  /** Current login streak — shows 🔥N badge on account button when streak > 1 */
+  currentStreak?: number;
 }
 
-export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount, activeQuestCount }: GameNavProps) {
+export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount, activeQuestCount, currentStreak }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -158,8 +160,13 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                   : "text-gray-300 hover:bg-gray-800 hover:text-white"
               }`}
             >
-              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold">
+              <span className="relative flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold">
                 {initials}
+                {(currentStreak ?? 0) > 1 && (
+                  <span className="absolute -top-1.5 -right-2 flex items-center gap-0.5 bg-orange-500 text-white text-[9px] font-black px-1 py-0.5 rounded-full leading-none shadow-sm">
+                    🔥{currentStreak}
+                  </span>
+                )}
               </span>
               <span className="max-w-[120px] truncate">
                 {user?.name || "Account"}
@@ -190,6 +197,11 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                   <p className="text-xs text-gray-500 truncate">
                     {user?.email}
                   </p>
+                  {(currentStreak ?? 0) > 0 && (
+                    <p className="text-xs text-orange-500 font-semibold mt-1">
+                      🔥 {currentStreak}-day streak
+                    </p>
+                  )}
                 </div>
 
                 {/* Profile Link */}
