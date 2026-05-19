@@ -36,6 +36,7 @@ import { eq, and, sql, gte, lt } from "drizzle-orm";
 import { awardXP, calculateMatchXP, getActiveSeason } from "./seasons";
 import { grantCredits } from "./currency";
 import { checkAndAwardAchievements } from "./achievementService";
+import { updateQuestProgressOnMatch } from "./questService";
 import type { GameState, TeamState } from "../server/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -273,6 +274,27 @@ export async function checkAndAwardMatchAchievements(
     humanPlayerIds.map((userId) =>
       checkAndAwardAchievements({ userId, latestMatchUuid: matchUuid }).catch(
         (e) => console.error("[achievements] check failed for userId:", userId, e),
+      ),
+    ),
+  );
+}
+
+/**
+ * Update daily quest progress for all human players in a completed match.
+ *
+ * MUST be called after writeMatchStats has committed — quest checks query matchStats.
+ *
+ * @param matchUuid       — completed game session UUID
+ * @param humanPlayerIds  — userId list (AI bots excluded by caller)
+ */
+export async function updateMatchQuestProgress(
+  matchUuid: string,
+  humanPlayerIds: string[],
+): Promise<void> {
+  await Promise.all(
+    humanPlayerIds.map((userId) =>
+      updateQuestProgressOnMatch(userId, matchUuid).catch(
+        (e) => console.error("[quests] progress update failed for userId:", userId, e),
       ),
     ),
   );
