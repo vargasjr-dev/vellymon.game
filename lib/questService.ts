@@ -10,7 +10,7 @@
 
 import { db } from "../data/db";
 import { userQuestProgress, matchStats } from "../data/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import {
   DAILY_QUESTS,
   QUEST_IDS_BY_CATEGORY,
@@ -177,6 +177,56 @@ export async function claimQuestReward(
   ]);
 
   return { xpAwarded: quest.xpReward, creditsAwarded: quest.creditsReward };
+}
+
+// ─── Match completion query ───────────────────────────────────────────────────
+
+/**
+ * Returns quests that were completed within a 60-second window after
+ * `matchCompletedAt`. Used by getMatchRewardsAction to surface "Quest
+ * Complete!" cards in the VictoryModal — same pattern as newAchievements.
+ *
+ * The window starts 2 seconds before matchCompletedAt to absorb any minor
+ * clock skew between the game-engine write and the DB timestamp.
+ *
+ * @param userId          — the player
+ * @param matchCompletedAt — completedAt from the matchStats row
+ */
+export async function getQuestsCompletedAroundMatch(
+  userId: string,
+  matchCompletedAt: Date,
+): Promise<QuestWithProgress[]> {
+  const date = todayUTC();
+  const windowStart = new Date(matchCompletedAt.getTime() - 2_000);
+  const windowEnd = new Date(matchCompletedAt.getTime() + 60_000);
+
+  const rows = await db
+    .select()
+    .from(userQuestProgress)
+    .where(
+      and(
+        eq(userQuestProgress.userId, userId),
+        eq(userQuestProgress.date, date),
+        eq(userQuestProgress.completed, true),
+        gte(userQuestProgress.completedAt, windowStart),
+        lte(userQuestProgress.completedAt, windowEnd),
+      ),
+    );
+
+  return rows
+    .map((row) => {
+      const quest = DAILY_QUESTS.find((q) => q.id === row.questId);
+      if (!quest) return null;
+      return {
+        ...quest,
+        progress: row.progress,
+        completed: row.completed,
+        rewardClaimed: row.rewardClaimed,
+        completedAt: row.completedAt,
+        date: row.date,
+      } satisfies QuestWithProgress;
+    })
+    .filter((q): q is QuestWithProgress => q !== null);
 }
 
 // ─── Match progress hook ──────────────────────────────────────────────────────
