@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { RankSummary } from "../../../../lib/rank-rewards";
 import type { Rank } from "../../../../lib/ranked";
 import type { LeaderboardRow } from "./actions";
@@ -190,7 +191,12 @@ export default function RankedDashboard({
                       {i + 1}
                     </td>
                     <td className="py-2 font-medium text-gray-900">
-                      {entry.username}
+                      <Link
+                        href={`/profile/${entry.userId}`}
+                        className="hover:text-blue-600 hover:underline"
+                      >
+                        {entry.username}
+                      </Link>
                       {entry.legendEntry != null && (
                         <span className="text-xs text-yellow-600 ml-1">
                           Legend #{entry.legendEntry}
