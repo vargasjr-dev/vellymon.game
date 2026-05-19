@@ -2,7 +2,7 @@ import { db } from "../data/db";
 import { userCurrency, currencyTransaction } from "../data/schema";
 import { eq, sql } from "drizzle-orm";
 
-export type TransactionType = "monthly_grant" | "purchase" | "spend" | "refund" | "daily_quest";
+export type TransactionType = "monthly_grant" | "purchase" | "spend" | "refund" | "daily_quest" | "daily_checkin";
 
 /**
  * Get a user's current credit balance. Returns 0 if no currency record exists.
