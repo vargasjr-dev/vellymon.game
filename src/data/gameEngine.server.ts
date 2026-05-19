@@ -251,7 +251,7 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
     map,
   );
 
-  const aiTeamSetup = buildAITeamSetup(2, map);
+  const aiTeamSetup = buildAITeamSetup(2, map, meta.aiDifficulty ?? "medium");
 
   const gameState = initializeGame(matchUuid, humanTeamSetup, aiTeamSetup, {
     board,
@@ -286,6 +286,7 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
 function buildAITeamSetup(
   teamId: 1 | 2,
   map?: import("../../server/maps").MapConfig,
+  difficulty: AIDifficulty = "medium",
 ): TeamSetup {
   // Shuffle the library and pick 6 (or fewer if library is small)
   const shuffled = [...VELLYMON_LIBRARY].sort(() => Math.random() - 0.5);
@@ -326,9 +327,15 @@ function buildAITeamSetup(
     }
   });
 
+  const difficultyLabel: Record<AIDifficulty, string> = {
+    easy: "🟢 Easy AI",
+    medium: "🟡 Medium AI",
+    hard: "🔴 Hard AI",
+  };
+
   return {
     userId: "ai-bot",
-    teamName: "AI Opponent",
+    teamName: difficultyLabel[difficulty],
     active,
     bench,
   };
@@ -443,6 +450,9 @@ export async function getMatchGameState(matchUuid: string) {
     turnLog: meta.turnLog,
     turnHistory: meta.turnHistory ?? [],
     status: match.status,
+    // Sparring metadata — surfaces AI difficulty to the play UI
+    sparring: meta.sparring ?? false,
+    aiDifficulty: meta.aiDifficulty ?? null,
   };
 }
 
