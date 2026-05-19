@@ -5,6 +5,7 @@ import GameNav from "~/components/GameNav";
 import { ToastProvider } from "~/components/Toast";
 import { getBalance } from "../../../lib/currency";
 import { getSubscriptionInfo } from "../../../lib/subscription";
+import { getNewAchievementCount } from "~/data/getNewAchievementCount.server";
 
 export default async function GameLayout({
   children,
@@ -19,9 +20,10 @@ export default async function GameLayout({
     redirect("/login");
   }
 
-  const [creditBalance, subInfo] = await Promise.all([
+  const [creditBalance, subInfo, newAchievementCount] = await Promise.all([
     getBalance(session.user.id),
     getSubscriptionInfo(session.user.id),
+    getNewAchievementCount(session.user.id),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function GameLayout({
           user={{ name: session.user.name, email: session.user.email }}
           creditBalance={creditBalance}
           isSubscriber={subInfo?.subscriptionStatus === "active"}
+          newAchievementCount={newAchievementCount}
         />
         <main>{children}</main>
       </ToastProvider>
