@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/practice", label: "🤖 Practice", premium: true },
   { href: "/season", label: "🏆 Season" },
   { href: "/ranked", label: "⚔️ Ranked" },
+  { href: "/achievements", label: "🏅 Badges" },
 ];
 
 interface GameNavProps {
