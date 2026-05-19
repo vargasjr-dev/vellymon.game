@@ -7,6 +7,9 @@ import {
   submitMatchCommands,
   concedeMatch,
 } from "~/data/gameEngine.server";
+import { db } from "../../../../../../data/db";
+import { matchStats } from "../../../../../../data/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 // Command type for the play page — all actions are directional
 export type PlayCommand = {
@@ -64,7 +67,6 @@ export async function getVellymonInfoAction(
   const { VELLYMON_LIBRARY } = await import("../../../../../../server/vellymonLibrary");
   await import("../../../../../../server/powers");
   const { getPower } = await import("../../../../../../server/specialPowers");
-
   const result: Record<string, VellymonInfo> = {};
   for (const name of names) {
     const template = VELLYMON_LIBRARY.find((v) => v.name === name);
@@ -80,4 +82,60 @@ export async function getVellymonInfoAction(
     };
   }
   return result;
+}
+
+// ─── Match Rewards ────────────────────────────────────────────────────────────
+
+export type MatchRewards = {
+  result: "win" | "loss" | null;
+  xpAwarded: number;
+  creditsAwarded: number;
+  /** e.g. "Silver ★★" — null if not a ranked match or rank data unavailable */
+  rankChange: string | null;
+  isSparring: boolean;
+};
+
+/**
+ * Fetch progression rewards for the current user in a completed match.
+ * Reads the matchStats row written by writeMatchStats on game-over.
+ * Returns null if stats haven't been written yet (slight async lag after game-over).
+ */
+export async function getMatchRewardsAction(
+  matchUuid: string,
+): Promise<MatchRewards | null> {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+
+  const [row] = await db
+    .select()
+    .from(matchStats)
+    .where(
+      and(
+        eq(matchStats.gameSessionUuid, matchUuid),
+        eq(matchStats.userId, session.user.id),
+      ),
+    )
+    .orderBy(desc(matchStats.completedAt))
+    .limit(1);
+
+  if (!row) return null;
+
+  const won = row.result === "win";
+  const isSparring = row.isSparring;
+
+  // Currency awarded: 10 participation + 25 win bonus (PvP only)
+  const creditsAwarded = 10 + (won && !isSparring ? 25 : 0);
+
+  // XP awarded: mirrors calculateMatchXP logic (sans first-win bonus for now)
+  const baseXp = won ? 100 : 50;
+  const rankedMultiplier = !isSparring ? 1.5 : 1;
+  const xpAwarded = Math.round(baseXp * rankedMultiplier);
+
+  return {
+    result: row.result as "win" | "loss",
+    xpAwarded,
+    creditsAwarded,
+    rankChange: null, // Phase 12 item 1 will surface this from userRank
+    isSparring,
+  };
 }

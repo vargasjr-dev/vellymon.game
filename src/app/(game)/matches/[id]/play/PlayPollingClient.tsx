@@ -8,8 +8,10 @@ import {
   submitCommandsAction,
   concedeAction,
   getVellymonInfoAction,
+  getMatchRewardsAction,
   type PlayCommand,
   type VellymonInfo,
+  type MatchRewards,
 } from "./actions";
 import { useRouter } from "next/navigation";
 import VictoryModal from "./VictoryModal";
@@ -189,6 +191,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     winner: string;
     condition: string;
   } | null>(null);
+  const [matchRewards, setMatchRewards] = useState<MatchRewards | null>(null);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
@@ -357,6 +360,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
           } else {
             play("defeat");
           }
+          // Fetch progression rewards with a short delay to let matchStats write commit
+          setTimeout(() => {
+            getMatchRewardsAction(matchUuid).then((rewards) => {
+              if (rewards) setMatchRewards(rewards);
+            }).catch(() => {/* silent — rewards are enhancement only */});
+          }, 1500);
         }
       }
     },
@@ -490,6 +499,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       );
       setShowConcedeConfirm(false);
       setShowVictory({ winner: result.winner, condition: result.condition });
+      // Fetch rewards for the concede path too
+      setTimeout(() => {
+        getMatchRewardsAction(matchUuid).then((rewards) => {
+          if (rewards) setMatchRewards(rewards);
+        }).catch(() => {});
+      }, 1500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to concede");
       setShowConcedeConfirm(false);
@@ -848,6 +863,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         <VictoryModal
           winner={showVictory.winner}
           condition={showVictory.condition}
+          rewards={matchRewards}
           onComplete={() => {
             setShowVictory(null);
             router.push(`/matches/${matchUuid}`);
