@@ -35,6 +35,7 @@ import { userRank, gamePlayer, matchStats } from "../data/schema";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import { awardXP, calculateMatchXP, getActiveSeason } from "./seasons";
 import { grantCredits } from "./currency";
+import { checkAndAwardAchievements } from "./achievementService";
 import type { GameState, TeamState } from "../server/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -251,4 +252,28 @@ async function upsertRank(
       mmr: sql`GREATEST(0, ${userRank.mmr} + ${won ? MMR_WIN_DELTA : -MMR_LOSS_DELTA})`,
     })
     .where(and(eq(userRank.userId, userId), eq(userRank.seasonId, seasonId)));
+}
+
+// ─── Achievement hook ─────────────────────────────────────────────────────────
+
+/**
+ * Check and award achievements for all human players in a completed match.
+ *
+ * MUST be called after writeMatchStats has committed — achievement checks
+ * query the matchStats table for total counts and single-match details.
+ *
+ * @param matchUuid       — completed game session UUID
+ * @param humanPlayerIds  — userId list (AI bots excluded by caller)
+ */
+export async function checkAndAwardMatchAchievements(
+  matchUuid: string,
+  humanPlayerIds: string[],
+): Promise<void> {
+  await Promise.all(
+    humanPlayerIds.map((userId) =>
+      checkAndAwardAchievements({ userId, latestMatchUuid: matchUuid }).catch(
+        (e) => console.error("[achievements] check failed for userId:", userId, e),
+      ),
+    ),
+  );
 }

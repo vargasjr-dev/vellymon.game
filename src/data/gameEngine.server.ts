@@ -15,7 +15,7 @@ import {
   vellymonInstance,
   matchStats,
 } from "../../data/schema";
-import { awardMatchProgression } from "../../lib/matchProgression";
+import { awardMatchProgression, checkAndAwardMatchAchievements } from "../../lib/matchProgression";
 import { eq, asc } from "drizzle-orm";
 import {
   VELLYMON_LIBRARY,
@@ -625,13 +625,19 @@ export async function submitMatchCommands(
         .update(gameSession)
         .set({ metadata: meta, status: "completed" })
         .where(eq(gameSession.uuid, matchUuid));
-      // Persist per-player match stats + award progression (fire-and-forget)
-      writeMatchStats(matchUuid, gameState, meta).catch((e) =>
-        console.error("[matchStats] write failed:", e),
-      );
-      awardMatchProgression(matchUuid, gameState, meta.sparring ?? false).catch(
-        (e) => console.error("[progression] award failed:", e),
-      );
+      // Sequence: write stats first (achievements depend on them), then run
+      // progression + achievement checks in parallel — all fire-and-forget.
+      const humanPlayerIds = gameState.teams
+        .filter((t) => t.userId !== "ai-bot")
+        .map((t) => t.userId);
+      writeMatchStats(matchUuid, gameState, meta)
+        .then(() =>
+          Promise.all([
+            awardMatchProgression(matchUuid, gameState, meta.sparring ?? false),
+            checkAndAwardMatchAchievements(matchUuid, humanPlayerIds),
+          ]),
+        )
+        .catch((e) => console.error("[game-over] post-match processing failed:", e));
       return { resolved: true, turnLog, gameOver: true };
     }
   }
@@ -691,13 +697,21 @@ export async function concedeMatch(
     .set({ metadata: meta, status: "completed" })
     .where(eq(gameSession.uuid, matchUuid));
 
-  // Persist per-player match stats + award progression
-  writeMatchStats(matchUuid, gameState, meta).catch((e) =>
-    console.error("[matchStats] write failed (concede):", e),
-  );
-  awardMatchProgression(matchUuid, gameState, meta.sparring ?? false).catch(
-    (e) => console.error("[progression] award failed (concede):", e),
-  );
+  // Sequence: write stats first (achievements depend on them), then run
+  // progression + achievement checks in parallel — all fire-and-forget.
+  const humanPlayerIds = gameState.teams
+    .filter((t) => t.userId !== "ai-bot")
+    .map((t) => t.userId);
+  writeMatchStats(matchUuid, gameState, meta)
+    .then(() =>
+      Promise.all([
+        awardMatchProgression(matchUuid, gameState, meta.sparring ?? false),
+        checkAndAwardMatchAchievements(matchUuid, humanPlayerIds),
+      ]),
+    )
+    .catch((e) =>
+      console.error("[game-over] post-match processing failed (concede):", e),
+    );
 
   const winnerTeam = gameState.teams[winnerId - 1];
   return {
