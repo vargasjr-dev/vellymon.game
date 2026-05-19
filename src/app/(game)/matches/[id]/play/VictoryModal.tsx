@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import type { MatchRewards } from "./actions";
 
 type Props = {
   winner: string;
   condition: string;
+  /** Progression rewards — fetched async, may arrive after initial render */
+  rewards?: MatchRewards | null;
   onComplete: () => void;
 };
 
@@ -43,7 +46,7 @@ function createParticle(canvasWidth: number): Particle {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function VictoryModal({ winner, condition, onComplete }: Props) {
+export default function VictoryModal({ winner, condition, rewards, onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [phase, setPhase] = useState<"entrance" | "display" | "exit">("entrance");
   const [textVisible, setTextVisible] = useState(false);
@@ -176,12 +179,51 @@ export default function VictoryModal({ winner, condition, onComplete }: Props) {
 
         {/* Condition */}
         <p
-          className={`text-sm text-gray-400 uppercase tracking-wider mb-8 transition-all duration-500 ${
+          className={`text-sm text-gray-400 uppercase tracking-wider mb-4 transition-all duration-500 ${
             subtextVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
         >
           {conditionLabel}
         </p>
+
+        {/* Progression rewards — shown once fetched */}
+        {rewards && subtextVisible && (
+          <div className="mb-6 flex justify-center gap-3 flex-wrap animate-fade-in">
+            {/* XP */}
+            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+              <span className="text-lg">⭐</span>
+              <div className="text-left">
+                <p className="text-xs text-gray-400 leading-none">XP</p>
+                <p className="text-sm font-bold text-yellow-300">+{rewards.xpAwarded}</p>
+              </div>
+            </div>
+            {/* Credits */}
+            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+              <span className="text-lg">💰</span>
+              <div className="text-left">
+                <p className="text-xs text-gray-400 leading-none">Credits</p>
+                <p className="text-sm font-bold text-yellow-300">+{rewards.creditsAwarded}</p>
+              </div>
+            </div>
+            {/* Rank change (future) */}
+            {rewards.rankChange && (
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                <span className="text-lg">🏅</span>
+                <div className="text-left">
+                  <p className="text-xs text-gray-400 leading-none">Rank</p>
+                  <p className="text-sm font-bold text-blue-300">{rewards.rankChange}</p>
+                </div>
+              </div>
+            )}
+            {/* Sparring label */}
+            {rewards.isSparring && (
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                <span className="text-lg">🤖</span>
+                <p className="text-xs text-gray-400">Practice match</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* View Results button */}
         <button
