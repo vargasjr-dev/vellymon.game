@@ -7,6 +7,7 @@ import { getBalance } from "../../../lib/currency";
 import { getSubscriptionInfo } from "../../../lib/subscription";
 import { getNewAchievementCount } from "~/data/getNewAchievementCount.server";
 import { getActiveQuestCount } from "~/data/getActiveQuestCount.server";
+import { getStreakCount } from "~/data/getStreakCount.server";
 
 export default async function GameLayout({
   children,
@@ -21,11 +22,12 @@ export default async function GameLayout({
     redirect("/login");
   }
 
-  const [creditBalance, subInfo, newAchievementCount, activeQuestCount] = await Promise.all([
+  const [creditBalance, subInfo, newAchievementCount, activeQuestCount, currentStreak] = await Promise.all([
     getBalance(session.user.id),
     getSubscriptionInfo(session.user.id),
     getNewAchievementCount(session.user.id),
     getActiveQuestCount(session.user.id),
+    getStreakCount(session.user.id),
   ]);
 
   return (
@@ -37,6 +39,7 @@ export default async function GameLayout({
           isSubscriber={subInfo?.subscriptionStatus === "active"}
           newAchievementCount={newAchievementCount}
           activeQuestCount={activeQuestCount}
+          currentStreak={currentStreak}
         />
         <main>{children}</main>
       </ToastProvider>
