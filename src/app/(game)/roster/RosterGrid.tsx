@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type SortKey = "name" | "health" | "attack" | "speed";
 
@@ -177,6 +178,12 @@ export default function RosterGrid({
                     </p>
                   </div>
                 )}
+                <Link
+                  href={`/roster/${selected.uuid}`}
+                  className="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium mt-3 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition"
+                >
+                  View Full Page →
+                </Link>
               </div>
             </div>
           ) : (
@@ -235,6 +242,12 @@ export default function RosterGrid({
                   </p>
                 </div>
               )}
+              <Link
+                href={`/roster/${selected.uuid}`}
+                className="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium mt-4 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition"
+              >
+                View Full Page →
+              </Link>
             </div>
           </div>
         </div>
