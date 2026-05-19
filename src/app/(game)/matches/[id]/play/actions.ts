@@ -9,7 +9,7 @@ import {
 } from "~/data/gameEngine.server";
 import { db } from "../../../../../../data/db";
 import { matchStats } from "../../../../../../data/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lt, count } from "drizzle-orm";
 
 // Command type for the play page — all actions are directional
 export type PlayCommand = {
@@ -126,10 +126,35 @@ export async function getMatchRewardsAction(
   // Currency awarded: 10 participation + 25 win bonus (PvP only)
   const creditsAwarded = 10 + (won && !isSparring ? 25 : 0);
 
-  // XP awarded: mirrors calculateMatchXP logic (sans first-win bonus for now)
+  // XP awarded: mirrors calculateMatchXP logic including first-win daily bonus
   const baseXp = won ? 100 : 50;
   const rankedMultiplier = !isSparring ? 1.5 : 1;
-  const xpAwarded = Math.round(baseXp * rankedMultiplier);
+  let xpAwarded = Math.round(baseXp * rankedMultiplier);
+
+  // Detect first-win-today: if exactly 1 win exists in matchStats today, this was it
+  if (won) {
+    const now = new Date();
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const tomorrowStart = new Date(todayStart.getTime() + 86_400_000);
+
+    const [{ value: winsToday }] = await db
+      .select({ value: count() })
+      .from(matchStats)
+      .where(
+        and(
+          eq(matchStats.userId, session.user.id),
+          eq(matchStats.result, "win"),
+          gte(matchStats.completedAt, todayStart),
+          lt(matchStats.completedAt, tomorrowStart),
+        ),
+      );
+
+    if (winsToday === 1) {
+      xpAwarded += 50; // first-win daily bonus
+    }
+  }
 
   return {
     result: row.result as "win" | "loss",
