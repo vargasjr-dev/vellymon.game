@@ -1,4 +1,9 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createRematchAction } from "../actions";
 import type { MatchSummaryData } from "~/data/getMatchSummary.server";
 
 const WIN_CONDITION_LABEL: Record<string, string> = {
@@ -23,6 +28,22 @@ interface MatchSummaryProps {
 }
 
 export default function MatchSummary({ summary, currentUserId }: MatchSummaryProps) {
+  const router = useRouter();
+  const [rematching, setRematching] = useState(false);
+  const [rematchError, setRematchError] = useState<string | null>(null);
+
+  const handleRematch = async () => {
+    setRematching(true);
+    setRematchError(null);
+    const result = await createRematchAction(summary.matchUuid);
+    if (result.success) {
+      router.push(`/matches/${result.matchUuid}`);
+    } else {
+      setRematchError(result.message);
+      setRematching(false);
+    }
+  };
+
   const { stats } = summary;
 
   if (stats.length === 0) {
@@ -126,20 +147,31 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <Link
-          href="/matches/new"
-          className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition"
+        {/* Rematch — same team, new lobby */}
+        <button
+          onClick={handleRematch}
+          disabled={rematching}
+          className="flex-1 text-center bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition"
         >
-          Play Ranked Match
-        </Link>
-        {isSparring && (
+          {rematching ? "Creating…" : "🔄 Rematch"}
+        </button>
+
+        {isSparring ? (
           <Link
             href="/practice"
             className="flex-1 text-center bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition"
           >
             🤖 Spar Again
           </Link>
+        ) : (
+          <Link
+            href="/matches/new"
+            className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition"
+          >
+            New Match
+          </Link>
         )}
+
         <Link
           href="/matches"
           className="flex-1 text-center border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-xl font-semibold transition"
@@ -147,6 +179,10 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
           Match History
         </Link>
       </div>
+
+      {rematchError && (
+        <p className="text-sm text-red-500 text-center mt-2">{rematchError}</p>
+      )}
     </div>
   );
 }

@@ -2,10 +2,10 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { auth } from "~/lib/auth.server";
 import { db } from "../../../../data/db";
-import { gameSession } from "../../../../data/schema";
+import { gameSession, gamePlayer } from "../../../../data/schema";
 import createMatch from "~/data/createMatch.server";
 import joinGame from "~/data/joinGame.server";
 import cancelMatch from "~/data/cancelMatch.server";
@@ -104,6 +104,47 @@ export async function deleteMatchAction(matchUuid: string) {
   revalidatePath("/player");
 
   return { success: true };
+}
+
+/**
+ * Create a rematch: look up the current user's team from the original match,
+ * then create a new match with the same team and return the new match UUID.
+ */
+export async function createRematchAction(
+  originalMatchUuid: string,
+): Promise<{ success: true; matchUuid: string } | { success: false; message: string }> {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+
+  // Find the current user's team from the original match
+  const [myPlayer] = await db
+    .select({ teamUuid: gamePlayer.teamUuid })
+    .from(gamePlayer)
+    .where(
+      and(
+        eq(gamePlayer.gameSessionUuid, originalMatchUuid),
+        eq(gamePlayer.userId, session.user.id),
+      ),
+    )
+    .limit(1);
+
+  if (!myPlayer) {
+    return { success: false, message: "You were not a player in that match" };
+  }
+
+  const result = await createMatch({
+    userId: session.user.id,
+    teamUuid: myPlayer.teamUuid,
+  });
+
+  if (!result.success) {
+    return { success: false, message: result.message ?? "Failed to create rematch" };
+  }
+
+  revalidatePath("/matches");
+  revalidatePath("/player");
+
+  return { success: true, matchUuid: result.matchUuid! };
 }
 
 export async function joinMatchAction(matchUuid: string, teamUuid: string) {
