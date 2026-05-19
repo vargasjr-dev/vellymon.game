@@ -124,6 +124,11 @@ export default async function PlayerProfilePage({
                 </span>
               )}
             </div>
+            {profile.username && (
+              <p className="text-sm text-blue-500 font-mono mb-0.5">
+                @{profile.username}
+              </p>
+            )}
             <p className="text-sm text-gray-500">Trainer since {joinedYear}</p>
 
             {/* Rank badge */}
