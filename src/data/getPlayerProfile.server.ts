@@ -6,6 +6,7 @@ import { getActiveRank, type Rank } from "../../lib/ranked";
 export type PlayerProfile = {
   userId: string;
   name: string;
+  username: string | null;
   image: string | null;
   isSubscriber: boolean;
   joinedAt: Date;
@@ -30,6 +31,7 @@ const getPlayerProfile = async (
       .select({
         id: user.id,
         name: user.name,
+        username: user.username,
         image: user.image,
         subscriptionStatus: user.subscriptionStatus,
         createdAt: user.createdAt,
@@ -73,6 +75,7 @@ const getPlayerProfile = async (
     return {
       userId: u.id,
       name: u.name,
+      username: u.username ?? null,
       image: u.image,
       isSubscriber: u.subscriptionStatus === "active",
       joinedAt: u.createdAt,
