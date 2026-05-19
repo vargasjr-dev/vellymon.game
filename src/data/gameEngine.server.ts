@@ -15,7 +15,7 @@ import {
   vellymonInstance,
   matchStats,
 } from "../../data/schema";
-import { awardMatchProgression, checkAndAwardMatchAchievements } from "../../lib/matchProgression";
+import { awardMatchProgression, checkAndAwardMatchAchievements, updateMatchQuestProgress } from "../../lib/matchProgression";
 import { eq, asc } from "drizzle-orm";
 import {
   VELLYMON_LIBRARY,
@@ -635,6 +635,7 @@ export async function submitMatchCommands(
           Promise.all([
             awardMatchProgression(matchUuid, gameState, meta.sparring ?? false),
             checkAndAwardMatchAchievements(matchUuid, humanPlayerIds),
+            updateMatchQuestProgress(matchUuid, humanPlayerIds),
           ]),
         )
         .catch((e) => console.error("[game-over] post-match processing failed:", e));
@@ -707,6 +708,7 @@ export async function concedeMatch(
       Promise.all([
         awardMatchProgression(matchUuid, gameState, meta.sparring ?? false),
         checkAndAwardMatchAchievements(matchUuid, humanPlayerIds),
+        updateMatchQuestProgress(matchUuid, humanPlayerIds),
       ]),
     )
     .catch((e) =>
