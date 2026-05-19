@@ -547,3 +547,47 @@ export const userAchievementRelations = relations(userAchievement, ({ one }) => 
     references: [user.id],
   }),
 }));
+
+// ─── Daily Quests ─────────────────────────────────────────────────────────────
+
+/**
+ * Tracks per-user daily quest progress.
+ * The quest catalog is defined in lib/quests.ts (static).
+ * Quests reset at midnight UTC — date is stored as "YYYY-MM-DD".
+ */
+export const userQuestProgress = pgTable(
+  "userQuestProgress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Matches DailyQuestId from lib/quests.ts */
+    questId: text("questId").notNull(),
+    /** UTC date string "YYYY-MM-DD" — quest set resets each day */
+    date: text("date").notNull(),
+    /** Current progress toward the quest target */
+    progress: integer("progress").notNull().default(0),
+    /** True when progress >= target */
+    completed: boolean("completed").notNull().default(false),
+    /** True once the player has claimed their reward */
+    rewardClaimed: boolean("rewardClaimed").notNull().default(false),
+    completedAt: timestamp("completedAt"),
+  },
+  (table) => [
+    index("userQuestProgress_userId_date_idx").on(table.userId, table.date),
+    // Ensure each quest appears at most once per user per day
+    index("userQuestProgress_userId_questId_date_idx").on(
+      table.userId,
+      table.questId,
+      table.date,
+    ),
+  ],
+);
+
+export const userQuestProgressRelations = relations(userQuestProgress, ({ one }) => ({
+  user: one(user, {
+    fields: [userQuestProgress.userId],
+    references: [user.id],
+  }),
+}));
