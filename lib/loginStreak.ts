@@ -52,6 +52,10 @@ export type DailyCheckInResult = {
   creditsAwarded: number;
   /** Set when this claim hit a streak milestone */
   milestoneHit?: StreakMilestone;
+  /** Set when a streak freeze was consumed to save a broken streak */
+  usedFreeze?: boolean;
+  /** Updated freeze count after this claim (for subscriber display) */
+  freezeCount?: number;
 };
 
 // ─── Milestone catalog ────────────────────────────────────────────────────────
