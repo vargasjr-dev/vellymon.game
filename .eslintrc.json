@@ -1,21 +1,9 @@
 {
-  "root": true,
-  "parser": "@typescript-eslint/parser",
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended"
-  ],
-  "ignorePatterns": [
-    "**/dist/*",
-    "scripts/",
-    "**/*.js",
-    "**/*.jsx"
-  ],
+  "extends": "next/core-web-vitals",
   "rules": {
-    "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
     "@typescript-eslint/no-unused-vars": "off",
-    "@typescript-eslint/no-explicit-any": "off"
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-empty-function": "off"
   }
 }
