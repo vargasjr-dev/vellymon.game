@@ -2,18 +2,22 @@
   "root": true,
   "parser": "@typescript-eslint/parser",
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "@next/next"
   ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "next"
   ],
   "ignorePatterns": [
     "**/dist/*",
     "scripts/"
   ],
   "rules": {
-    "@typescript-eslint/explicit-module-boundary-types": "off"
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@next/next/no-img-element": "off",
+    "@typescript-eslint/no-empty-function": "off"
   }
 }
