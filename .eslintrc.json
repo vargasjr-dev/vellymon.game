@@ -1,24 +1,18 @@
 {
   "root": true,
   "parser": "@typescript-eslint/parser",
-  "plugins": [
-    "@typescript-eslint",
-    "@next/next"
-  ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-    "next"
+    "plugin:@typescript-eslint/recommended"
   ],
   "ignorePatterns": [
     "**/dist/*",
-    "scripts/"
+    "scripts/",
+    "**/*.js",
+    "**/*.jsx"
   ],
   "rules": {
-    "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@next/next/no-img-element": "off",
-    "@next/next/no-html-link-for-pages": "off",
-    "@typescript-eslint/no-empty-function": "off"
+    "@typescript-eslint/explicit-module-boundary-types": "off"
   }
 }
