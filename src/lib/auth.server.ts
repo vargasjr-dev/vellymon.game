@@ -36,19 +36,11 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }) => {
-      console.log("[reset-password] sendResetPassword triggered for:", user.email);
-      console.log("[reset-password] RESEND_API_KEY present:", !!process.env.RESEND_API_KEY);
-      console.log("[reset-password] EMAIL_FROM:", process.env.EMAIL_FROM || "(not set, using default)");
-      console.log("[reset-password] Reset URL:", url);
-
       if (!resend) {
-        console.error(
-          "[reset-password] ERROR: RESEND_API_KEY not configured — cannot send password reset email"
-        );
+        console.error("[auth] RESEND_API_KEY not configured — cannot send password reset email");
         return;
       }
 
-      console.log("[reset-password] Calling resend.emails.send...");
       try {
         const result = await resend.emails.send({
           from: process.env.EMAIL_FROM || "Vellymon <noreply@vellymon.game>",
@@ -67,9 +59,9 @@ export const auth = betterAuth({
           </div>
         `,
         });
-        console.log("[reset-password] resend.emails.send result:", JSON.stringify(result));
+        void result; // success
       } catch (err) {
-        console.error("[reset-password] ERROR sending email:", err);
+        console.error("[auth] Error sending password reset email:", err);
       }
     },
   },

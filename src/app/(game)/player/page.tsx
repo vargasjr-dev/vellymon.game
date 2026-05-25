@@ -1,5 +1,6 @@
 import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
 import getTeams from "~/data/getTeams.server";
@@ -61,7 +62,8 @@ function StarRow({ stars, max }: { stars: number; max: number }) {
 export default async function PlayerHubPage() {
   const headersList = await headers();
   // Session guaranteed by (game)/layout.tsx auth gate
-  const session = (await auth.api.getSession({ headers: headersList }))!;
+  const session = await auth.api.getSession({ headers: headersList });
+  if (!session) redirect("/login");
 
   const [roster, teams, matches, subInfo, activeRank, creditBalance, userRow, loginStreak] = await Promise.all([
     getVellymonRoster(session.user.id),
