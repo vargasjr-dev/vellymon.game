@@ -36,17 +36,24 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }) => {
+      console.log("[reset-password] sendResetPassword triggered for:", user.email);
+      console.log("[reset-password] RESEND_API_KEY present:", !!process.env.RESEND_API_KEY);
+      console.log("[reset-password] EMAIL_FROM:", process.env.EMAIL_FROM || "(not set, using default)");
+      console.log("[reset-password] Reset URL:", url);
+
       if (!resend) {
         console.error(
-          "RESEND_API_KEY not configured — cannot send password reset email"
+          "[reset-password] ERROR: RESEND_API_KEY not configured — cannot send password reset email"
         );
         return;
       }
 
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || "Vellymon <noreply@vellymon.game>",
-        to: user.email,
-        subject: "Reset your Vellymon password",
+      console.log("[reset-password] Calling resend.emails.send...");
+      try {
+        const result = await resend.emails.send({
+          from: process.env.EMAIL_FROM || "Vellymon <noreply@vellymon.game>",
+          to: user.email,
+          subject: "Reset your Vellymon password",
         html: `
           <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
             <h2 style="color: #1d4ed8;">Reset Your Password</h2>
@@ -59,7 +66,11 @@ export const auth = betterAuth({
             <p style="color: #6b7280; font-size: 14px;">— Vellymon</p>
           </div>
         `,
-      });
+        });
+        console.log("[reset-password] resend.emails.send result:", JSON.stringify(result));
+      } catch (err) {
+        console.error("[reset-password] ERROR sending email:", err);
+      }
     },
   },
   ...(socialProviders && { socialProviders }),
