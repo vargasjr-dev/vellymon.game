@@ -97,7 +97,7 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("emailVerified").default(false).notNull(),
   image: text("image"),
-  username: text("username").unique(), // optional vanity slug, e.g. "vargas42"
+  username: text("username"), // optional vanity slug, e.g. "vargas42" (unique constraint to be added via migration later)
   role: text("role").default("user").notNull(), // "user" | "admin"
   // ─── Subscription fields ───────────────────────────────────────────────────
   stripeCustomerId: text("stripeCustomerId").unique(),
