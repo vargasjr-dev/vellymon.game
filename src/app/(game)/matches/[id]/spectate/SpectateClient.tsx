@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import TurnHistory, { type TurnSnapshot } from "../play/TurnHistory";
+import type { Overlays, VellymonDisplay as CanvasVellymon } from "../play/BattleCanvas";
 
 const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), { ssr: false });
 
@@ -149,6 +150,153 @@ function parseGameState(gs: RawGameState) {
   return { turn: gs.turn, teams, boardWidth: gs.boardWidth, boardHeight: gs.boardHeight, boardSpaces, gameOver };
 }
 
+// ─── Animation helpers ────────────────────────────────────────────────────────
+
+type Dir = "up" | "down" | "left" | "right";
+const DIR_OFFSETS: Record<Dir, { dx: number; dy: number }> = {
+  up:    { dx: 0,  dy: -1 },
+  down:  { dx: 0,  dy:  1 },
+  left:  { dx: -1, dy:  0 },
+  right: { dx: 1,  dy:  0 },
+};
+
+function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+/** Extract vellymons suitable for BattleCanvas from a RawGameState snapshot. */
+function snapshotToVellymons(snap: RawGameState): CanvasVellymon[] {
+  const result: CanvasVellymon[] = [];
+  for (const t of snap.teams) {
+    for (const v of t.active) {
+      if (!v.position) continue;
+      result.push({
+        uuid: v.uuid, name: v.name, hp: v.hp, maxHp: v.maxHp,
+        speed: v.speed, attack: v.attack,
+        x: v.position.x, y: v.position.y,
+        isKO: v.isKO, teamId: t.id as 1 | 2, imageUrl: v.imageUrl,
+      });
+    }
+  }
+  return result;
+}
+
+/** Interpolate all vellymon positions between two snapshots. */
+function interpolateVellymons(
+  fromSnap: RawGameState,
+  toSnap: RawGameState,
+  t: number,
+): CanvasVellymon[] {
+  const result: CanvasVellymon[] = [];
+  for (const fromTeam of fromSnap.teams) {
+    const toTeam = toSnap.teams.find((tt) => tt.id === fromTeam.id)!;
+    for (const fv of fromTeam.active) {
+      if (!fv.position) continue;
+      const tv = toTeam?.active.find((v) => v.uuid === fv.uuid);
+      const toPos = tv?.position ?? fv.position; // KO'd → stay in place
+      // HP steps at t=1 (don't lerp mid-animation — jarring)
+      const hp = t < 1 ? fv.hp : (tv?.hp ?? fv.hp);
+      result.push({
+        uuid: fv.uuid, name: fv.name, hp, maxHp: fv.maxHp,
+        speed: fv.speed, attack: fv.attack,
+        x: lerp(fv.position.x, toPos.x, t),
+        y: lerp(fv.position.y, toPos.y, t),
+        isKO: fv.isKO, teamId: fromTeam.id as 1 | 2, imageUrl: fv.imageUrl,
+      });
+    }
+  }
+  return result;
+}
+
+/** Build overlay ghosts + arrows for a single command preview. */
+function buildPreviewOverlay(
+  cmd: RawCommandResult,
+  snap: RawGameState,
+  lookup: Map<string, { name: string; teamId: 1 | 2 }>,
+): Overlays {
+  const info = lookup.get(cmd.command.vellymonUuid);
+  if (!info) return {};
+  const teamId = info.teamId;
+
+  // Find current vellymon position in snapshot
+  const team = snap.teams.find((t) => t.id === teamId);
+  const vm = team?.active.find((v) => v.uuid === cmd.command.vellymonUuid);
+  if (!vm?.position) return {};
+
+  const { x, y } = vm.position;
+  const dir = cmd.command.direction as Dir | undefined;
+  const offset = dir ? DIR_OFFSETS[dir] : null;
+
+  const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
+
+  if (cmd.command.type === "move" && offset) {
+    const tx = x + offset.dx;
+    const ty = y + offset.dy;
+    return {
+      ghosts: [{ x: tx, y: ty, teamId, alpha: 1 }],
+      arrows: [{ fromX: x, fromY: y, toX: tx, toY: ty, color: teamColor, alpha: 0.85 }],
+    };
+  }
+
+  if (cmd.command.type === "attack" && offset) {
+    const tx = x + offset.dx;
+    const ty = y + offset.dy;
+    return {
+      arrows: [{ fromX: x, fromY: y, toX: tx, toY: ty, color: 0xff6b6b, alpha: 0.9 }],
+    };
+  }
+
+  // Harvest — arrow pointing in harvest direction
+  if (cmd.command.type === "harvest" && offset) {
+    const tx = x + offset.dx;
+    const ty = y + offset.dy;
+    return {
+      arrows: [{ fromX: x, fromY: y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.8 }],
+    };
+  }
+
+  return {};
+}
+
+/** Build impact labels from turn log (damage numbers, KO badges). */
+function buildImpactOverlays(log: RawTurnLog, snap: RawGameState): Overlays {
+  const labels: Overlays["labels"] = [];
+  for (const r of log.commandResults) {
+    if (!r.damageDealt && !r.targetKO) continue;
+    // Find target position in the "after" snap by searching all teams
+    // Attack direction tells us which tile was hit — but it's easiest to look up
+    // the target vellymon from the snap (it'll be at its post-turn position)
+    for (const team of snap.teams) {
+      for (const vm of team.active) {
+        // We can't perfectly match command → target without traversal, so we
+        // show damage labels at the *attacker's* post-turn position offset by dir.
+        // A solid UX approximation.
+        void vm; // suppress unused warning — loop is for structure
+      }
+    }
+    // Find attacker position in snap
+    let attackerPos: { x: number; y: number } | null = null;
+    for (const team of snap.teams) {
+      const vm = team.active.find((v) => v.uuid === r.command.vellymonUuid);
+      if (vm?.position) { attackerPos = vm.position; break; }
+    }
+    if (!attackerPos) continue;
+    const dir = r.command.direction as Dir | undefined;
+    const offset = dir ? DIR_OFFSETS[dir] : null;
+    const labelX = offset ? attackerPos.x + offset.dx : attackerPos.x;
+    const labelY = offset ? attackerPos.y + offset.dy : attackerPos.y;
+
+    if (r.targetKO) {
+      labels.push({ x: labelX, y: labelY, text: "💀 KO!", color: 0xff4444, alpha: 1 });
+    } else if (r.damageDealt) {
+      labels.push({ x: labelX, y: labelY, text: `-${r.damageDealt}`, color: 0xfbbf24, alpha: 1 });
+    }
+  }
+  return { labels };
+}
+
 /** Build a uuid → {name, teamId} lookup from a RawGameState (pre-turn state). */
 function buildVellymonLookup(gs: RawGameState): Map<string, { name: string; teamId: 1 | 2 }> {
   const map = new Map<string, { name: string; teamId: 1 | 2 }>();
@@ -173,6 +321,23 @@ export default function SpectateClient({ matchId }: Props) {
   const [turnLogs, setTurnLogs] = useState<RawTurnLog[]>([]);
   const [replayIndex, setReplayIndex] = useState(0);
   const [logOpen, setLogOpen] = useState(false);
+
+  // Animation state (Phase 1 → Preview, Phase 2 → Execute, Phase 3 → Impact)
+  type AnimPhase = "idle" | "previewing" | "executing" | "impacting";
+  const [animPhase, setAnimPhase] = useState<AnimPhase>("idle");
+  const [canvasVellymons, setCanvasVellymons] = useState<CanvasVellymon[] | null>(null);
+  const [overlays, setOverlays] = useState<Overlays | null>(null);
+  const animRef = useRef<{
+    pendingIndex: number;
+    previewCmds: RawCommandResult[];
+    previewIdx: number;
+    fromSnap: RawGameState | null;
+    toSnap: RawGameState | null;
+    log: RawTurnLog | null;
+    lookup: Map<string, { name: string; teamId: 1 | 2 }>;
+    rafId: number | null;
+    timeoutId: ReturnType<typeof setTimeout> | null;
+  }>({ pendingIndex: 0, previewCmds: [], previewIdx: 0, fromSnap: null, toSnap: null, log: null, lookup: new Map(), rafId: null, timeoutId: null });
 
   // Live mode
   const [liveState, setLiveState] = useState<ReturnType<typeof parseGameState> | null>(null);
@@ -250,6 +415,131 @@ export default function SpectateClient({ matchId }: Props) {
   // Close log when index changes
   useEffect(() => { setLogOpen(false); }, [replayIndex]);
 
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      const a = animRef.current;
+      if (a.rafId !== null) cancelAnimationFrame(a.rafId);
+      if (a.timeoutId !== null) clearTimeout(a.timeoutId);
+    };
+  }, []);
+
+  // ── Animation state machine ───────────────────────────────────────────────
+  // Forward ref so startExecutePhase can call finishAnimation before it's defined
+  const finishAnimationRef = useRef<() => void>(() => { /* filled below */ });
+
+  const startExecutePhase = useCallback(() => {
+    const a = animRef.current;
+    if (!a.fromSnap || !a.toSnap) return;
+    setAnimPhase("executing");
+    setOverlays(null);
+    const duration = 480;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const raw = Math.min((now - startTime) / duration, 1);
+      const t = easeInOut(raw);
+      setCanvasVellymons(interpolateVellymons(a.fromSnap!, a.toSnap!, t));
+      if (raw < 1) {
+        a.rafId = requestAnimationFrame(tick);
+      } else {
+        // Phase 3: Impact
+        a.rafId = null;
+        const afterVms = snapshotToVellymons(a.toSnap!);
+        setCanvasVellymons(afterVms);
+        setAnimPhase("impacting");
+        const impactOverlays = a.log ? buildImpactOverlays(a.log, a.toSnap!) : null;
+        const hasImpact = (impactOverlays?.labels?.length ?? 0) > 0;
+        if (hasImpact) {
+          setOverlays(impactOverlays);
+          // Fade labels over 400ms
+          const impactDuration = 400;
+          const impactStart = performance.now();
+          const impactTick = (now: number) => {
+            const alpha = Math.max(0, 1 - (now - impactStart) / impactDuration);
+            setOverlays({
+              labels: impactOverlays!.labels!.map((l) => ({ ...l, alpha })),
+            });
+            if (alpha > 0) {
+              a.rafId = requestAnimationFrame(impactTick);
+            } else {
+              a.rafId = null;
+              finishAnimationRef.current();
+            }
+          };
+          a.rafId = requestAnimationFrame(impactTick);
+        } else {
+          a.timeoutId = setTimeout(() => finishAnimationRef.current(), 200);
+        }
+      }
+    };
+    a.rafId = requestAnimationFrame(tick);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const finishAnimation = useCallback(() => {
+    const a = animRef.current;
+    setOverlays(null);
+    setCanvasVellymons(null);
+    setAnimPhase("idle");
+    setReplayIndex(a.pendingIndex);
+  }, []);
+  // Keep forward ref in sync
+  finishAnimationRef.current = finishAnimation;
+
+  const advancePreview = useCallback(() => {
+    const a = animRef.current;
+    const cmd = a.previewCmds[a.previewIdx];
+    if (!cmd || !a.fromSnap) {
+      // All previews shown — move to execute
+      startExecutePhase();
+      return;
+    }
+    const ovl = buildPreviewOverlay(cmd, a.fromSnap, a.lookup);
+    setOverlays(ovl);
+    a.previewIdx += 1;
+    a.timeoutId = setTimeout(advancePreview, 420);
+  }, [startExecutePhase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const stepForward = useCallback(() => {
+    if (!turnSnapshots || !isReplay) return;
+    if (animPhase !== "idle") return; // already animating
+    const nextIdx = replayIndex + 1;
+    if (nextIdx >= turnSnapshots.length) return;
+
+    const fromSnap = turnSnapshots[replayIndex];
+    const toSnap = turnSnapshots[nextIdx];
+    const log = turnLogs[replayIndex] ?? null;
+    const lookup = buildVellymonLookup(fromSnap);
+
+    const a = animRef.current;
+    a.pendingIndex = nextIdx;
+    a.fromSnap = fromSnap;
+    a.toSnap = toSnap;
+    a.log = log;
+    a.lookup = lookup;
+    a.previewIdx = 0;
+
+    // Sort commands by vellymon speed (fastest first — highest speed = first preview)
+    const cmds = log?.commandResults ?? [];
+    const getSpeed = (uuid: string): number => {
+      for (const team of fromSnap.teams) {
+        const vm = team.active.find((av: { uuid: string; speed: number }) => av.uuid === uuid);
+        if (vm) return vm.speed;
+      }
+      return 0;
+    };
+    const sortedCmds = [...cmds].sort((x, y) =>
+      getSpeed(y.command.vellymonUuid) - getSpeed(x.command.vellymonUuid)
+    );
+    a.previewCmds = sortedCmds;
+
+    // Start Phase 1: show "before" board, kick off preview sequence
+    setCanvasVellymons(snapshotToVellymons(fromSnap));
+    setAnimPhase("previewing");
+    advancePreview();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnSnapshots, replayIndex, turnLogs, animPhase, isReplay, advancePreview]);
+
   // ── Replay display state ──────────────────────────────────────────────────
   const replayParsed = useMemo(() => {
     if (!isReplay || !turnSnapshots) return null;
@@ -263,13 +553,14 @@ export default function SpectateClient({ matchId }: Props) {
 
   const [t1, t2] = teams ?? [null, null];
 
-  const allVellymons = useMemo(
-    () => [
-      ...(t1?.active.map((v) => ({ ...v, teamId: t1.id as 1 | 2 })) ?? []),
-      ...(t2?.active.map((v) => ({ ...v, teamId: t2.id as 1 | 2 })) ?? []),
-    ],
-    [t1, t2],
-  );
+  // During animation, use canvasVellymons (interpolated); otherwise derive from snapshot
+  const allVellymons = useMemo(() => {
+    if (canvasVellymons !== null) return canvasVellymons;
+    return [
+      ...(t1?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t1.id as 1 | 2 })) ?? []),
+      ...(t2?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t2.id as 1 | 2 })) ?? []),
+    ];
+  }, [canvasVellymons, t1, t2]);
 
   // ── Turn log for the current replay index ─────────────────────────────────
   // turnLogs[i] describes the transition from snapshot[i] → snapshot[i+1]
@@ -322,14 +613,14 @@ export default function SpectateClient({ matchId }: Props) {
         {isReplay && turnSnapshots ? (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setReplayIndex((i) => Math.max(0, i - 1))}
+              onClick={() => setReplayIndex((i: number) => Math.max(0, i - 1))}
               disabled={replayIndex === 0}
               className="text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
             >
               ←
             </button>
             <button
-              onClick={() => hasLog && setLogOpen((o) => !o)}
+              onClick={() => hasLog && setLogOpen((o: boolean) => !o)}
               className={`text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono min-w-[120px] text-center transition ${
                 hasLog ? "text-gray-300 hover:bg-black/60 cursor-pointer" : "text-gray-500 cursor-default"
               }`}
@@ -341,11 +632,13 @@ export default function SpectateClient({ matchId }: Props) {
               <span className="text-gray-600 text-xs ml-1">/ {turnSnapshots.length - 1}</span>
             </button>
             <button
-              onClick={() => setReplayIndex((i) => Math.min(turnSnapshots.length - 1, i + 1))}
-              disabled={replayIndex === turnSnapshots.length - 1}
+              onClick={stepForward}
+              disabled={replayIndex === turnSnapshots.length - 1 || animPhase !== "idle"}
               className="text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
             >
-              →
+              {animPhase !== "idle" ? (
+                <span className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin align-middle" />
+              ) : "→"}
             </button>
           </div>
         ) : (
@@ -412,6 +705,7 @@ export default function SpectateClient({ matchId }: Props) {
           selectedVellymon={null}
           onSelectVellymon={() => { /* spectate: no selection */ }}
           commandedUuids={new Set()}
+          overlays={overlays ?? undefined}
         />
       </div>
 
