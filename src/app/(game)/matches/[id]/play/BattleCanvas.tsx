@@ -3,13 +3,14 @@
 import { useRef, useEffect, useCallback } from "react";
 import { Application, Container, Graphics, Sprite, Text, TextStyle, Assets } from "pixi.js";
 
-type VellymonDisplay = {
+export type VellymonDisplay = {
   uuid: string;
   name: string;
   hp: number;
   maxHp: number;
   speed: number;
   attack: number;
+  /** Fractional grid coordinates — supports sub-tile positions for smooth animation */
   x: number;
   y: number;
   isKO: boolean;
@@ -25,6 +26,42 @@ type BoardSpace = {
   harvestYield?: number;
 };
 
+// ─── Overlay types — rendered on top of the board for animation effects ───────
+
+export type OverlayGhost = {
+  /** Fractional grid position of the ghost piece */
+  x: number;
+  y: number;
+  teamId: 1 | 2;
+  alpha: number;
+};
+
+export type OverlayArrow = {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  color: number;
+  alpha: number;
+};
+
+export type OverlayLabel = {
+  /** Grid position to anchor the label */
+  x: number;
+  y: number;
+  text: string;
+  color: number;
+  alpha: number;
+};
+
+export type Overlays = {
+  ghosts?: OverlayGhost[];
+  arrows?: OverlayArrow[];
+  labels?: OverlayLabel[];
+};
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 type Props = {
   boardWidth: number;
   boardHeight: number;
@@ -34,9 +71,11 @@ type Props = {
   selectedVellymon: string | null;
   onSelectVellymon: (uuid: string | null) => void;
   commandedUuids: Set<string>;
+  overlays?: Overlays;
 };
 
-// Colors — team colors are FIXED per team ID, never swap with perspective
+// ─── Colors ───────────────────────────────────────────────────────────────────
+
 const COLORS = {
   bg: 0x0a0f1a,
   tile: 0x111b2e,
@@ -44,12 +83,10 @@ const COLORS = {
   occupation: 0x3d2800,
   occupationBorder: 0xb8860b,
   occupationStar: 0xffd700,
-  // Dimmed harvestable
   harvestable: 0x0a1a10,
   harvestableBorder: 0x142e1a,
   spawn: 0x0f1628,
   spawnBorder: 0x2a3a5c,
-  // Fixed team colors (team 1 = blue, team 2 = red — always)
   team1: 0x2563eb,
   team1Glow: 0x3b82f6,
   team1Light: 0x1e3a5f,
@@ -66,37 +103,53 @@ const COLORS = {
   commanded: 0x22c55e,
 };
 
-function teamColor(teamId: 1 | 2) {
-  return teamId === 1 ? COLORS.team1 : COLORS.team2;
-}
-function teamGlow(teamId: 1 | 2) {
-  return teamId === 1 ? COLORS.team1Glow : COLORS.team2Glow;
-}
+function teamColor(teamId: 1 | 2) { return teamId === 1 ? COLORS.team1 : COLORS.team2; }
+function teamGlow(teamId: 1 | 2) { return teamId === 1 ? COLORS.team1Glow : COLORS.team2Glow; }
 
-// Track which URLs we've started loading (prevents duplicate loads)
 const loadingUrls = new Set<string>();
 
+// ─── Grid ↔ Screen coordinate helpers ────────────────────────────────────────
+
+/**
+ * Convert a (possibly fractional) grid position to canvas pixel center.
+ * Supports sub-tile positions for smooth vellymon animation.
+ */
+function gridToScreen(
+  gx: number, gy: number,
+  tileSize: number, gap: number,
+  isPortrait: boolean, bw: number, myTeam: 1 | 2,
+): { centerX: number; centerY: number } {
+  let col: number, row: number;
+  if (isPortrait) {
+    if (myTeam === 1) { col = gy; row = bw - 1 - gx; }
+    else              { col = gy; row = gx; }
+  } else {
+    col = gx; row = gy;
+  }
+  return {
+    centerX: col * (tileSize + gap) + tileSize / 2,
+    centerY: row * (tileSize + gap) + tileSize / 2,
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function BattleCanvas({
-  boardWidth,
-  boardHeight,
-  spaces,
-  vellymons,
-  yourTeamId,
-  selectedVellymon,
-  onSelectVellymon,
-  commandedUuids,
+  boardWidth, boardHeight, spaces, vellymons,
+  yourTeamId, selectedVellymon, onSelectVellymon, commandedUuids,
+  overlays,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const stateRef = useRef({
     boardWidth, boardHeight, spaces, vellymons, yourTeamId,
-    selectedVellymon, commandedUuids,
+    selectedVellymon, commandedUuids, overlays,
   });
   const drawRef = useRef<() => void>();
 
   stateRef.current = {
     boardWidth, boardHeight, spaces, vellymons, yourTeamId,
-    selectedVellymon, commandedUuids,
+    selectedVellymon, commandedUuids, overlays,
   };
 
   const draw = useCallback(() => {
@@ -106,6 +159,7 @@ export default function BattleCanvas({
     const {
       boardWidth: bw, boardHeight: bh, spaces: sp, vellymons: vms,
       yourTeamId: myTeam, selectedVellymon: selVm, commandedUuids: cmdSet,
+      overlays: ovl,
     } = stateRef.current;
 
     app.stage.removeChildren();
@@ -119,10 +173,8 @@ export default function BattleCanvas({
 
     const padding = 12;
     const gap = 3;
-    const availW = screenW - padding * 2;
-    const availH = screenH - padding * 2;
-    const tileW = Math.floor((availW - gap * (cols - 1)) / cols);
-    const tileH = Math.floor((availH - gap * (rows - 1)) / rows);
+    const tileW = Math.floor((screenW - padding * 2 - gap * (cols - 1)) / cols);
+    const tileH = Math.floor((screenH - padding * 2 - gap * (rows - 1)) / rows);
     const tileSize = Math.min(tileW, tileH, 72);
     const cornerRadius = 6;
 
@@ -139,48 +191,34 @@ export default function BattleCanvas({
     const spaceMap = new Map<string, BoardSpace>();
     for (const s of sp) spaceMap.set(`${s.x},${s.y}`, s);
 
-    const vmMap = new Map<string, VellymonDisplay>();
+    // Map integer positions → vellymon (for tile coloring only)
+    const vmIntMap = new Map<string, VellymonDisplay>();
     for (const v of vms) {
-      if (!v.isKO) vmMap.set(`${v.x},${v.y}`, v);
+      if (!v.isKO) vmIntMap.set(`${Math.round(v.x)},${Math.round(v.y)}`, v);
     }
 
-    // Pre-load any uncached textures, then trigger redraw
-    let needsRedraw = false;
+    // Pre-load uncached textures
     for (const v of vms) {
       if (v.imageUrl && !Assets.cache.has(v.imageUrl) && !loadingUrls.has(v.imageUrl)) {
         loadingUrls.add(v.imageUrl);
-        needsRedraw = true;
-        Assets.load(v.imageUrl).then(() => {
-          // Texture now cached — trigger a redraw
-          drawRef.current?.();
-        }).catch(() => {
-          // Failed — remove from loading so fallback renders cleanly
-          loadingUrls.delete(v.imageUrl!);
-        });
+        Assets.load(v.imageUrl).then(() => { drawRef.current?.(); }).catch(() => { loadingUrls.delete(v.imageUrl!); });
       }
     }
 
+    // ── Pass 1: Board tiles ────────────────────────────────────────────────
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         let gx: number, gy: number;
         if (isPortrait) {
-          if (myTeam === 1) {
-            gx = rows - 1 - row;
-            gy = col;
-          } else {
-            gx = row;
-            gy = col;
-          }
-        } else {
-          gx = col;
-          gy = row;
-        }
+          if (myTeam === 1) { gx = rows - 1 - row; gy = col; }
+          else              { gx = row;             gy = col; }
+        } else { gx = col; gy = row; }
 
         const px = col * (tileSize + gap);
         const py = row * (tileSize + gap);
 
         const space = spaceMap.get(`${gx},${gy}`);
-        const vm = vmMap.get(`${gx},${gy}`);
+        const vm = vmIntMap.get(`${gx},${gy}`);
         const isOccupation = space?.type === "occupation";
         const isHarvestable = space?.type === "harvestable";
         const isSpawn = space?.type === "spawn";
@@ -190,177 +228,180 @@ export default function BattleCanvas({
 
         const tile = new Graphics();
 
-        // Selection glow
         if (isSelected) {
           tile.roundRect(px - 2, py - 2, tileSize + 4, tileSize + 4, cornerRadius + 2);
           tile.fill({ color: COLORS.selected, alpha: 0.6 });
-        }
-        // Commanded indicator (green border glow)
-        else if (isCommanded && isYours) {
+        } else if (isCommanded && isYours) {
           tile.roundRect(px - 1, py - 1, tileSize + 2, tileSize + 2, cornerRadius + 1);
           tile.fill({ color: COLORS.commanded, alpha: 0.3 });
         }
 
+        const occCounter = space?.occupationCounter ?? 0;
         let fillColor = COLORS.tile;
         let borderColor = COLORS.tileBorder;
-        const occCounter = space?.occupationCounter ?? 0;
         if (isOccupation) {
-          // Color occupation tiles by controlling team
-          if (occCounter < 0) {
-            // Team 1 capturing (negative = team 1)
-            fillColor = COLORS.team1Light;
-            borderColor = COLORS.team1Dark;
-          } else if (occCounter > 0) {
-            // Team 2 capturing (positive = team 2)
-            fillColor = COLORS.team2Light;
-            borderColor = COLORS.team2Dark;
-          } else {
-            // Neutral
-            fillColor = COLORS.occupation;
-            borderColor = COLORS.occupationBorder;
-          }
+          if (occCounter < 0)      { fillColor = COLORS.team1Light; borderColor = COLORS.team1Dark; }
+          else if (occCounter > 0) { fillColor = COLORS.team2Light; borderColor = COLORS.team2Dark; }
+          else                     { fillColor = COLORS.occupation; borderColor = COLORS.occupationBorder; }
         } else if (isHarvestable) {
-          fillColor = COLORS.harvestable;
-          borderColor = COLORS.harvestableBorder;
+          fillColor = COLORS.harvestable; borderColor = COLORS.harvestableBorder;
         } else if (isSpawn) {
-          fillColor = COLORS.spawn;
-          borderColor = COLORS.spawnBorder;
+          fillColor = COLORS.spawn; borderColor = COLORS.spawnBorder;
         }
-
-        if (vm) {
-          borderColor = teamColor(vm.teamId);
-        }
+        if (vm) borderColor = teamColor(vm.teamId);
 
         tile.roundRect(px, py, tileSize, tileSize, cornerRadius);
         tile.fill(fillColor);
         tile.stroke({ color: borderColor, width: vm ? 2 : 1 });
         boardContainer.addChild(tile);
 
-        // Interactive — your vellymons are selectable
         if (vm && isYours) {
           tile.eventMode = "static";
           tile.cursor = "pointer";
           const vuuid = vm.uuid;
-          tile.on("pointertap", () => {
-            onSelectVellymon(selVm === vuuid ? null : vuuid);
-          });
+          tile.on("pointertap", () => { onSelectVellymon(selVm === vuuid ? null : vuuid); });
         }
 
-        // Vellymon sprite or fallback
-        if (vm) {
-          const centerX = px + tileSize / 2;
-          const centerY = py + tileSize / 2;
-          const avatarSize = tileSize * 0.6;
-
-          // Try synchronous cache hit first (fixes the async race condition)
-          if (vm.imageUrl && Assets.cache.has(vm.imageUrl)) {
-            const texture = Assets.get(vm.imageUrl);
-            const sprite = new Sprite(texture);
-            sprite.width = avatarSize;
-            sprite.height = avatarSize;
-            sprite.anchor.set(0.5);
-            sprite.x = centerX;
-            sprite.y = centerY - 2;
-            boardContainer.addChild(sprite);
-          } else {
-            // Fallback circle (either no imageUrl, or texture still loading)
-            const circle = new Graphics();
-            circle.circle(centerX, centerY - 2, avatarSize / 2);
-            circle.fill(teamGlow(vm.teamId));
-            boardContainer.addChild(circle);
-          }
-
-          // HP bar
-          const hpBarW = tileSize * 0.75;
-          const hpBarH = 4;
-          const hpBarX = centerX - hpBarW / 2;
-          const hpBarY = py + tileSize - 8;
-          const hpPercent = vm.maxHp > 0 ? vm.hp / vm.maxHp : 0;
-
-          const hpBg = new Graphics();
-          hpBg.roundRect(hpBarX, hpBarY, hpBarW, hpBarH, 2);
-          hpBg.fill(COLORS.hpBarBg);
-          boardContainer.addChild(hpBg);
-
-          const hpColor = hpPercent > 0.5 ? COLORS.hpBarGreen : hpPercent > 0.25 ? COLORS.hpBarYellow : COLORS.hpBarRed;
-          if (hpPercent > 0) {
-            const hpFill = new Graphics();
-            hpFill.roundRect(hpBarX, hpBarY, hpBarW * hpPercent, hpBarH, 2);
-            hpFill.fill(hpColor);
-            boardContainer.addChild(hpFill);
-          }
-        }
-
-        // Occupation star (color shifts with team control)
+        // Static board markers (no vm)
         if (!vm && isOccupation) {
-          const starColor = occCounter < 0 ? COLORS.team1Glow
-            : occCounter > 0 ? COLORS.team2Glow
-            : COLORS.occupationStar;
-          const starStyle = new TextStyle({
-            fontSize: Math.min(tileSize * 0.35, 20),
-            fill: starColor,
-            align: "center",
-          });
-          const star = new Text({ text: "⭐", style: starStyle });
+          const starColor = occCounter < 0 ? COLORS.team1Glow : occCounter > 0 ? COLORS.team2Glow : COLORS.occupationStar;
+          const star = new Text({ text: "⭐", style: new TextStyle({ fontSize: Math.min(tileSize * 0.35, 20), fill: starColor, align: "center" }) });
           star.anchor.set(0.5);
-          star.x = px + tileSize / 2;
-          star.y = py + tileSize / 2;
+          star.x = px + tileSize / 2; star.y = py + tileSize / 2;
           boardContainer.addChild(star);
         }
-
-        // Harvestable fern — scales by yield tier
         if (!vm && isHarvestable) {
           const yield_ = space?.harvestYield ?? 1;
-          // Fern emoji scales: 🌱 (yield 1), 🌿 (yield 2), 🪴 (yield 3)
           const fernEmoji = yield_ >= 3 ? "🪴" : yield_ >= 2 ? "🌿" : "🌱";
           const fernScale = yield_ >= 3 ? 0.32 : yield_ >= 2 ? 0.26 : 0.20;
           const fernColor = yield_ >= 3 ? 0x2d8c4a : yield_ >= 2 ? 0x1f7a3a : 0x1a5c2a;
-          const leafStyle = new TextStyle({
-            fontSize: Math.min(tileSize * fernScale, yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11),
-            fill: fernColor,
-            align: "center",
-          });
-          const leaf = new Text({ text: fernEmoji, style: leafStyle });
-          leaf.anchor.set(0.5);
-          leaf.x = px + tileSize / 2;
-          leaf.y = py + tileSize / 2;
+          const leaf = new Text({ text: fernEmoji, style: new TextStyle({ fontSize: Math.min(tileSize * fernScale, yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11), fill: fernColor, align: "center" }) });
+          leaf.anchor.set(0.5); leaf.x = px + tileSize / 2; leaf.y = py + tileSize / 2;
           boardContainer.addChild(leaf);
         }
       }
     }
+
+    // ── Pass 2: Vellymon sprites at fractional positions ──────────────────
+    for (const vm of vms) {
+      if (vm.isKO) continue;
+      const { centerX, centerY } = gridToScreen(vm.x, vm.y, tileSize, gap, isPortrait, bw, myTeam);
+      const avatarSize = tileSize * 0.6;
+
+      if (vm.imageUrl && Assets.cache.has(vm.imageUrl)) {
+        const sprite = new Sprite(Assets.get(vm.imageUrl));
+        sprite.width = avatarSize; sprite.height = avatarSize;
+        sprite.anchor.set(0.5);
+        sprite.x = centerX; sprite.y = centerY - 2;
+        boardContainer.addChild(sprite);
+      } else {
+        const circle = new Graphics();
+        circle.circle(centerX, centerY - 2, avatarSize / 2);
+        circle.fill(teamGlow(vm.teamId));
+        boardContainer.addChild(circle);
+      }
+
+      // HP bar
+      const hpBarW = tileSize * 0.75;
+      const hpBarH = 4;
+      const hpBarX = centerX - hpBarW / 2;
+      const hpBarY = centerY + tileSize / 2 - 8;
+      const hpPercent = vm.maxHp > 0 ? vm.hp / vm.maxHp : 0;
+
+      const hpBg = new Graphics();
+      hpBg.roundRect(hpBarX, hpBarY, hpBarW, hpBarH, 2);
+      hpBg.fill(COLORS.hpBarBg);
+      boardContainer.addChild(hpBg);
+
+      if (hpPercent > 0) {
+        const hpColor = hpPercent > 0.5 ? COLORS.hpBarGreen : hpPercent > 0.25 ? COLORS.hpBarYellow : COLORS.hpBarRed;
+        const hpFill = new Graphics();
+        hpFill.roundRect(hpBarX, hpBarY, hpBarW * hpPercent, hpBarH, 2);
+        hpFill.fill(hpColor);
+        boardContainer.addChild(hpFill);
+      }
+    }
+
+    // ── Pass 3: Overlays (ghosts, arrows, labels) ─────────────────────────
+    if (ovl) {
+      // Ghost pieces — translucent circles at preview target positions
+      for (const g of ovl.ghosts ?? []) {
+        const { centerX, centerY } = gridToScreen(g.x, g.y, tileSize, gap, isPortrait, bw, myTeam);
+        const ghost = new Graphics();
+        ghost.circle(centerX, centerY - 2, tileSize * 0.28);
+        ghost.fill({ color: teamGlow(g.teamId), alpha: g.alpha * 0.45 });
+        ghost.stroke({ color: teamGlow(g.teamId), width: 1.5, alpha: g.alpha * 0.7 });
+        boardContainer.addChild(ghost);
+      }
+
+      // Direction arrows — line from source center to target center
+      for (const a of ovl.arrows ?? []) {
+        const from = gridToScreen(a.fromX, a.fromY, tileSize, gap, isPortrait, bw, myTeam);
+        const to = gridToScreen(a.toX, a.toY, tileSize, gap, isPortrait, bw, myTeam);
+        const dx = to.centerX - from.centerX;
+        const dy = to.centerY - from.centerY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 1) continue;
+        const ux = dx / len, uy = dy / len;
+        const startX = from.centerX + ux * tileSize * 0.3;
+        const startY = from.centerY + uy * tileSize * 0.3;
+        const endX = to.centerX - ux * tileSize * 0.25;
+        const endY = to.centerY - uy * tileSize * 0.25;
+        const arrowSize = tileSize * 0.14;
+        const angle = Math.atan2(dy, dx);
+
+        const arrow = new Graphics();
+        arrow.moveTo(startX, startY);
+        arrow.lineTo(endX, endY);
+        arrow.stroke({ color: a.color, width: 2, alpha: a.alpha });
+        // Arrowhead
+        arrow.moveTo(endX, endY);
+        arrow.lineTo(endX - arrowSize * Math.cos(angle - 0.5), endY - arrowSize * Math.sin(angle - 0.5));
+        arrow.moveTo(endX, endY);
+        arrow.lineTo(endX - arrowSize * Math.cos(angle + 0.5), endY - arrowSize * Math.sin(angle + 0.5));
+        arrow.stroke({ color: a.color, width: 2, alpha: a.alpha });
+        boardContainer.addChild(arrow);
+      }
+
+      // Floating labels — damage numbers, KO flashes, etc.
+      for (const lbl of ovl.labels ?? []) {
+        const { centerX, centerY } = gridToScreen(lbl.x, lbl.y, tileSize, gap, isPortrait, bw, myTeam);
+        const t = new Text({
+          text: lbl.text,
+          style: new TextStyle({
+            fontSize: Math.min(tileSize * 0.3, 16),
+            fill: lbl.color,
+            fontWeight: "bold",
+            dropShadow: { color: 0x000000, blur: 3, distance: 1, alpha: 0.8 },
+          }),
+        });
+        t.anchor.set(0.5);
+        t.x = centerX;
+        t.y = centerY - tileSize * 0.55;
+        t.alpha = lbl.alpha;
+        boardContainer.addChild(t);
+      }
+    }
   }, [onSelectVellymon]);
 
-  // Store draw ref so async texture loads can trigger redraws
   drawRef.current = draw;
 
-  // Init PixiJS
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
     let destroyed = false;
-
     (async () => {
       const app = new Application();
-      await app.init({
-        background: COLORS.bg,
-        resizeTo: container,
-        antialias: true,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-      });
+      await app.init({ background: COLORS.bg, resizeTo: container, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
       if (destroyed) { app.destroy(true); return; }
       container.appendChild(app.canvas as HTMLCanvasElement);
       appRef.current = app;
       draw();
     })();
-
-    return () => {
-      destroyed = true;
-      if (appRef.current) { appRef.current.destroy(true); appRef.current = null; }
-    };
+    return () => { destroyed = true; if (appRef.current) { appRef.current.destroy(true); appRef.current = null; } };
   }, [draw]);
 
-  useEffect(() => { draw(); }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, commandedUuids, draw]);
+  useEffect(() => { draw(); }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, commandedUuids, overlays, draw]);
 
   useEffect(() => {
     const onResize = () => { appRef.current?.resize(); draw(); };
@@ -368,7 +409,5 @@ export default function BattleCanvas({
     return () => window.removeEventListener("resize", onResize);
   }, [draw]);
 
-  return (
-    <div ref={containerRef} className="absolute inset-0" style={{ touchAction: "none" }} />
-  );
+  return <div ref={containerRef} className="absolute inset-0" style={{ touchAction: "none" }} />;
 }
