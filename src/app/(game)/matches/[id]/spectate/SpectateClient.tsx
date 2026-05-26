@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import TurnHistory, { type TurnSnapshot } from "../play/TurnHistory";
@@ -74,6 +74,39 @@ type RawGameState = {
   result: { winner: 1 | 2; condition: string } | null;
 };
 
+// ─── Turn log types (mirrors server TurnLog / CommandResult / BenchEntry) ────
+
+type RawCommand = {
+  type: "move" | "attack" | "harvest";
+  vellymonUuid: string;
+  direction?: string;
+  attackIndex?: number;
+};
+
+type RawCommandResult = {
+  command: RawCommand;
+  success: boolean;
+  reason?: string;
+  energyDelta?: number;
+  damageDealt?: number;
+  targetKO?: boolean;
+};
+
+type RawBenchEntry = {
+  vellymonUuid: string;
+  vellymonName: string;
+  status: "entered" | "blocked";
+};
+
+type RawTurnLog = {
+  turn: number;
+  commandResults: RawCommandResult[];
+  benchEntries: { team1: RawBenchEntry[]; team2: RawBenchEntry[] };
+  winResult: { winner: 1 | 2; condition: string } | null;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function mapTeam(t: RawTeam): TeamDisplay {
   return {
     id: t.id,
@@ -113,14 +146,18 @@ function parseGameState(gs: RawGameState) {
         condition: gs.result.condition,
       }
     : null;
-  return {
-    turn: gs.turn,
-    teams,
-    boardWidth: gs.boardWidth,
-    boardHeight: gs.boardHeight,
-    boardSpaces,
-    gameOver,
-  };
+  return { turn: gs.turn, teams, boardWidth: gs.boardWidth, boardHeight: gs.boardHeight, boardSpaces, gameOver };
+}
+
+/** Build a uuid → {name, teamId} lookup from a RawGameState (pre-turn state). */
+function buildVellymonLookup(gs: RawGameState): Map<string, { name: string; teamId: 1 | 2 }> {
+  const map = new Map<string, { name: string; teamId: 1 | 2 }>();
+  for (const t of gs.teams) {
+    for (const v of [...t.active, ...(t.bench as Array<{ uuid: string; name: string }>), ...(t.knocked as Array<{ uuid: string; name: string }>)]) {
+      map.set(v.uuid, { name: v.name, teamId: t.id });
+    }
+  }
+  return map;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -131,19 +168,14 @@ export default function SpectateClient({ matchId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Replay mode (uploaded match with turnSnapshots)
+  // Replay mode
   const [turnSnapshots, setTurnSnapshots] = useState<RawGameState[] | null>(null);
+  const [turnLogs, setTurnLogs] = useState<RawTurnLog[]>([]);
   const [replayIndex, setReplayIndex] = useState(0);
+  const [logOpen, setLogOpen] = useState(false);
 
-  // Live mode (no turnSnapshots)
-  const [liveState, setLiveState] = useState<{
-    turn: number;
-    teams: [TeamDisplay, TeamDisplay] | null;
-    boardWidth: number;
-    boardHeight: number;
-    boardSpaces: Array<{ x: number; y: number; type: string; occupationCounter?: number; harvestYield?: number }>;
-    gameOver: { winner: string; condition: string } | null;
-  } | null>(null);
+  // Live mode
+  const [liveState, setLiveState] = useState<ReturnType<typeof parseGameState> | null>(null);
   const [turnHistory, setTurnHistory] = useState<TurnSnapshot[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -162,6 +194,7 @@ export default function SpectateClient({ matchId }: Props) {
         const data = await res.json() as {
           gameState: RawGameState;
           turnSnapshots?: RawGameState[];
+          turnLogs?: RawTurnLog[];
           status: string;
           turnHistory?: TurnSnapshot[];
         };
@@ -170,23 +203,19 @@ export default function SpectateClient({ matchId }: Props) {
         const snapshots = data.turnSnapshots ?? [];
 
         if (snapshots.length > 0) {
-          // Replay mode — load all snapshots, no polling needed
           setTurnSnapshots(snapshots);
+          setTurnLogs(data.turnLogs ?? []);
           setReplayIndex(0);
           setLoading(false);
-          return; // don't start polling
+          return;
         }
 
         // Live mode
-        const parsed = parseGameState(data.gameState);
-        setLiveState(parsed);
-        if (data.turnHistory && data.turnHistory.length > 0) {
-          setTurnHistory(data.turnHistory);
-        }
+        setLiveState(parseGameState(data.gameState));
+        if (data.turnHistory?.length) setTurnHistory(data.turnHistory);
         setLastUpdated(new Date());
         setLoading(false);
 
-        // Start polling
         interval = setInterval(async () => {
           if (!active) return;
           try {
@@ -195,9 +224,9 @@ export default function SpectateClient({ matchId }: Props) {
             const d = await r.json() as { gameState: RawGameState; turnHistory?: TurnSnapshot[] };
             if (!active) return;
             setLiveState(parseGameState(d.gameState));
-            if (d.turnHistory && d.turnHistory.length > 0) setTurnHistory(d.turnHistory);
+            if (d.turnHistory?.length) setTurnHistory(d.turnHistory);
             setLastUpdated(new Date());
-          } catch { /* ignore poll errors */ }
+          } catch { /* ignore */ }
         }, 2000);
       } catch (e) {
         if (active) {
@@ -208,26 +237,25 @@ export default function SpectateClient({ matchId }: Props) {
     };
 
     void fetchState();
-    return () => {
-      active = false;
-      if (interval) clearInterval(interval);
-    };
+    return () => { active = false; if (interval) clearInterval(interval); };
   }, [matchId]);
 
-  // Lock body scroll while spectating
+  // Lock body scroll
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // ── Replay state at current index ─────────────────────────────────────────
+  // Close log when index changes
+  useEffect(() => { setLogOpen(false); }, [replayIndex]);
+
+  // ── Replay display state ──────────────────────────────────────────────────
   const replayParsed = useMemo(() => {
     if (!isReplay || !turnSnapshots) return null;
     return parseGameState(turnSnapshots[replayIndex]);
   }, [isReplay, turnSnapshots, replayIndex]);
 
-  // Merged display state
   const displayState = isReplay ? replayParsed : liveState;
   const { turn, teams, boardWidth, boardHeight, boardSpaces, gameOver } = displayState ?? {
     turn: 0, teams: null, boardWidth: 9, boardHeight: 5, boardSpaces: [], gameOver: null,
@@ -242,6 +270,20 @@ export default function SpectateClient({ matchId }: Props) {
     ],
     [t1, t2],
   );
+
+  // ── Turn log for the current replay index ─────────────────────────────────
+  // turnLogs[i] describes the transition from snapshot[i] → snapshot[i+1]
+  // So for replayIndex N (N > 0), the log is turnLogs[N - 1].
+  const currentLog: RawTurnLog | null =
+    isReplay && replayIndex > 0 ? (turnLogs[replayIndex - 1] ?? null) : null;
+
+  // Build vellymon name lookup from the "before" snapshot
+  const vellymonLookup = useMemo(() => {
+    if (!currentLog || !turnSnapshots) return new Map<string, { name: string; teamId: 1 | 2 }>();
+    return buildVellymonLookup(turnSnapshots[replayIndex - 1]);
+  }, [currentLog, turnSnapshots, replayIndex]);
+
+  const hasLog = currentLog !== null && turnLogs.length > 0;
 
   if (loading) {
     return (
@@ -286,10 +328,18 @@ export default function SpectateClient({ matchId }: Props) {
             >
               ←
             </button>
-            <span className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono min-w-[120px] text-center">
+            <button
+              onClick={() => hasLog && setLogOpen((o) => !o)}
+              className={`text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono min-w-[120px] text-center transition ${
+                hasLog ? "text-gray-300 hover:bg-black/60 cursor-pointer" : "text-gray-500 cursor-default"
+              }`}
+            >
               {replayIndex === 0 ? "Start" : `Turn ${turn}`}
+              {hasLog && (
+                <span className="text-[10px] text-gray-500 ml-1">{logOpen ? "▲" : "▼"}</span>
+              )}
               <span className="text-gray-600 text-xs ml-1">/ {turnSnapshots.length - 1}</span>
-            </span>
+            </button>
             <button
               onClick={() => setReplayIndex((i) => Math.min(turnSnapshots.length - 1, i + 1))}
               disabled={replayIndex === turnSnapshots.length - 1}
@@ -313,7 +363,7 @@ export default function SpectateClient({ matchId }: Props) {
           </div>
         )}
 
-        {/* Right: replay badge or live indicator */}
+        {/* Right: badge */}
         <div className="flex items-center gap-1.5">
           {isReplay ? (
             <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded font-mono">
@@ -332,13 +382,18 @@ export default function SpectateClient({ matchId }: Props) {
         </div>
       </div>
 
+      {/* ── Turn log drawer (replay mode) ── */}
+      {isReplay && logOpen && currentLog && (
+        <TurnLogDrawer log={currentLog} lookup={vellymonLookup} />
+      )}
+
       {/* ── Team HUDs ── */}
       <div className="flex gap-2 px-3 py-2 shrink-0">
         {t1 && <TeamHUD team={t1} color="blue" />}
         {t2 && <TeamHUD team={t2} color="red" />}
       </div>
 
-      {/* ── Game over / replay final banner ── */}
+      {/* ── Game over banner ── */}
       {gameOver && (isReplay ? replayIndex === (turnSnapshots?.length ?? 1) - 1 : true) && (
         <div className="mx-3 mb-2 bg-yellow-900/40 border border-yellow-500/40 rounded-xl px-4 py-3 text-center shrink-0">
           <p className="text-yellow-300 font-bold text-lg">🏆 {gameOver.winner} wins!</p>
@@ -355,7 +410,7 @@ export default function SpectateClient({ matchId }: Props) {
           vellymons={allVellymons}
           yourTeamId={1}
           selectedVellymon={null}
-          onSelectVellymon={() => { /* spectate mode: selection disabled */ }}
+          onSelectVellymon={() => { /* spectate: no selection */ }}
           commandedUuids={new Set()}
         />
       </div>
@@ -368,6 +423,81 @@ export default function SpectateClient({ matchId }: Props) {
           onToggle={() => setHistoryOpen(!historyOpen)}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Turn Log Drawer ──────────────────────────────────────────────────────────
+
+function TurnLogDrawer({
+  log,
+  lookup,
+}: {
+  log: RawTurnLog;
+  lookup: Map<string, { name: string; teamId: 1 | 2 }>;
+}) {
+  const bench1 = log.benchEntries?.team1 ?? [];
+  const bench2 = log.benchEntries?.team2 ?? [];
+  const allBench = [...bench1, ...bench2];
+
+  return (
+    <div className="shrink-0 border-b border-gray-800 bg-[#0d1520] px-3 py-2 max-h-52 overflow-y-auto">
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5 font-semibold">
+        Turn {log.turn} — Actions
+      </p>
+      <div className="space-y-1">
+        {log.commandResults.map((r, i) => {
+          const info = lookup.get(r.command.vellymonUuid);
+          const name = info?.name ?? r.command.vellymonUuid;
+          const teamId = info?.teamId ?? 1;
+          const teamColor = teamId === 1 ? "text-blue-400" : "text-red-400";
+          const icon =
+            r.command.type === "attack" ? "⚔️"
+            : r.command.type === "harvest" ? "🌿"
+            : "👟";
+          const dirStr = r.command.direction ? ` ${r.command.direction}` : "";
+          const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";
+          const koStr = r.targetKO ? " 💀 KO!" : "";
+          const energyStr = r.energyDelta && r.energyDelta > 0 ? ` +${r.energyDelta}⚡` : "";
+          const failStr = !r.success ? ` ✗ ${r.reason ?? "failed"}` : "";
+
+          return (
+            <div key={i} className="flex items-center gap-1.5 text-xs">
+              <span className={`font-semibold w-20 truncate ${teamColor}`}>{name}</span>
+              <span className="text-gray-500">{icon}</span>
+              <span className="text-gray-300">
+                {r.command.type}{dirStr}
+              </span>
+              {dmgStr && <span className="text-orange-400 font-mono">{dmgStr}</span>}
+              {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
+              {energyStr && <span className="text-yellow-400 font-mono">{energyStr}</span>}
+              {failStr && <span className="text-gray-600 italic">{failStr}</span>}
+            </div>
+          );
+        })}
+
+        {allBench.length > 0 && (
+          <div className="pt-1 border-t border-gray-800/60 mt-1">
+            {allBench.map((e, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-xs">
+                <span className="text-gray-400 font-semibold w-20 truncate">{e.vellymonName}</span>
+                <span className="text-gray-500">🔄</span>
+                <span className={e.status === "entered" ? "text-green-400" : "text-gray-600"}>
+                  {e.status === "entered" ? "entered from bench" : "bench entry blocked"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {log.winResult && (
+          <div className="pt-1 border-t border-yellow-800/40 mt-1">
+            <span className="text-yellow-400 text-xs font-bold">
+              🏆 Team {log.winResult.winner} wins by {log.winResult.condition}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

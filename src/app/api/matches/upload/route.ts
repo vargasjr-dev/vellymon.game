@@ -30,14 +30,14 @@ export async function POST(req: Request) {
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  let body: { id?: string; gameState?: unknown; turnSnapshots?: unknown[]; status?: string };
+  let body: { id?: string; gameState?: unknown; turnSnapshots?: unknown[]; turnLogs?: unknown[]; status?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { id, gameState, turnSnapshots, status = "completed" } = body;
+  const { id, gameState, turnSnapshots, turnLogs, status = "completed" } = body;
 
   if (!id || typeof id !== "string" || !/^[a-zA-Z0-9]+$/.test(id)) {
     return NextResponse.json({ error: "Missing or invalid match id" }, { status: 400 });
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
         id,
         gameState,
         turnSnapshots: turnSnapshots ?? null,
+        turnLogs: turnLogs ?? null,
         status,
       })
       .onConflictDoUpdate({
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
         set: {
           gameState,
           turnSnapshots: turnSnapshots ?? null,
+          turnLogs: turnLogs ?? null,
           status,
           updatedAt: new Date(),
         },

@@ -460,6 +460,7 @@ export const matchSnapshot = pgTable("matchSnapshot", {
   id: text("id").primaryKey(),
   gameState: json("gameState").notNull(),
   turnSnapshots: json("turnSnapshots"), // per-turn game states: GameState[], index 0 = initial
+  turnLogs: json("turnLogs"), // per-turn action logs: TurnLog[], parallel to turnSnapshots[1+]
   status: varchar("status", { length: 32 }).notNull().default("completed"),
   uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
