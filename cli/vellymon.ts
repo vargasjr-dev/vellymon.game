@@ -17,8 +17,9 @@
 
 import { resolve, join } from "path";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { VELLYMON_LIBRARY, type VellymonTemplate } from "../server/vellymonLibrary";
-import { calculateDamage } from "../server/archetypes";
+import { VELLYMON_LIBRARY } from "../server/vellymonLibrary";
+
+import { buildTeamSetup } from "../server/matchSetup";
 import {
   initializeGame,
   startTurn,
@@ -27,7 +28,6 @@ import {
   getWinner,
   getGameSummary,
   type TeamSetup,
-  type VellymonSetup,
   type TurnLog,
 } from "../server/engine";
 import {
@@ -37,7 +37,7 @@ import {
   type TurnTimerState,
 } from "../server/turnTimer";
 import { GAME_CONFIG } from "../server/config";
-import { getDefaultSpawnPositions } from "../server/board";
+
 import type { GameState, VellymonState, TeamState } from "../server/types";
 import type { Command, MoveCommand, AttackCommand, HarvestCommand } from "../server/commands";
 
@@ -90,40 +90,6 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
-}
-
-function buildTeamSetup(
-  templates: VellymonTemplate[],
-  teamId: 1 | 2,
-): TeamSetup {
-  const spawns = getDefaultSpawnPositions(
-    teamId,
-    GAME_CONFIG.board.width,
-    GAME_CONFIG.board.height,
-  );
-
-  const vellymons: VellymonSetup[] = templates.map((t, i) => ({
-    uuid: `${teamId}-${i}`,
-    name: t.name,
-    maxHp: t.hp,
-    speed: t.speed,
-    attack: t.attack,
-    attacks: t.attacks.map((a) => ({
-      name: a.name,
-      damage: calculateDamage(a, t.attack),
-      energyCost: a.energyCost,
-      range: a.range,
-    })),
-    spawnPosition: spawns[i % spawns.length],
-    specialPowerId: t.specialPowerId,
-    imageUrl: t.imageUrl,
-  }));
-
-  const active = vellymons.slice(0, 4);
-  const bench = vellymons.slice(4);
-  const teamName = `Team ${teamId} (${active.map((v) => v.name).join(", ")})`;
-
-  return { userId: `cli-player-${teamId}`, teamName, active, bench };
 }
 
 // ─── Board Rendering ─────────────────────────────────────────────────────────
