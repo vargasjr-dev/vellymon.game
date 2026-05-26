@@ -4,14 +4,21 @@ import Link from "next/link";
 import getOpenMatches from "~/data/getOpenMatches.server";
 import getUserMatches from "~/data/getUserMatches.server";
 import MatchCard from "./MatchCard";
+import { db } from "../../../../data/db";
+import { matchSnapshot } from "../../../../data/schema";
+import { desc } from "drizzle-orm";
 
 export default async function MatchesPage() {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
+  const isAdmin = (session.user as { role?: string }).role === "admin";
 
-  const [openMatches, myMatches] = await Promise.all([
+  const [openMatches, myMatches, uploadedSnapshots] = await Promise.all([
     getOpenMatches(),
     getUserMatches(session.user.id),
+    isAdmin
+      ? db.select({ id: matchSnapshot.id, status: matchSnapshot.status, uploadedAt: matchSnapshot.uploadedAt }).from(matchSnapshot).orderBy(desc(matchSnapshot.uploadedAt))
+      : Promise.resolve([]),
   ]);
 
   // Separate user's active matches from history
@@ -101,7 +108,7 @@ export default async function MatchesPage() {
 
       {/* Match History */}
       {myPastMatches.length > 0 && (
-        <section>
+        <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-gray-900">
               Match History
@@ -123,6 +130,52 @@ export default async function MatchesPage() {
               />
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Admin: Uploaded Match History */}
+      {isAdmin && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">
+              🛡️ Uploaded Match History
+              <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold align-middle">ADMIN</span>
+            </h2>
+            <span className="text-sm text-gray-500">
+              {uploadedSnapshots.length} snapshot{uploadedSnapshots.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {uploadedSnapshots.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-400 text-sm">
+              No uploaded snapshots yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {uploadedSnapshots.map((snap) => (
+                <div key={snap.id} className="bg-white rounded-lg shadow-md p-4 flex items-center justify-between">
+                  <div>
+                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mr-2 ${
+                      snap.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                    }`}>
+                      {snap.status ?? "unknown"}
+                    </span>
+                    <span className="text-sm font-mono text-gray-700">{snap.id}</span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Uploaded {snap.uploadedAt
+                        ? new Date(snap.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : "—"}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/matches/${snap.id}/spectate`}
+                    className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Spectate →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>

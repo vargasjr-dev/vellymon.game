@@ -5,30 +5,13 @@
  * Auth: Bearer token checked against VELLYMON_UPLOAD_API_KEY env var.
  *
  * POST /api/matches/upload
- * Body: { id: string, gameState: object, status?: string }
+ * Body: { id: string, gameState: object, turnSnapshots?: object[], status?: string }
  * Returns: { ok: true, id: string, spectateUrl: string }
  */
 
 import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
 import { db } from "../../../../../data/db";
 import { matchSnapshot } from "../../../../../data/schema";
-
-// ── Auto-create table ────────────────────────────────────────────────────────
-// DATABASE_URL is a runtime-only env var on Vercel, so drizzle-kit push
-// can't run reliably at build time. Create the table lazily on first upload.
-async function ensureMatchSnapshotTable() {
-  const sql = neon(process.env.DATABASE_URL!);
-  await sql`
-    CREATE TABLE IF NOT EXISTS "matchSnapshot" (
-      "id"          text        PRIMARY KEY,
-      "gameState"   json        NOT NULL,
-      "status"      varchar(32) NOT NULL DEFAULT 'playing',
-      "uploadedAt"  timestamp   NOT NULL DEFAULT now(),
-      "updatedAt"   timestamp   NOT NULL DEFAULT now()
-    )
-  `;
-}
 
 export async function POST(req: Request) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -47,14 +30,14 @@ export async function POST(req: Request) {
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  let body: { id?: string; gameState?: unknown; status?: string };
+  let body: { id?: string; gameState?: unknown; turnSnapshots?: unknown[]; status?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { id, gameState, status = "playing" } = body;
+  const { id, gameState, turnSnapshots, status = "completed" } = body;
 
   if (!id || typeof id !== "string" || !/^[a-zA-Z0-9]+$/.test(id)) {
     return NextResponse.json({ error: "Missing or invalid match id" }, { status: 400 });
@@ -65,13 +48,22 @@ export async function POST(req: Request) {
 
   // ── Upsert ────────────────────────────────────────────────────────────────
   try {
-    await ensureMatchSnapshotTable();
     await db
       .insert(matchSnapshot)
-      .values({ id, gameState, status })
+      .values({
+        id,
+        gameState,
+        turnSnapshots: turnSnapshots ?? null,
+        status,
+      })
       .onConflictDoUpdate({
         target: matchSnapshot.id,
-        set: { gameState, status, updatedAt: new Date() },
+        set: {
+          gameState,
+          turnSnapshots: turnSnapshots ?? null,
+          status,
+          updatedAt: new Date(),
+        },
       });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

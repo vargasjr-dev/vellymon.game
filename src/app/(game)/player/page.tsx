@@ -10,8 +10,8 @@ import SubscriptionCard from "~/components/SubscriptionCard";
 import { getActiveRank, STARS_PER_RANK, type Rank } from "../../../../lib/ranked";
 import { getBalance } from "../../../../lib/currency";
 import { db } from "../../../../data/db";
-import { user as userTable, matchSnapshot } from "../../../../data/schema";
-import { eq, desc } from "drizzle-orm";
+import { user as userTable } from "../../../../data/schema";
+import { eq } from "drizzle-orm";
 import UsernameForm from "./UsernameForm";
 import { DailyCheckIn } from "./DailyCheckIn";
 import { getLoginStreak } from "../../../../lib/loginStreakService";
@@ -65,9 +65,7 @@ export default async function PlayerHubPage() {
   const session = await auth.api.getSession({ headers: headersList });
   if (!session) redirect("/login");
 
-  const isAdmin = (session.user as { role?: string }).role === "admin";
-
-  const [roster, teams, matches, subInfo, activeRank, creditBalance, userRow, loginStreak, uploadedSnapshots] = await Promise.all([
+  const [roster, teams, matches, subInfo, activeRank, creditBalance, userRow, loginStreak] = await Promise.all([
     getVellymonRoster(session.user.id),
     getTeams(session.user.id),
     getUserMatches(session.user.id),
@@ -76,9 +74,6 @@ export default async function PlayerHubPage() {
     getBalance(session.user.id),
     db.select({ username: userTable.username }).from(userTable).where(eq(userTable.id, session.user.id)).limit(1).then(r => r[0] ?? null),
     getLoginStreak(session.user.id),
-    isAdmin
-      ? db.select({ id: matchSnapshot.id, status: matchSnapshot.status, uploadedAt: matchSnapshot.uploadedAt }).from(matchSnapshot).orderBy(desc(matchSnapshot.uploadedAt))
-      : Promise.resolve([]),
   ]);
   const currentUsername = userRow?.username ?? null;
   const activeMatchCount = matches.filter(
@@ -246,48 +241,6 @@ export default async function PlayerHubPage() {
           </Link>
         </div>
       </div>
-
-      {/* Admin: Uploaded Match History */}
-      {isAdmin && (
-        <div className="mb-8 mt-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-bold text-gray-900">
-              🛡️ Uploaded Match History
-              <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold align-middle">ADMIN</span>
-            </h2>
-            <span className="text-sm text-gray-500">{uploadedSnapshots.length} snapshot{uploadedSnapshots.length !== 1 ? "s" : ""}</span>
-          </div>
-          {uploadedSnapshots.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-center text-gray-400 text-sm">
-              No uploaded snapshots yet.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {uploadedSnapshots.map((snap) => (
-                <div key={snap.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
-                  <div>
-                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mr-2 ${
-                      snap.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                    }`}>
-                      {snap.status ?? "unknown"}
-                    </span>
-                    <span className="text-sm font-mono text-gray-700">{snap.id}</span>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Uploaded {snap.uploadedAt ? new Date(snap.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/matches/${snap.id}/spectate`}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition"
-                  >
-                    Spectate →
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -3,7 +3,7 @@
  *
  * Reads from two sources in order:
  *  1. `.vellymon/[id].json` on the filesystem — for CLI-created local matches
- *  2. Database — for web-created matches (TODO when DB spectate is needed)
+ *  2. Database — for uploaded matches (matchSnapshot table)
  *
  * No auth required — spectating is public.
  */
@@ -33,11 +33,13 @@ export async function GET(
     const data = JSON.parse(raw) as {
       gameState: unknown;
       turnHistory?: unknown[];
+      turnSnapshots?: unknown[];
     };
 
     return NextResponse.json({
       gameState: data.gameState,
-      status: "playing",
+      status: "completed",
+      turnSnapshots: data.turnSnapshots ?? [],
       turnHistory: data.turnHistory ?? [],
     });
   } catch {
@@ -55,6 +57,7 @@ export async function GET(
       return NextResponse.json({
         gameState: row.gameState,
         status: row.status,
+        turnSnapshots: (row.turnSnapshots as unknown[]) ?? [],
         turnHistory: [],
       });
     }

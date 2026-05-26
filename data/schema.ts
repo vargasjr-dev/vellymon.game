@@ -459,7 +459,8 @@ export const userRankRelations = relations(userRank, ({ one }) => ({
 export const matchSnapshot = pgTable("matchSnapshot", {
   id: text("id").primaryKey(),
   gameState: json("gameState").notNull(),
-  status: varchar("status", { length: 32 }).notNull().default("playing"),
+  turnSnapshots: json("turnSnapshots"), // per-turn game states: GameState[], index 0 = initial
+  status: varchar("status", { length: 32 }).notNull().default("completed"),
   uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()

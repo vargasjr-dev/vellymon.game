@@ -7,7 +7,7 @@ import TurnHistory, { type TurnSnapshot } from "../play/TurnHistory";
 
 const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), { ssr: false });
 
-// ─── Types (mirrors PlayPollingClient's RawTeam / TeamDisplay) ────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AttackDisplay = {
   name: string;
@@ -60,6 +60,20 @@ type RawTeam = {
   knocked: unknown[];
 };
 
+type RawGameState = {
+  turn: number;
+  teams: RawTeam[];
+  boardWidth: number;
+  boardHeight: number;
+  board: Array<{
+    position: { x: number; y: number };
+    type: string;
+    occupationCounter?: number;
+    harvestYield?: number;
+  }>;
+  result: { winner: 1 | 2; condition: string } | null;
+};
+
 function mapTeam(t: RawTeam): TeamDisplay {
   return {
     id: t.id,
@@ -83,94 +97,108 @@ function mapTeam(t: RawTeam): TeamDisplay {
   };
 }
 
+function parseGameState(gs: RawGameState) {
+  const teams: [TeamDisplay, TeamDisplay] | null =
+    gs.teams.length >= 2 ? [mapTeam(gs.teams[0]), mapTeam(gs.teams[1])] : null;
+  const boardSpaces = gs.board?.map((s) => ({
+    x: s.position.x,
+    y: s.position.y,
+    type: s.type,
+    occupationCounter: s.occupationCounter,
+    harvestYield: s.harvestYield,
+  })) ?? [];
+  const gameOver = gs.result
+    ? {
+        winner: gs.teams.find((t) => t.id === gs.result!.winner)?.name ?? `Team ${gs.result.winner}`,
+        condition: gs.result.condition,
+      }
+    : null;
+  return {
+    turn: gs.turn,
+    teams,
+    boardWidth: gs.boardWidth,
+    boardHeight: gs.boardHeight,
+    boardSpaces,
+    gameOver,
+  };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
-type Props = {
-  matchId: string;
-};
+type Props = { matchId: string };
 
 export default function SpectateClient({ matchId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [turn, setTurn] = useState(0);
-  const [teams, setTeams] = useState<[TeamDisplay, TeamDisplay] | null>(null);
-  const [boardWidth, setBoardWidth] = useState(9);
-  const [boardHeight, setBoardHeight] = useState(5);
-  const [boardSpaces, setBoardSpaces] = useState<
-    Array<{ x: number; y: number; type: string; occupationCounter?: number; harvestYield?: number }>
-  >([]);
-  const [gameOver, setGameOver] = useState<{ winner: string; condition: string } | null>(null);
+
+  // Replay mode (uploaded match with turnSnapshots)
+  const [turnSnapshots, setTurnSnapshots] = useState<RawGameState[] | null>(null);
+  const [replayIndex, setReplayIndex] = useState(0);
+
+  // Live mode (no turnSnapshots)
+  const [liveState, setLiveState] = useState<{
+    turn: number;
+    teams: [TeamDisplay, TeamDisplay] | null;
+    boardWidth: number;
+    boardHeight: number;
+    boardSpaces: Array<{ x: number; y: number; type: string; occupationCounter?: number; harvestYield?: number }>;
+    gameOver: { winner: string; condition: string } | null;
+  } | null>(null);
   const [turnHistory, setTurnHistory] = useState<TurnSnapshot[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const parseState = useCallback(
-    (data: {
-      gameState: {
-        turn: number;
-        teams: RawTeam[];
-        boardWidth: number;
-        boardHeight: number;
-        board: Array<{
-          position: { x: number; y: number };
-          type: string;
-          occupationCounter?: number;
-          harvestYield?: number;
-        }>;
-        result: { winner: 1 | 2; condition: string } | null;
-      };
-      status: string;
-      turnHistory?: TurnSnapshot[];
-    }) => {
-      const gs = data.gameState;
+  const isReplay = turnSnapshots !== null && turnSnapshots.length > 0;
 
-      setTurn(gs.turn);
-      setBoardWidth(gs.boardWidth);
-      setBoardHeight(gs.boardHeight);
-      setBoardSpaces(
-        gs.board?.map((s) => ({
-          x: s.position.x,
-          y: s.position.y,
-          type: s.type,
-          occupationCounter: s.occupationCounter,
-          harvestYield: s.harvestYield,
-        })) ?? [],
-      );
-
-      if (gs.teams.length >= 2) {
-        setTeams([mapTeam(gs.teams[0]), mapTeam(gs.teams[1])]);
-      }
-
-      if (data.turnHistory && data.turnHistory.length > 0) {
-        setTurnHistory(data.turnHistory);
-      }
-
-      if (gs.result) {
-        const winnerName =
-          gs.teams.find((t) => t.id === gs.result!.winner)?.name ??
-          `Team ${gs.result.winner}`;
-        setGameOver({ winner: winnerName, condition: gs.result.condition });
-      }
-
-      setLastUpdated(new Date());
-    },
-    [],
-  );
-
-  // Poll every 2s
+  // ── Initial load ─────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true;
+    let interval: ReturnType<typeof setInterval> | null = null;
 
-    const poll = async () => {
+    const fetchState = async () => {
       try {
         const res = await fetch(`/api/spectate/${matchId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (active) {
-          parseState(data);
+        const data = await res.json() as {
+          gameState: RawGameState;
+          turnSnapshots?: RawGameState[];
+          status: string;
+          turnHistory?: TurnSnapshot[];
+        };
+        if (!active) return;
+
+        const snapshots = data.turnSnapshots ?? [];
+
+        if (snapshots.length > 0) {
+          // Replay mode — load all snapshots, no polling needed
+          setTurnSnapshots(snapshots);
+          setReplayIndex(0);
           setLoading(false);
-          setError(null);
+          return; // don't start polling
         }
+
+        // Live mode
+        const parsed = parseGameState(data.gameState);
+        setLiveState(parsed);
+        if (data.turnHistory && data.turnHistory.length > 0) {
+          setTurnHistory(data.turnHistory);
+        }
+        setLastUpdated(new Date());
+        setLoading(false);
+
+        // Start polling
+        interval = setInterval(async () => {
+          if (!active) return;
+          try {
+            const r = await fetch(`/api/spectate/${matchId}`);
+            if (!r.ok) return;
+            const d = await r.json() as { gameState: RawGameState; turnHistory?: TurnSnapshot[] };
+            if (!active) return;
+            setLiveState(parseGameState(d.gameState));
+            if (d.turnHistory && d.turnHistory.length > 0) setTurnHistory(d.turnHistory);
+            setLastUpdated(new Date());
+          } catch { /* ignore poll errors */ }
+        }, 2000);
       } catch (e) {
         if (active) {
           setError(e instanceof Error ? e.message : "Failed to load match");
@@ -179,13 +207,12 @@ export default function SpectateClient({ matchId }: Props) {
       }
     };
 
-    poll();
-    const interval = setInterval(poll, 2000);
+    void fetchState();
     return () => {
       active = false;
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
     };
-  }, [matchId, parseState]);
+  }, [matchId]);
 
   // Lock body scroll while spectating
   useEffect(() => {
@@ -194,15 +221,27 @@ export default function SpectateClient({ matchId }: Props) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const allVellymons = useMemo(
-    () => [
-      ...(teams?.[0]?.active.map((v) => ({ ...v, teamId: teams[0].id as 1 | 2 })) ?? []),
-      ...(teams?.[1]?.active.map((v) => ({ ...v, teamId: teams[1].id as 1 | 2 })) ?? []),
-    ],
-    [teams],
-  );
+  // ── Replay state at current index ─────────────────────────────────────────
+  const replayParsed = useMemo(() => {
+    if (!isReplay || !turnSnapshots) return null;
+    return parseGameState(turnSnapshots[replayIndex]);
+  }, [isReplay, turnSnapshots, replayIndex]);
+
+  // Merged display state
+  const displayState = isReplay ? replayParsed : liveState;
+  const { turn, teams, boardWidth, boardHeight, boardSpaces, gameOver } = displayState ?? {
+    turn: 0, teams: null, boardWidth: 9, boardHeight: 5, boardSpaces: [], gameOver: null,
+  };
 
   const [t1, t2] = teams ?? [null, null];
+
+  const allVellymons = useMemo(
+    () => [
+      ...(t1?.active.map((v) => ({ ...v, teamId: t1.id as 1 | 2 })) ?? []),
+      ...(t2?.active.map((v) => ({ ...v, teamId: t2.id as 1 | 2 })) ?? []),
+    ],
+    [t1, t2],
+  );
 
   if (loading) {
     return (
@@ -237,25 +276,50 @@ export default function SpectateClient({ matchId }: Props) {
           ← Back
         </Link>
 
-        <div className="flex items-center gap-2">
-          {/* Spectate badge */}
-          <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded font-mono">
-            👁 SPECTATING
-          </span>
+        {/* Center: replay stepper or live turn counter */}
+        {isReplay && turnSnapshots ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setReplayIndex((i) => Math.max(0, i - 1))}
+              disabled={replayIndex === 0}
+              className="text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+            >
+              ←
+            </button>
+            <span className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono min-w-[120px] text-center">
+              {replayIndex === 0 ? "Start" : `Turn ${turn}`}
+              <span className="text-gray-600 text-xs ml-1">/ {turnSnapshots.length - 1}</span>
+            </span>
+            <button
+              onClick={() => setReplayIndex((i) => Math.min(turnSnapshots.length - 1, i + 1))}
+              disabled={replayIndex === turnSnapshots.length - 1}
+              className="text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+            >
+              →
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded font-mono">
+              👁 SPECTATING
+            </span>
+            <button
+              onClick={() => setHistoryOpen(!historyOpen)}
+              className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition flex items-center gap-1"
+            >
+              Turn {turn}
+              {turnHistory.length > 0 && <span className="text-[10px] text-gray-500">▼</span>}
+            </button>
+          </div>
+        )}
 
-          {/* Turn counter + history toggle */}
-          <button
-            onClick={() => setHistoryOpen(!historyOpen)}
-            className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition flex items-center gap-1"
-          >
-            Turn {turn}
-            {turnHistory.length > 0 && <span className="text-[10px] text-gray-500">▼</span>}
-          </button>
-        </div>
-
-        {/* Live indicator */}
+        {/* Right: replay badge or live indicator */}
         <div className="flex items-center gap-1.5">
-          {gameOver ? (
+          {isReplay ? (
+            <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded font-mono">
+              📼 REPLAY
+            </span>
+          ) : gameOver ? (
             <span className="text-xs text-yellow-400">🏆 FINAL</span>
           ) : (
             <>
@@ -270,16 +334,12 @@ export default function SpectateClient({ matchId }: Props) {
 
       {/* ── Team HUDs ── */}
       <div className="flex gap-2 px-3 py-2 shrink-0">
-        {t1 && (
-          <TeamHUD team={t1} color="blue" />
-        )}
-        {t2 && (
-          <TeamHUD team={t2} color="red" />
-        )}
+        {t1 && <TeamHUD team={t1} color="blue" />}
+        {t2 && <TeamHUD team={t2} color="red" />}
       </div>
 
-      {/* ── Game over banner ── */}
-      {gameOver && (
+      {/* ── Game over / replay final banner ── */}
+      {gameOver && (isReplay ? replayIndex === (turnSnapshots?.length ?? 1) - 1 : true) && (
         <div className="mx-3 mb-2 bg-yellow-900/40 border border-yellow-500/40 rounded-xl px-4 py-3 text-center shrink-0">
           <p className="text-yellow-300 font-bold text-lg">🏆 {gameOver.winner} wins!</p>
           <p className="text-yellow-500 text-sm capitalize">Victory by {gameOver.condition}</p>
@@ -300,12 +360,14 @@ export default function SpectateClient({ matchId }: Props) {
         />
       </div>
 
-      {/* ── Turn history sheet ── */}
-      <TurnHistory
-        history={turnHistory}
-        isOpen={historyOpen}
-        onToggle={() => setHistoryOpen(!historyOpen)}
-      />
+      {/* ── Turn history sheet (live mode only) ── */}
+      {!isReplay && (
+        <TurnHistory
+          history={turnHistory}
+          isOpen={historyOpen}
+          onToggle={() => setHistoryOpen(!historyOpen)}
+        />
+      )}
     </div>
   );
 }
@@ -326,7 +388,6 @@ function TeamHUD({ team, color }: { team: TeamDisplay; color: "blue" | "red" }) 
         <span>📦{team.benchCount} bench</span>
         <span>💀{team.knockedCount} KO</span>
       </div>
-      {/* Live HP bars for active vellymons */}
       <div className="mt-1 space-y-0.5">
         {alive.map((v) => {
           const pct = Math.round((v.hp / v.maxHp) * 100);
