@@ -34,12 +34,14 @@ export async function GET(
       gameState: unknown;
       turnHistory?: unknown[];
       turnSnapshots?: unknown[];
+      turnLogs?: unknown[];
     };
 
     return NextResponse.json({
       gameState: data.gameState,
       status: "completed",
       turnSnapshots: data.turnSnapshots ?? [],
+      turnLogs: data.turnLogs ?? [],
       turnHistory: data.turnHistory ?? [],
     });
   } catch {
@@ -58,6 +60,7 @@ export async function GET(
         gameState: row.gameState,
         status: row.status,
         turnSnapshots: (row.turnSnapshots as unknown[]) ?? [],
+        turnLogs: (row.turnLogs as unknown[]) ?? [],
         turnHistory: [],
       });
     }

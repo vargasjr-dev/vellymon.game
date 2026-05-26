@@ -237,6 +237,7 @@ const res = await fetch(`${baseUrl}/api/matches/upload`, {
     id: match.id,
     gameState: match.gameState,
     turnSnapshots: match.turnSnapshots,
+    turnLogs: match.turnLogs,
     status: "completed",
   }),
 });
