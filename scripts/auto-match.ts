@@ -29,7 +29,7 @@ import type { TurnTimerState } from "../server/turnTimer";
 
 // ─── State dir ───────────────────────────────────────────────────────────────
 
-const STATE_DIR = resolve(import.meta.dir, "../.vellymon");
+const STATE_DIR = resolve(new URL(".", import.meta.url).pathname, "../.vellymon");
 if (!existsSync(STATE_DIR)) mkdirSync(STATE_DIR, { recursive: true });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
