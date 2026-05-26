@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import TurnHistory, { type TurnSnapshot } from "../play/TurnHistory";
-import type { Overlays, VellymonDisplay as CanvasVellymon } from "../play/BattleCanvas";
+import type { Overlays, TweenTarget, VellymonDisplay as CanvasVellymon } from "../play/BattleCanvas";
 
 const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), { ssr: false });
 
@@ -160,12 +160,6 @@ const DIR_OFFSETS: Record<Dir, { dx: number; dy: number }> = {
   right: { dx: 1,  dy:  0 },
 };
 
-function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
-
-function easeInOut(t: number): number {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-}
-
 /** Extract vellymons suitable for BattleCanvas from a RawGameState snapshot. */
 function snapshotToVellymons(snap: RawGameState): CanvasVellymon[] {
   const result: CanvasVellymon[] = [];
@@ -177,33 +171,6 @@ function snapshotToVellymons(snap: RawGameState): CanvasVellymon[] {
         speed: v.speed, attack: v.attack,
         x: v.position.x, y: v.position.y,
         isKO: v.isKO, teamId: t.id as 1 | 2, imageUrl: v.imageUrl,
-      });
-    }
-  }
-  return result;
-}
-
-/** Interpolate all vellymon positions between two snapshots. */
-function interpolateVellymons(
-  fromSnap: RawGameState,
-  toSnap: RawGameState,
-  t: number,
-): CanvasVellymon[] {
-  const result: CanvasVellymon[] = [];
-  for (const fromTeam of fromSnap.teams) {
-    const toTeam = toSnap.teams.find((tt) => tt.id === fromTeam.id)!;
-    for (const fv of fromTeam.active) {
-      if (!fv.position) continue;
-      const tv = toTeam?.active.find((v) => v.uuid === fv.uuid);
-      const toPos = tv?.position ?? fv.position; // KO'd → stay in place
-      // HP steps at t=1 (don't lerp mid-animation — jarring)
-      const hp = t < 1 ? fv.hp : (tv?.hp ?? fv.hp);
-      result.push({
-        uuid: fv.uuid, name: fv.name, hp, maxHp: fv.maxHp,
-        speed: fv.speed, attack: fv.attack,
-        x: lerp(fv.position.x, toPos.x, t),
-        y: lerp(fv.position.y, toPos.y, t),
-        isKO: fv.isKO, teamId: fromTeam.id as 1 | 2, imageUrl: fv.imageUrl,
       });
     }
   }
@@ -325,8 +292,9 @@ export default function SpectateClient({ matchId }: Props) {
   // Animation state (Phase 1 → Preview, Phase 2 → Execute, Phase 3 → Impact)
   type AnimPhase = "idle" | "previewing" | "executing" | "impacting";
   const [animPhase, setAnimPhase] = useState<AnimPhase>("idle");
-  const [canvasVellymons, setCanvasVellymons] = useState<CanvasVellymon[] | null>(null);
   const [overlays, setOverlays] = useState<Overlays | null>(null);
+  // tween is passed straight to BattleCanvas — it handles interpolation internally (no React 60fps updates)
+  const [activeTween, setActiveTween] = useState<TweenTarget | null>(null);
   const animRef = useRef<{
     pendingIndex: number;
     previewCmds: RawCommandResult[];
@@ -335,9 +303,8 @@ export default function SpectateClient({ matchId }: Props) {
     toSnap: RawGameState | null;
     log: RawTurnLog | null;
     lookup: Map<string, { name: string; teamId: 1 | 2 }>;
-    rafId: number | null;
     timeoutId: ReturnType<typeof setTimeout> | null;
-  }>({ pendingIndex: 0, previewCmds: [], previewIdx: 0, fromSnap: null, toSnap: null, log: null, lookup: new Map(), rafId: null, timeoutId: null });
+  }>({ pendingIndex: 0, previewCmds: [], previewIdx: 0, fromSnap: null, toSnap: null, log: null, lookup: new Map(), timeoutId: null });
 
   // Live mode
   const [liveState, setLiveState] = useState<ReturnType<typeof parseGameState> | null>(null);
@@ -415,11 +382,10 @@ export default function SpectateClient({ matchId }: Props) {
   // Close log when index changes
   useEffect(() => { setLogOpen(false); }, [replayIndex]);
 
-  // Cleanup animation on unmount
+  // Cleanup timeouts on unmount (Pixi ticker cleanup is handled by BattleCanvas)
   useEffect(() => {
     return () => {
       const a = animRef.current;
-      if (a.rafId !== null) cancelAnimationFrame(a.rafId);
       if (a.timeoutId !== null) clearTimeout(a.timeoutId);
     };
   }, []);
@@ -433,53 +399,37 @@ export default function SpectateClient({ matchId }: Props) {
     if (!a.fromSnap || !a.toSnap) return;
     setAnimPhase("executing");
     setOverlays(null);
-    const duration = 480;
-    const startTime = performance.now();
 
-    const tick = (now: number) => {
-      const raw = Math.min((now - startTime) / duration, 1);
-      const t = easeInOut(raw);
-      setCanvasVellymons(interpolateVellymons(a.fromSnap!, a.toSnap!, t));
-      if (raw < 1) {
-        a.rafId = requestAnimationFrame(tick);
-      } else {
-        // Phase 3: Impact
-        a.rafId = null;
-        const afterVms = snapshotToVellymons(a.toSnap!);
-        setCanvasVellymons(afterVms);
-        setAnimPhase("impacting");
+    // Hand the animation off to BattleCanvas — it uses its Pixi ticker internally.
+    // This fires onComplete when done, with zero React state updates per frame.
+    setActiveTween({
+      key: a.pendingIndex,
+      from: snapshotToVellymons(a.fromSnap),
+      to: snapshotToVellymons(a.toSnap),
+      duration: 480,
+      onComplete: () => {
+        // Phase 3: show impact labels briefly, then finish
         const impactOverlays = a.log ? buildImpactOverlays(a.log, a.toSnap!) : null;
         const hasImpact = (impactOverlays?.labels?.length ?? 0) > 0;
+        setAnimPhase("impacting");
+        setActiveTween(null);
         if (hasImpact) {
           setOverlays(impactOverlays);
-          // Fade labels over 400ms
-          const impactDuration = 400;
-          const impactStart = performance.now();
-          const impactTick = (now: number) => {
-            const alpha = Math.max(0, 1 - (now - impactStart) / impactDuration);
-            setOverlays({
-              labels: impactOverlays!.labels!.map((l) => ({ ...l, alpha })),
-            });
-            if (alpha > 0) {
-              a.rafId = requestAnimationFrame(impactTick);
-            } else {
-              a.rafId = null;
-              finishAnimationRef.current();
-            }
-          };
-          a.rafId = requestAnimationFrame(impactTick);
+          a.timeoutId = setTimeout(() => {
+            setOverlays(null);
+            finishAnimationRef.current();
+          }, 450);
         } else {
-          a.timeoutId = setTimeout(() => finishAnimationRef.current(), 200);
+          a.timeoutId = setTimeout(() => finishAnimationRef.current(), 100);
         }
-      }
-    };
-    a.rafId = requestAnimationFrame(tick);
+      },
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const finishAnimation = useCallback(() => {
     const a = animRef.current;
     setOverlays(null);
-    setCanvasVellymons(null);
+    setActiveTween(null);
     setAnimPhase("idle");
     setReplayIndex(a.pendingIndex);
   }, []);
@@ -533,8 +483,7 @@ export default function SpectateClient({ matchId }: Props) {
     );
     a.previewCmds = sortedCmds;
 
-    // Start Phase 1: show "before" board, kick off preview sequence
-    setCanvasVellymons(snapshotToVellymons(fromSnap));
+    // Start Phase 1: show "before" board (replayIndex hasn't changed yet), kick off preview sequence
     setAnimPhase("previewing");
     advancePreview();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -553,14 +502,12 @@ export default function SpectateClient({ matchId }: Props) {
 
   const [t1, t2] = teams ?? [null, null];
 
-  // During animation, use canvasVellymons (interpolated); otherwise derive from snapshot
-  const allVellymons = useMemo(() => {
-    if (canvasVellymons !== null) return canvasVellymons;
-    return [
-      ...(t1?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t1.id as 1 | 2 })) ?? []),
-      ...(t2?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t2.id as 1 | 2 })) ?? []),
-    ];
-  }, [canvasVellymons, t1, t2]);
+  // Vellymons for BattleCanvas — always the current snapshot state.
+  // During tween, BattleCanvas overrides positions internally via its ticker.
+  const allVellymons = useMemo(() => [
+    ...(t1?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t1.id as 1 | 2 })) ?? []),
+    ...(t2?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t2.id as 1 | 2 })) ?? []),
+  ], [t1, t2]);
 
   // ── Turn log for the current replay index ─────────────────────────────────
   // turnLogs[i] describes the transition from snapshot[i] → snapshot[i+1]
@@ -706,6 +653,7 @@ export default function SpectateClient({ matchId }: Props) {
           onSelectVellymon={() => { /* spectate: no selection */ }}
           commandedUuids={new Set()}
           overlays={overlays ?? undefined}
+          tween={activeTween ?? undefined}
         />
       </div>
 

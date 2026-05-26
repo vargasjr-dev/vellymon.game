@@ -60,6 +60,20 @@ export type Overlays = {
   labels?: OverlayLabel[];
 };
 
+/**
+ * Tween: when `key` changes, BattleCanvas smoothly interpolates vellymon
+ * positions from `from` → `to` over `duration` ms using its own Pixi ticker —
+ * zero React state updates per frame, so no re-render flicker.
+ */
+export type TweenTarget = {
+  /** Changing this value starts a new tween. */
+  key: number | string;
+  from: VellymonDisplay[];
+  to: VellymonDisplay[];
+  duration: number;
+  onComplete?: () => void;
+};
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -72,6 +86,8 @@ type Props = {
   onSelectVellymon: (uuid: string | null) => void;
   commandedUuids: Set<string>;
   overlays?: Overlays;
+  /** When provided and key changes, animates vellymon positions internally via Pixi ticker. */
+  tween?: TweenTarget;
 };
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
@@ -134,13 +150,36 @@ function gridToScreen(
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+function lerpVellymons(from: VellymonDisplay[], to: VellymonDisplay[], t: number): VellymonDisplay[] {
+  return from.map((fv) => {
+    const tv = to.find((v) => v.uuid === fv.uuid);
+    const toPos = tv ?? fv;
+    return {
+      ...fv,
+      x: fv.x + (toPos.x - fv.x) * t,
+      y: fv.y + (toPos.y - fv.y) * t,
+      hp: t < 1 ? fv.hp : (tv?.hp ?? fv.hp),
+    };
+  });
+}
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
 export default function BattleCanvas({
   boardWidth, boardHeight, spaces, vellymons,
   yourTeamId, selectedVellymon, onSelectVellymon, commandedUuids,
-  overlays,
+  overlays, tween,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
+
+  // Ref that overrides the `vellymons` prop during an active tween.
+  // Null = use the prop as-is. This is the key to avoiding React re-renders per frame.
+  const displayVmsRef = useRef<VellymonDisplay[] | null>(null);
+  const activeTweenKeyRef = useRef<number | string | null>(null);
+
   const stateRef = useRef({
     boardWidth, boardHeight, spaces, vellymons, yourTeamId,
     selectedVellymon, commandedUuids, overlays,
@@ -157,10 +196,12 @@ export default function BattleCanvas({
     if (!app) return;
 
     const {
-      boardWidth: bw, boardHeight: bh, spaces: sp, vellymons: vms,
+      boardWidth: bw, boardHeight: bh, spaces: sp,
       yourTeamId: myTeam, selectedVellymon: selVm, commandedUuids: cmdSet,
       overlays: ovl,
     } = stateRef.current;
+    // Use tween-interpolated positions when active; fall back to prop
+    const vms = displayVmsRef.current ?? stateRef.current.vellymons;
 
     app.stage.removeChildren();
 
@@ -401,7 +442,41 @@ export default function BattleCanvas({
     return () => { destroyed = true; if (appRef.current) { appRef.current.destroy(true); appRef.current = null; } };
   }, [draw]);
 
-  useEffect(() => { draw(); }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, commandedUuids, overlays, draw]);
+  // Guard: don't redraw via React when a tween is actively running (ticker owns the draw loop)
+  useEffect(() => {
+    if (displayVmsRef.current !== null) return; // tween active — skip
+    draw();
+  }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, commandedUuids, draw]);
+
+  // Overlays can change during tween (Phase 1 previews) — always redraw for those
+  useEffect(() => { draw(); }, [overlays, draw]);
+
+  // Tween: when key changes, run the animation inside the Pixi ticker
+  useEffect(() => {
+    if (!tween || tween.key === activeTweenKeyRef.current) return;
+    const app = appRef.current;
+    if (!app) return;
+
+    activeTweenKeyRef.current = tween.key;
+    const { from, to, duration, onComplete } = tween;
+    const startTime = performance.now();
+
+    const ticker = () => {
+      const raw = Math.min((performance.now() - startTime) / duration, 1);
+      const t = easeInOut(raw);
+      displayVmsRef.current = lerpVellymons(from, to, t);
+      drawRef.current?.();
+      if (raw >= 1) {
+        app.ticker.remove(ticker);
+        displayVmsRef.current = null; // hand back control to React prop
+        activeTweenKeyRef.current = null;
+        onComplete?.();
+      }
+    };
+    app.ticker.add(ticker);
+    return () => { app.ticker.remove(ticker); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tween?.key]);
 
   useEffect(() => {
     const onResize = () => { appRef.current?.resize(); draw(); };
