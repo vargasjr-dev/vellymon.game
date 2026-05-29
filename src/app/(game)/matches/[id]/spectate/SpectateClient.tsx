@@ -4,9 +4,15 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import TurnHistory, { type TurnSnapshot } from "../play/TurnHistory";
-import type { Overlays, TweenTarget, VellymonDisplay as CanvasVellymon } from "../play/BattleCanvas";
+import type {
+  Overlays,
+  TweenTarget,
+  VellymonDisplay as CanvasVellymon,
+} from "../play/BattleCanvas";
 
-const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), { ssr: false });
+const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), {
+  ssr: false,
+});
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,30 +140,40 @@ function mapTeam(t: RawTeam): TeamDisplay {
 function parseGameState(gs: RawGameState) {
   const teams: [TeamDisplay, TeamDisplay] | null =
     gs.teams.length >= 2 ? [mapTeam(gs.teams[0]), mapTeam(gs.teams[1])] : null;
-  const boardSpaces = gs.board?.map((s) => ({
-    x: s.position.x,
-    y: s.position.y,
-    type: s.type,
-    occupationCounter: s.occupationCounter,
-    harvestYield: s.harvestYield,
-  })) ?? [];
+  const boardSpaces =
+    gs.board?.map((s) => ({
+      x: s.position.x,
+      y: s.position.y,
+      type: s.type,
+      occupationCounter: s.occupationCounter,
+      harvestYield: s.harvestYield,
+    })) ?? [];
   const gameOver = gs.result
     ? {
-        winner: gs.teams.find((t) => t.id === gs.result!.winner)?.name ?? `Team ${gs.result.winner}`,
+        winner:
+          gs.teams.find((t) => t.id === gs.result!.winner)?.name ??
+          `Team ${gs.result.winner}`,
         condition: gs.result.condition,
       }
     : null;
-  return { turn: gs.turn, teams, boardWidth: gs.boardWidth, boardHeight: gs.boardHeight, boardSpaces, gameOver };
+  return {
+    turn: gs.turn,
+    teams,
+    boardWidth: gs.boardWidth,
+    boardHeight: gs.boardHeight,
+    boardSpaces,
+    gameOver,
+  };
 }
 
 // ─── Animation helpers ────────────────────────────────────────────────────────
 
 type Dir = "up" | "down" | "left" | "right";
 const DIR_OFFSETS: Record<Dir, { dx: number; dy: number }> = {
-  up:    { dx: 0,  dy: -1 },
-  down:  { dx: 0,  dy:  1 },
-  left:  { dx: -1, dy:  0 },
-  right: { dx: 1,  dy:  0 },
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
 };
 
 /** Extract vellymons suitable for BattleCanvas from a RawGameState snapshot. */
@@ -167,10 +183,17 @@ function snapshotToVellymons(snap: RawGameState): CanvasVellymon[] {
     for (const v of t.active) {
       if (!v.position) continue;
       result.push({
-        uuid: v.uuid, name: v.name, hp: v.hp, maxHp: v.maxHp,
-        speed: v.speed, attack: v.attack,
-        x: v.position.x, y: v.position.y,
-        isKO: v.isKO, teamId: t.id as 1 | 2, imageUrl: v.imageUrl,
+        uuid: v.uuid,
+        name: v.name,
+        hp: v.hp,
+        maxHp: v.maxHp,
+        speed: v.speed,
+        attack: v.attack,
+        x: v.position.x,
+        y: v.position.y,
+        isKO: v.isKO,
+        teamId: t.id as 1 | 2,
+        imageUrl: v.imageUrl,
       });
     }
   }
@@ -203,7 +226,9 @@ function buildPreviewOverlay(
     const ty = y + offset.dy;
     return {
       ghosts: [{ x: tx, y: ty, teamId, alpha: 1 }],
-      arrows: [{ fromX: x, fromY: y, toX: tx, toY: ty, color: teamColor, alpha: 0.85 }],
+      arrows: [
+        { fromX: x, fromY: y, toX: tx, toY: ty, color: teamColor, alpha: 0.85 },
+      ],
     };
   }
 
@@ -211,7 +236,9 @@ function buildPreviewOverlay(
     const tx = x + offset.dx;
     const ty = y + offset.dy;
     return {
-      arrows: [{ fromX: x, fromY: y, toX: tx, toY: ty, color: 0xff6b6b, alpha: 0.9 }],
+      arrows: [
+        { fromX: x, fromY: y, toX: tx, toY: ty, color: 0xff6b6b, alpha: 0.9 },
+      ],
     };
   }
 
@@ -220,7 +247,9 @@ function buildPreviewOverlay(
     const tx = x + offset.dx;
     const ty = y + offset.dy;
     return {
-      arrows: [{ fromX: x, fromY: y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.8 }],
+      arrows: [
+        { fromX: x, fromY: y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.8 },
+      ],
     };
   }
 
@@ -247,7 +276,10 @@ function buildImpactOverlays(log: RawTurnLog, snap: RawGameState): Overlays {
     let attackerPos: { x: number; y: number } | null = null;
     for (const team of snap.teams) {
       const vm = team.active.find((v) => v.uuid === r.command.vellymonUuid);
-      if (vm?.position) { attackerPos = vm.position; break; }
+      if (vm?.position) {
+        attackerPos = vm.position;
+        break;
+      }
     }
     if (!attackerPos) continue;
     const dir = r.command.direction as Dir | undefined;
@@ -256,19 +288,37 @@ function buildImpactOverlays(log: RawTurnLog, snap: RawGameState): Overlays {
     const labelY = offset ? attackerPos.y + offset.dy : attackerPos.y;
 
     if (r.targetKO) {
-      labels.push({ x: labelX, y: labelY, text: "💀 KO!", color: 0xff4444, alpha: 1 });
+      labels.push({
+        x: labelX,
+        y: labelY,
+        text: "💀 KO!",
+        color: 0xff4444,
+        alpha: 1,
+      });
     } else if (r.damageDealt) {
-      labels.push({ x: labelX, y: labelY, text: `-${r.damageDealt}`, color: 0xfbbf24, alpha: 1 });
+      labels.push({
+        x: labelX,
+        y: labelY,
+        text: `-${r.damageDealt}`,
+        color: 0xfbbf24,
+        alpha: 1,
+      });
     }
   }
   return { labels };
 }
 
 /** Build a uuid → {name, teamId} lookup from a RawGameState (pre-turn state). */
-function buildVellymonLookup(gs: RawGameState): Map<string, { name: string; teamId: 1 | 2 }> {
+function buildVellymonLookup(
+  gs: RawGameState,
+): Map<string, { name: string; teamId: 1 | 2 }> {
   const map = new Map<string, { name: string; teamId: 1 | 2 }>();
   for (const t of gs.teams) {
-    for (const v of [...t.active, ...(t.bench as Array<{ uuid: string; name: string }>), ...(t.knocked as Array<{ uuid: string; name: string }>)]) {
+    for (const v of [
+      ...t.active,
+      ...(t.bench as Array<{ uuid: string; name: string }>),
+      ...(t.knocked as Array<{ uuid: string; name: string }>),
+    ]) {
       map.set(v.uuid, { name: v.name, teamId: t.id });
     }
   }
@@ -284,7 +334,9 @@ export default function SpectateClient({ matchId }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   // Replay mode
-  const [turnSnapshots, setTurnSnapshots] = useState<RawGameState[] | null>(null);
+  const [turnSnapshots, setTurnSnapshots] = useState<RawGameState[] | null>(
+    null,
+  );
   const [turnLogs, setTurnLogs] = useState<RawTurnLog[]>([]);
   const [replayIndex, setReplayIndex] = useState(0);
   const [logOpen, setLogOpen] = useState(false);
@@ -304,10 +356,21 @@ export default function SpectateClient({ matchId }: Props) {
     log: RawTurnLog | null;
     lookup: Map<string, { name: string; teamId: 1 | 2 }>;
     timeoutId: ReturnType<typeof setTimeout> | null;
-  }>({ pendingIndex: 0, previewCmds: [], previewIdx: 0, fromSnap: null, toSnap: null, log: null, lookup: new Map(), timeoutId: null });
+  }>({
+    pendingIndex: 0,
+    previewCmds: [],
+    previewIdx: 0,
+    fromSnap: null,
+    toSnap: null,
+    log: null,
+    lookup: new Map(),
+    timeoutId: null,
+  });
 
   // Live mode
-  const [liveState, setLiveState] = useState<ReturnType<typeof parseGameState> | null>(null);
+  const [liveState, setLiveState] = useState<ReturnType<
+    typeof parseGameState
+  > | null>(null);
   const [turnHistory, setTurnHistory] = useState<TurnSnapshot[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -323,7 +386,7 @@ export default function SpectateClient({ matchId }: Props) {
       try {
         const res = await fetch(`/api/spectate/${matchId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as {
+        const data = (await res.json()) as {
           gameState: RawGameState;
           turnSnapshots?: RawGameState[];
           turnLogs?: RawTurnLog[];
@@ -353,12 +416,17 @@ export default function SpectateClient({ matchId }: Props) {
           try {
             const r = await fetch(`/api/spectate/${matchId}`);
             if (!r.ok) return;
-            const d = await r.json() as { gameState: RawGameState; turnHistory?: TurnSnapshot[] };
+            const d = (await r.json()) as {
+              gameState: RawGameState;
+              turnHistory?: TurnSnapshot[];
+            };
             if (!active) return;
             setLiveState(parseGameState(d.gameState));
             if (d.turnHistory?.length) setTurnHistory(d.turnHistory);
             setLastUpdated(new Date());
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }, 2000);
       } catch (e) {
         if (active) {
@@ -369,18 +437,25 @@ export default function SpectateClient({ matchId }: Props) {
     };
 
     void fetchState();
-    return () => { active = false; if (interval) clearInterval(interval); };
+    return () => {
+      active = false;
+      if (interval) clearInterval(interval);
+    };
   }, [matchId]);
 
   // Lock body scroll
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, []);
 
   // Close log when index changes
-  useEffect(() => { setLogOpen(false); }, [replayIndex]);
+  useEffect(() => {
+    setLogOpen(false);
+  }, [replayIndex]);
 
   // Cleanup timeouts on unmount (Pixi ticker cleanup is handled by BattleCanvas)
   useEffect(() => {
@@ -392,7 +467,9 @@ export default function SpectateClient({ matchId }: Props) {
 
   // ── Animation state machine ───────────────────────────────────────────────
   // Forward ref so startExecutePhase can call finishAnimation before it's defined
-  const finishAnimationRef = useRef<() => void>(() => { /* filled below */ });
+  const finishAnimationRef = useRef<() => void>(() => {
+    /* filled below */
+  });
 
   const startExecutePhase = useCallback(() => {
     const a = animRef.current;
@@ -409,7 +486,9 @@ export default function SpectateClient({ matchId }: Props) {
       duration: 480,
       onComplete: () => {
         // Phase 3: show impact labels briefly, then finish
-        const impactOverlays = a.log ? buildImpactOverlays(a.log, a.toSnap!) : null;
+        const impactOverlays = a.log
+          ? buildImpactOverlays(a.log, a.toSnap!)
+          : null;
         const hasImpact = (impactOverlays?.labels?.length ?? 0) > 0;
         setAnimPhase("impacting");
         setActiveTween(null);
@@ -445,10 +524,20 @@ export default function SpectateClient({ matchId }: Props) {
       return;
     }
     const ovl = buildPreviewOverlay(cmd, a.fromSnap, a.lookup);
-    setOverlays(ovl);
+    // Accumulate overlays so all arrows remain visible throughout the preview phase
+    setOverlays((prev) => ({
+      ghosts: [...(prev?.ghosts ?? []), ...(ovl.ghosts ?? [])],
+      arrows: [...(prev?.arrows ?? []), ...(ovl.arrows ?? [])],
+      labels: [...(prev?.labels ?? []), ...(ovl.labels ?? [])],
+    }));
     a.previewIdx += 1;
     a.timeoutId = setTimeout(advancePreview, 420);
   }, [startExecutePhase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stable no-op: spectate mode has no vellymon selection.
+  // Must be stable (useCallback) so BattleCanvas's draw doesn't change on every render,
+  // which would otherwise destroy and recreate the Pixi app mid-animation.
+  const handleSelectVellymon = useCallback(() => {}, []);
 
   const stepForward = useCallback(() => {
     if (!turnSnapshots || !isReplay) return;
@@ -473,21 +562,31 @@ export default function SpectateClient({ matchId }: Props) {
     const cmds = log?.commandResults ?? [];
     const getSpeed = (uuid: string): number => {
       for (const team of fromSnap.teams) {
-        const vm = team.active.find((av: { uuid: string; speed: number }) => av.uuid === uuid);
+        const vm = team.active.find(
+          (av: { uuid: string; speed: number }) => av.uuid === uuid,
+        );
         if (vm) return vm.speed;
       }
       return 0;
     };
-    const sortedCmds = [...cmds].sort((x, y) =>
-      getSpeed(y.command.vellymonUuid) - getSpeed(x.command.vellymonUuid)
+    const sortedCmds = [...cmds].sort(
+      (x, y) =>
+        getSpeed(y.command.vellymonUuid) - getSpeed(x.command.vellymonUuid),
     );
     a.previewCmds = sortedCmds;
 
     // Start Phase 1: show "before" board (replayIndex hasn't changed yet), kick off preview sequence
     setAnimPhase("previewing");
     advancePreview();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turnSnapshots, replayIndex, turnLogs, animPhase, isReplay, advancePreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    turnSnapshots,
+    replayIndex,
+    turnLogs,
+    animPhase,
+    isReplay,
+    advancePreview,
+  ]);
 
   // ── Replay display state ──────────────────────────────────────────────────
   const replayParsed = useMemo(() => {
@@ -496,18 +595,33 @@ export default function SpectateClient({ matchId }: Props) {
   }, [isReplay, turnSnapshots, replayIndex]);
 
   const displayState = isReplay ? replayParsed : liveState;
-  const { turn, teams, boardWidth, boardHeight, boardSpaces, gameOver } = displayState ?? {
-    turn: 0, teams: null, boardWidth: 9, boardHeight: 5, boardSpaces: [], gameOver: null,
-  };
+  const { turn, teams, boardWidth, boardHeight, boardSpaces, gameOver } =
+    displayState ?? {
+      turn: 0,
+      teams: null,
+      boardWidth: 9,
+      boardHeight: 5,
+      boardSpaces: [],
+      gameOver: null,
+    };
 
   const [t1, t2] = teams ?? [null, null];
 
   // Vellymons for BattleCanvas — always the current snapshot state.
   // During tween, BattleCanvas overrides positions internally via its ticker.
-  const allVellymons = useMemo(() => [
-    ...(t1?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t1.id as 1 | 2 })) ?? []),
-    ...(t2?.active.map((v: VellymonDisplay) => ({ ...v, teamId: t2.id as 1 | 2 })) ?? []),
-  ], [t1, t2]);
+  const allVellymons = useMemo(
+    () => [
+      ...(t1?.active.map((v: VellymonDisplay) => ({
+        ...v,
+        teamId: t1.id as 1 | 2,
+      })) ?? []),
+      ...(t2?.active.map((v: VellymonDisplay) => ({
+        ...v,
+        teamId: t2.id as 1 | 2,
+      })) ?? []),
+    ],
+    [t1, t2],
+  );
 
   // ── Turn log for the current replay index ─────────────────────────────────
   // turnLogs[i] describes the transition from snapshot[i] → snapshot[i+1]
@@ -517,7 +631,8 @@ export default function SpectateClient({ matchId }: Props) {
 
   // Build vellymon name lookup from the "before" snapshot
   const vellymonLookup = useMemo(() => {
-    if (!currentLog || !turnSnapshots) return new Map<string, { name: string; teamId: 1 | 2 }>();
+    if (!currentLog || !turnSnapshots)
+      return new Map<string, { name: string; teamId: 1 | 2 }>();
     return buildVellymonLookup(turnSnapshots[replayIndex - 1]);
   }, [currentLog, turnSnapshots, replayIndex]);
 
@@ -539,7 +654,9 @@ export default function SpectateClient({ matchId }: Props) {
       <div className="fixed inset-0 bg-[#0a0f1a] flex items-center justify-center">
         <div className="text-center text-white max-w-md px-4">
           <p className="text-red-400 mb-4">{error}</p>
-          <Link href="/matches" className="text-blue-400 hover:underline">← All matches</Link>
+          <Link href="/matches" className="text-blue-400 hover:underline">
+            ← All matches
+          </Link>
         </div>
       </div>
     );
@@ -569,23 +686,33 @@ export default function SpectateClient({ matchId }: Props) {
             <button
               onClick={() => hasLog && setLogOpen((o: boolean) => !o)}
               className={`text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono min-w-[120px] text-center transition ${
-                hasLog ? "text-gray-300 hover:bg-black/60 cursor-pointer" : "text-gray-500 cursor-default"
+                hasLog
+                  ? "text-gray-300 hover:bg-black/60 cursor-pointer"
+                  : "text-gray-500 cursor-default"
               }`}
             >
               {replayIndex === 0 ? "Start" : `Turn ${turn}`}
               {hasLog && (
-                <span className="text-[10px] text-gray-500 ml-1">{logOpen ? "▲" : "▼"}</span>
+                <span className="text-[10px] text-gray-500 ml-1">
+                  {logOpen ? "▲" : "▼"}
+                </span>
               )}
-              <span className="text-gray-600 text-xs ml-1">/ {turnSnapshots.length - 1}</span>
+              <span className="text-gray-600 text-xs ml-1">
+                / {turnSnapshots.length - 1}
+              </span>
             </button>
             <button
               onClick={stepForward}
-              disabled={replayIndex === turnSnapshots.length - 1 || animPhase !== "idle"}
+              disabled={
+                replayIndex === turnSnapshots.length - 1 || animPhase !== "idle"
+              }
               className="text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition disabled:opacity-30 disabled:cursor-not-allowed text-sm"
             >
               {animPhase !== "idle" ? (
                 <span className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin align-middle" />
-              ) : "→"}
+              ) : (
+                "→"
+              )}
             </button>
           </div>
         ) : (
@@ -598,7 +725,9 @@ export default function SpectateClient({ matchId }: Props) {
               className="text-gray-300 text-sm bg-black/40 px-3 py-1.5 rounded-lg font-mono hover:bg-black/60 transition flex items-center gap-1"
             >
               Turn {turn}
-              {turnHistory.length > 0 && <span className="text-[10px] text-gray-500">▼</span>}
+              {turnHistory.length > 0 && (
+                <span className="text-[10px] text-gray-500">▼</span>
+              )}
             </button>
           </div>
         )}
@@ -634,12 +763,19 @@ export default function SpectateClient({ matchId }: Props) {
       </div>
 
       {/* ── Game over banner ── */}
-      {gameOver && (isReplay ? replayIndex === (turnSnapshots?.length ?? 1) - 1 : true) && (
-        <div className="mx-3 mb-2 bg-yellow-900/40 border border-yellow-500/40 rounded-xl px-4 py-3 text-center shrink-0">
-          <p className="text-yellow-300 font-bold text-lg">🏆 {gameOver.winner} wins!</p>
-          <p className="text-yellow-500 text-sm capitalize">Victory by {gameOver.condition}</p>
-        </div>
-      )}
+      {gameOver &&
+        (isReplay
+          ? replayIndex === (turnSnapshots?.length ?? 1) - 1
+          : true) && (
+          <div className="mx-3 mb-2 bg-yellow-900/40 border border-yellow-500/40 rounded-xl px-4 py-3 text-center shrink-0">
+            <p className="text-yellow-300 font-bold text-lg">
+              🏆 {gameOver.winner} wins!
+            </p>
+            <p className="text-yellow-500 text-sm capitalize">
+              Victory by {gameOver.condition}
+            </p>
+          </div>
+        )}
 
       {/* ── Board canvas ── */}
       <div className="flex-1 relative min-h-0">
@@ -650,7 +786,7 @@ export default function SpectateClient({ matchId }: Props) {
           vellymons={allVellymons}
           yourTeamId={1}
           selectedVellymon={null}
-          onSelectVellymon={() => { /* spectate: no selection */ }}
+          onSelectVellymon={handleSelectVellymon}
           commandedUuids={new Set()}
           overlays={overlays ?? undefined}
           tween={activeTween ?? undefined}
@@ -694,26 +830,38 @@ function TurnLogDrawer({
           const teamId = info?.teamId ?? 1;
           const teamColor = teamId === 1 ? "text-blue-400" : "text-red-400";
           const icon =
-            r.command.type === "attack" ? "⚔️"
-            : r.command.type === "harvest" ? "🌿"
-            : "👟";
+            r.command.type === "attack"
+              ? "⚔️"
+              : r.command.type === "harvest"
+                ? "🌿"
+                : "👟";
           const dirStr = r.command.direction ? ` ${r.command.direction}` : "";
           const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";
           const koStr = r.targetKO ? " 💀 KO!" : "";
-          const energyStr = r.energyDelta && r.energyDelta > 0 ? ` +${r.energyDelta}⚡` : "";
+          const energyStr =
+            r.energyDelta && r.energyDelta > 0 ? ` +${r.energyDelta}⚡` : "";
           const failStr = !r.success ? ` ✗ ${r.reason ?? "failed"}` : "";
 
           return (
             <div key={i} className="flex items-center gap-1.5 text-xs">
-              <span className={`font-semibold w-20 truncate ${teamColor}`}>{name}</span>
+              <span className={`font-semibold w-20 truncate ${teamColor}`}>
+                {name}
+              </span>
               <span className="text-gray-500">{icon}</span>
               <span className="text-gray-300">
-                {r.command.type}{dirStr}
+                {r.command.type}
+                {dirStr}
               </span>
-              {dmgStr && <span className="text-orange-400 font-mono">{dmgStr}</span>}
+              {dmgStr && (
+                <span className="text-orange-400 font-mono">{dmgStr}</span>
+              )}
               {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
-              {energyStr && <span className="text-yellow-400 font-mono">{energyStr}</span>}
-              {failStr && <span className="text-gray-600 italic">{failStr}</span>}
+              {energyStr && (
+                <span className="text-yellow-400 font-mono">{energyStr}</span>
+              )}
+              {failStr && (
+                <span className="text-gray-600 italic">{failStr}</span>
+              )}
             </div>
           );
         })}
@@ -722,10 +870,18 @@ function TurnLogDrawer({
           <div className="pt-1 border-t border-gray-800/60 mt-1">
             {allBench.map((e, i) => (
               <div key={i} className="flex items-center gap-1.5 text-xs">
-                <span className="text-gray-400 font-semibold w-20 truncate">{e.vellymonName}</span>
+                <span className="text-gray-400 font-semibold w-20 truncate">
+                  {e.vellymonName}
+                </span>
                 <span className="text-gray-500">🔄</span>
-                <span className={e.status === "entered" ? "text-green-400" : "text-gray-600"}>
-                  {e.status === "entered" ? "entered from bench" : "bench entry blocked"}
+                <span
+                  className={
+                    e.status === "entered" ? "text-green-400" : "text-gray-600"
+                  }
+                >
+                  {e.status === "entered"
+                    ? "entered from bench"
+                    : "bench entry blocked"}
                 </span>
               </div>
             ))}
@@ -746,13 +902,22 @@ function TurnLogDrawer({
 
 // ─── Team HUD ─────────────────────────────────────────────────────────────────
 
-function TeamHUD({ team, color }: { team: TeamDisplay; color: "blue" | "red" }) {
-  const borderClass = color === "blue" ? "border-blue-500/30" : "border-red-500/30";
+function TeamHUD({
+  team,
+  color,
+}: {
+  team: TeamDisplay;
+  color: "blue" | "red";
+}) {
+  const borderClass =
+    color === "blue" ? "border-blue-500/30" : "border-red-500/30";
   const bgClass = color === "blue" ? "bg-blue-950/60" : "bg-red-950/60";
   const alive = team.active.filter((v) => !v.isKO);
 
   return (
-    <div className={`flex-1 ${bgClass} border ${borderClass} rounded-lg px-3 py-1.5`}>
+    <div
+      className={`flex-1 ${bgClass} border ${borderClass} rounded-lg px-3 py-1.5`}
+    >
       <p className="font-bold text-sm truncate">{team.name}</p>
       <div className="flex gap-2 text-xs text-gray-300 mt-0.5">
         <span>⚡{team.energy}</span>
@@ -763,14 +928,26 @@ function TeamHUD({ team, color }: { team: TeamDisplay; color: "blue" | "red" }) 
       <div className="mt-1 space-y-0.5">
         {alive.map((v) => {
           const pct = Math.round((v.hp / v.maxHp) * 100);
-          const barColor = pct > 50 ? "bg-green-500" : pct > 25 ? "bg-yellow-500" : "bg-red-500";
+          const barColor =
+            pct > 50
+              ? "bg-green-500"
+              : pct > 25
+                ? "bg-yellow-500"
+                : "bg-red-500";
           return (
             <div key={v.uuid} className="flex items-center gap-1">
-              <span className="text-[10px] text-gray-400 w-14 truncate">{v.name}</span>
+              <span className="text-[10px] text-gray-400 w-14 truncate">
+                {v.name}
+              </span>
               <div className="flex-1 h-1 bg-gray-700 rounded-full">
-                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                <div
+                  className={`h-full rounded-full ${barColor}`}
+                  style={{ width: `${pct}%` }}
+                />
               </div>
-              <span className="text-[10px] text-gray-500 w-8 text-right">{v.hp}/{v.maxHp}</span>
+              <span className="text-[10px] text-gray-500 w-8 text-right">
+                {v.hp}/{v.maxHp}
+              </span>
             </div>
           );
         })}

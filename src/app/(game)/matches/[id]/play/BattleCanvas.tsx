@@ -1,7 +1,15 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { Application, Container, Graphics, Sprite, Text, TextStyle, Assets } from "pixi.js";
+import {
+  Application,
+  Container,
+  Graphics,
+  Sprite,
+  Text,
+  TextStyle,
+  Assets,
+} from "pixi.js";
 
 export type VellymonDisplay = {
   uuid: string;
@@ -119,8 +127,12 @@ const COLORS = {
   commanded: 0x22c55e,
 };
 
-function teamColor(teamId: 1 | 2) { return teamId === 1 ? COLORS.team1 : COLORS.team2; }
-function teamGlow(teamId: 1 | 2) { return teamId === 1 ? COLORS.team1Glow : COLORS.team2Glow; }
+function teamColor(teamId: 1 | 2) {
+  return teamId === 1 ? COLORS.team1 : COLORS.team2;
+}
+function teamGlow(teamId: 1 | 2) {
+  return teamId === 1 ? COLORS.team1Glow : COLORS.team2Glow;
+}
 
 const loadingUrls = new Set<string>();
 
@@ -131,16 +143,26 @@ const loadingUrls = new Set<string>();
  * Supports sub-tile positions for smooth vellymon animation.
  */
 function gridToScreen(
-  gx: number, gy: number,
-  tileSize: number, gap: number,
-  isPortrait: boolean, bw: number, myTeam: 1 | 2,
+  gx: number,
+  gy: number,
+  tileSize: number,
+  gap: number,
+  isPortrait: boolean,
+  bw: number,
+  myTeam: 1 | 2,
 ): { centerX: number; centerY: number } {
   let col: number, row: number;
   if (isPortrait) {
-    if (myTeam === 1) { col = gy; row = bw - 1 - gx; }
-    else              { col = gy; row = gx; }
+    if (myTeam === 1) {
+      col = gy;
+      row = bw - 1 - gx;
+    } else {
+      col = gy;
+      row = gx;
+    }
   } else {
-    col = gx; row = gy;
+    col = gx;
+    row = gy;
   }
   return {
     centerX: col * (tileSize + gap) + tileSize / 2,
@@ -150,7 +172,11 @@ function gridToScreen(
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-function lerpVellymons(from: VellymonDisplay[], to: VellymonDisplay[], t: number): VellymonDisplay[] {
+function lerpVellymons(
+  from: VellymonDisplay[],
+  to: VellymonDisplay[],
+  t: number,
+): VellymonDisplay[] {
   return from.map((fv) => {
     const tv = to.find((v) => v.uuid === fv.uuid);
     const toPos = tv ?? fv;
@@ -168,9 +194,16 @@ function easeInOut(t: number): number {
 }
 
 export default function BattleCanvas({
-  boardWidth, boardHeight, spaces, vellymons,
-  yourTeamId, selectedVellymon, onSelectVellymon, commandedUuids,
-  overlays, tween,
+  boardWidth,
+  boardHeight,
+  spaces,
+  vellymons,
+  yourTeamId,
+  selectedVellymon,
+  onSelectVellymon,
+  commandedUuids,
+  overlays,
+  tween,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
@@ -181,14 +214,26 @@ export default function BattleCanvas({
   const activeTweenKeyRef = useRef<number | string | null>(null);
 
   const stateRef = useRef({
-    boardWidth, boardHeight, spaces, vellymons, yourTeamId,
-    selectedVellymon, commandedUuids, overlays,
+    boardWidth,
+    boardHeight,
+    spaces,
+    vellymons,
+    yourTeamId,
+    selectedVellymon,
+    commandedUuids,
+    overlays,
   });
   const drawRef = useRef<() => void>();
 
   stateRef.current = {
-    boardWidth, boardHeight, spaces, vellymons, yourTeamId,
-    selectedVellymon, commandedUuids, overlays,
+    boardWidth,
+    boardHeight,
+    spaces,
+    vellymons,
+    yourTeamId,
+    selectedVellymon,
+    commandedUuids,
+    overlays,
   };
 
   const draw = useCallback(() => {
@@ -196,8 +241,12 @@ export default function BattleCanvas({
     if (!app) return;
 
     const {
-      boardWidth: bw, boardHeight: bh, spaces: sp,
-      yourTeamId: myTeam, selectedVellymon: selVm, commandedUuids: cmdSet,
+      boardWidth: bw,
+      boardHeight: bh,
+      spaces: sp,
+      yourTeamId: myTeam,
+      selectedVellymon: selVm,
+      commandedUuids: cmdSet,
       overlays: ovl,
     } = stateRef.current;
     // Use tween-interpolated positions when active; fall back to prop
@@ -240,9 +289,19 @@ export default function BattleCanvas({
 
     // Pre-load uncached textures
     for (const v of vms) {
-      if (v.imageUrl && !Assets.cache.has(v.imageUrl) && !loadingUrls.has(v.imageUrl)) {
+      if (
+        v.imageUrl &&
+        !Assets.cache.has(v.imageUrl) &&
+        !loadingUrls.has(v.imageUrl)
+      ) {
         loadingUrls.add(v.imageUrl);
-        Assets.load(v.imageUrl).then(() => { drawRef.current?.(); }).catch(() => { loadingUrls.delete(v.imageUrl!); });
+        Assets.load(v.imageUrl)
+          .then(() => {
+            drawRef.current?.();
+          })
+          .catch(() => {
+            loadingUrls.delete(v.imageUrl!);
+          });
       }
     }
 
@@ -251,9 +310,17 @@ export default function BattleCanvas({
       for (let col = 0; col < cols; col++) {
         let gx: number, gy: number;
         if (isPortrait) {
-          if (myTeam === 1) { gx = rows - 1 - row; gy = col; }
-          else              { gx = row;             gy = col; }
-        } else { gx = col; gy = row; }
+          if (myTeam === 1) {
+            gx = rows - 1 - row;
+            gy = col;
+          } else {
+            gx = row;
+            gy = col;
+          }
+        } else {
+          gx = col;
+          gy = row;
+        }
 
         const px = col * (tileSize + gap);
         const py = row * (tileSize + gap);
@@ -270,10 +337,22 @@ export default function BattleCanvas({
         const tile = new Graphics();
 
         if (isSelected) {
-          tile.roundRect(px - 2, py - 2, tileSize + 4, tileSize + 4, cornerRadius + 2);
+          tile.roundRect(
+            px - 2,
+            py - 2,
+            tileSize + 4,
+            tileSize + 4,
+            cornerRadius + 2,
+          );
           tile.fill({ color: COLORS.selected, alpha: 0.6 });
         } else if (isCommanded && isYours) {
-          tile.roundRect(px - 1, py - 1, tileSize + 2, tileSize + 2, cornerRadius + 1);
+          tile.roundRect(
+            px - 1,
+            py - 1,
+            tileSize + 2,
+            tileSize + 2,
+            cornerRadius + 1,
+          );
           tile.fill({ color: COLORS.commanded, alpha: 0.3 });
         }
 
@@ -281,13 +360,22 @@ export default function BattleCanvas({
         let fillColor = COLORS.tile;
         let borderColor = COLORS.tileBorder;
         if (isOccupation) {
-          if (occCounter < 0)      { fillColor = COLORS.team1Light; borderColor = COLORS.team1Dark; }
-          else if (occCounter > 0) { fillColor = COLORS.team2Light; borderColor = COLORS.team2Dark; }
-          else                     { fillColor = COLORS.occupation; borderColor = COLORS.occupationBorder; }
+          if (occCounter < 0) {
+            fillColor = COLORS.team1Light;
+            borderColor = COLORS.team1Dark;
+          } else if (occCounter > 0) {
+            fillColor = COLORS.team2Light;
+            borderColor = COLORS.team2Dark;
+          } else {
+            fillColor = COLORS.occupation;
+            borderColor = COLORS.occupationBorder;
+          }
         } else if (isHarvestable) {
-          fillColor = COLORS.harvestable; borderColor = COLORS.harvestableBorder;
+          fillColor = COLORS.harvestable;
+          borderColor = COLORS.harvestableBorder;
         } else if (isSpawn) {
-          fillColor = COLORS.spawn; borderColor = COLORS.spawnBorder;
+          fillColor = COLORS.spawn;
+          borderColor = COLORS.spawnBorder;
         }
         if (vm) borderColor = teamColor(vm.teamId);
 
@@ -300,24 +388,52 @@ export default function BattleCanvas({
           tile.eventMode = "static";
           tile.cursor = "pointer";
           const vuuid = vm.uuid;
-          tile.on("pointertap", () => { onSelectVellymon(selVm === vuuid ? null : vuuid); });
+          tile.on("pointertap", () => {
+            onSelectVellymon(selVm === vuuid ? null : vuuid);
+          });
         }
 
         // Static board markers (no vm)
         if (!vm && isOccupation) {
-          const starColor = occCounter < 0 ? COLORS.team1Glow : occCounter > 0 ? COLORS.team2Glow : COLORS.occupationStar;
-          const star = new Text({ text: "⭐", style: new TextStyle({ fontSize: Math.min(tileSize * 0.35, 20), fill: starColor, align: "center" }) });
+          const starColor =
+            occCounter < 0
+              ? COLORS.team1Glow
+              : occCounter > 0
+                ? COLORS.team2Glow
+                : COLORS.occupationStar;
+          const star = new Text({
+            text: "⭐",
+            style: new TextStyle({
+              fontSize: Math.min(tileSize * 0.35, 20),
+              fill: starColor,
+              align: "center",
+            }),
+          });
           star.anchor.set(0.5);
-          star.x = px + tileSize / 2; star.y = py + tileSize / 2;
+          star.x = px + tileSize / 2;
+          star.y = py + tileSize / 2;
           boardContainer.addChild(star);
         }
         if (!vm && isHarvestable) {
           const yield_ = space?.harvestYield ?? 1;
           const fernEmoji = yield_ >= 3 ? "🪴" : yield_ >= 2 ? "🌿" : "🌱";
-          const fernScale = yield_ >= 3 ? 0.32 : yield_ >= 2 ? 0.26 : 0.20;
-          const fernColor = yield_ >= 3 ? 0x2d8c4a : yield_ >= 2 ? 0x1f7a3a : 0x1a5c2a;
-          const leaf = new Text({ text: fernEmoji, style: new TextStyle({ fontSize: Math.min(tileSize * fernScale, yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11), fill: fernColor, align: "center" }) });
-          leaf.anchor.set(0.5); leaf.x = px + tileSize / 2; leaf.y = py + tileSize / 2;
+          const fernScale = yield_ >= 3 ? 0.32 : yield_ >= 2 ? 0.26 : 0.2;
+          const fernColor =
+            yield_ >= 3 ? 0x2d8c4a : yield_ >= 2 ? 0x1f7a3a : 0x1a5c2a;
+          const leaf = new Text({
+            text: fernEmoji,
+            style: new TextStyle({
+              fontSize: Math.min(
+                tileSize * fernScale,
+                yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11,
+              ),
+              fill: fernColor,
+              align: "center",
+            }),
+          });
+          leaf.anchor.set(0.5);
+          leaf.x = px + tileSize / 2;
+          leaf.y = py + tileSize / 2;
           boardContainer.addChild(leaf);
         }
       }
@@ -326,14 +442,24 @@ export default function BattleCanvas({
     // ── Pass 2: Vellymon sprites at fractional positions ──────────────────
     for (const vm of vms) {
       if (vm.isKO) continue;
-      const { centerX, centerY } = gridToScreen(vm.x, vm.y, tileSize, gap, isPortrait, bw, myTeam);
+      const { centerX, centerY } = gridToScreen(
+        vm.x,
+        vm.y,
+        tileSize,
+        gap,
+        isPortrait,
+        bw,
+        myTeam,
+      );
       const avatarSize = tileSize * 0.6;
 
       if (vm.imageUrl && Assets.cache.has(vm.imageUrl)) {
         const sprite = new Sprite(Assets.get(vm.imageUrl));
-        sprite.width = avatarSize; sprite.height = avatarSize;
+        sprite.width = avatarSize;
+        sprite.height = avatarSize;
         sprite.anchor.set(0.5);
-        sprite.x = centerX; sprite.y = centerY - 2;
+        sprite.x = centerX;
+        sprite.y = centerY - 2;
         boardContainer.addChild(sprite);
       } else {
         const circle = new Graphics();
@@ -355,7 +481,12 @@ export default function BattleCanvas({
       boardContainer.addChild(hpBg);
 
       if (hpPercent > 0) {
-        const hpColor = hpPercent > 0.5 ? COLORS.hpBarGreen : hpPercent > 0.25 ? COLORS.hpBarYellow : COLORS.hpBarRed;
+        const hpColor =
+          hpPercent > 0.5
+            ? COLORS.hpBarGreen
+            : hpPercent > 0.25
+              ? COLORS.hpBarYellow
+              : COLORS.hpBarRed;
         const hpFill = new Graphics();
         hpFill.roundRect(hpBarX, hpBarY, hpBarW * hpPercent, hpBarH, 2);
         hpFill.fill(hpColor);
@@ -367,23 +498,52 @@ export default function BattleCanvas({
     if (ovl) {
       // Ghost pieces — translucent circles at preview target positions
       for (const g of ovl.ghosts ?? []) {
-        const { centerX, centerY } = gridToScreen(g.x, g.y, tileSize, gap, isPortrait, bw, myTeam);
+        const { centerX, centerY } = gridToScreen(
+          g.x,
+          g.y,
+          tileSize,
+          gap,
+          isPortrait,
+          bw,
+          myTeam,
+        );
         const ghost = new Graphics();
         ghost.circle(centerX, centerY - 2, tileSize * 0.28);
         ghost.fill({ color: teamGlow(g.teamId), alpha: g.alpha * 0.45 });
-        ghost.stroke({ color: teamGlow(g.teamId), width: 1.5, alpha: g.alpha * 0.7 });
+        ghost.stroke({
+          color: teamGlow(g.teamId),
+          width: 1.5,
+          alpha: g.alpha * 0.7,
+        });
         boardContainer.addChild(ghost);
       }
 
       // Direction arrows — line from source center to target center
       for (const a of ovl.arrows ?? []) {
-        const from = gridToScreen(a.fromX, a.fromY, tileSize, gap, isPortrait, bw, myTeam);
-        const to = gridToScreen(a.toX, a.toY, tileSize, gap, isPortrait, bw, myTeam);
+        const from = gridToScreen(
+          a.fromX,
+          a.fromY,
+          tileSize,
+          gap,
+          isPortrait,
+          bw,
+          myTeam,
+        );
+        const to = gridToScreen(
+          a.toX,
+          a.toY,
+          tileSize,
+          gap,
+          isPortrait,
+          bw,
+          myTeam,
+        );
         const dx = to.centerX - from.centerX;
         const dy = to.centerY - from.centerY;
         const len = Math.sqrt(dx * dx + dy * dy);
         if (len < 1) continue;
-        const ux = dx / len, uy = dy / len;
+        const ux = dx / len,
+          uy = dy / len;
         const startX = from.centerX + ux * tileSize * 0.3;
         const startY = from.centerY + uy * tileSize * 0.3;
         const endX = to.centerX - ux * tileSize * 0.25;
@@ -397,16 +557,30 @@ export default function BattleCanvas({
         arrow.stroke({ color: a.color, width: 2, alpha: a.alpha });
         // Arrowhead
         arrow.moveTo(endX, endY);
-        arrow.lineTo(endX - arrowSize * Math.cos(angle - 0.5), endY - arrowSize * Math.sin(angle - 0.5));
+        arrow.lineTo(
+          endX - arrowSize * Math.cos(angle - 0.5),
+          endY - arrowSize * Math.sin(angle - 0.5),
+        );
         arrow.moveTo(endX, endY);
-        arrow.lineTo(endX - arrowSize * Math.cos(angle + 0.5), endY - arrowSize * Math.sin(angle + 0.5));
+        arrow.lineTo(
+          endX - arrowSize * Math.cos(angle + 0.5),
+          endY - arrowSize * Math.sin(angle + 0.5),
+        );
         arrow.stroke({ color: a.color, width: 2, alpha: a.alpha });
         boardContainer.addChild(arrow);
       }
 
       // Floating labels — damage numbers, KO flashes, etc.
       for (const lbl of ovl.labels ?? []) {
-        const { centerX, centerY } = gridToScreen(lbl.x, lbl.y, tileSize, gap, isPortrait, bw, myTeam);
+        const { centerX, centerY } = gridToScreen(
+          lbl.x,
+          lbl.y,
+          tileSize,
+          gap,
+          isPortrait,
+          bw,
+          myTeam,
+        );
         const t = new Text({
           text: lbl.text,
           style: new TextStyle({
@@ -427,29 +601,62 @@ export default function BattleCanvas({
 
   drawRef.current = draw;
 
+  // Keep drawRef current whenever draw changes — without triggering Pixi re-init
+  useEffect(() => {
+    drawRef.current = draw;
+  }, [draw]);
+
+  // Pixi app: created once on mount, never recreated due to draw/prop changes.
+  // All drawing goes through drawRef so the app stays alive for the full component lifetime.
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
     let destroyed = false;
     (async () => {
       const app = new Application();
-      await app.init({ background: COLORS.bg, resizeTo: container, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
-      if (destroyed) { app.destroy(true); return; }
+      await app.init({
+        background: COLORS.bg,
+        resizeTo: container,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
+      if (destroyed) {
+        app.destroy(true);
+        return;
+      }
       container.appendChild(app.canvas as HTMLCanvasElement);
       appRef.current = app;
-      draw();
+      drawRef.current?.();
     })();
-    return () => { destroyed = true; if (appRef.current) { appRef.current.destroy(true); appRef.current = null; } };
-  }, [draw]);
+    return () => {
+      destroyed = true;
+      if (appRef.current) {
+        appRef.current.destroy(true);
+        appRef.current = null;
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Guard: don't redraw via React when a tween is actively running (ticker owns the draw loop)
   useEffect(() => {
     if (displayVmsRef.current !== null) return; // tween active — skip
     draw();
-  }, [boardWidth, boardHeight, spaces, vellymons, yourTeamId, selectedVellymon, commandedUuids, draw]);
+  }, [
+    boardWidth,
+    boardHeight,
+    spaces,
+    vellymons,
+    yourTeamId,
+    selectedVellymon,
+    commandedUuids,
+    draw,
+  ]);
 
   // Overlays can change during tween (Phase 1 previews) — always redraw for those
-  useEffect(() => { draw(); }, [overlays, draw]);
+  useEffect(() => {
+    draw();
+  }, [overlays, draw]);
 
   // Tween: when key changes, run the animation inside the Pixi ticker
   useEffect(() => {
@@ -474,15 +681,26 @@ export default function BattleCanvas({
       }
     };
     app.ticker.add(ticker);
-    return () => { app.ticker.remove(ticker); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      app.ticker.remove(ticker);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tween?.key]);
 
   useEffect(() => {
-    const onResize = () => { appRef.current?.resize(); draw(); };
+    const onResize = () => {
+      appRef.current?.resize();
+      draw();
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [draw]);
 
-  return <div ref={containerRef} className="absolute inset-0" style={{ touchAction: "none" }} />;
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0"
+      style={{ touchAction: "none" }}
+    />
+  );
 }
