@@ -19,10 +19,20 @@ export default async function GameLayout({
 
   // Single auth gate — all pages in this route group require authentication
   if (!session) {
-    redirect("/login");
+    const nextUrl = headersList.get("next-url") ?? "";
+    const callbackUrl = nextUrl
+      ? `?callbackUrl=${encodeURIComponent(nextUrl)}`
+      : "";
+    redirect(`/login${callbackUrl}`);
   }
 
-  const [creditBalance, subInfo, newAchievementCount, activeQuestCount, currentStreak] = await Promise.all([
+  const [
+    creditBalance,
+    subInfo,
+    newAchievementCount,
+    activeQuestCount,
+    currentStreak,
+  ] = await Promise.all([
     getBalance(session.user.id),
     getSubscriptionInfo(session.user.id),
     getNewAchievementCount(session.user.id),
