@@ -1053,11 +1053,14 @@ function CompactTeamHUD({
   const aliveOnField = team.active.filter((v) => !v.isKO).length;
   const totalAlive = aliveOnField + team.benchCount;
 
+  // Strip trailing "(Mon1, Mon2, ...)" if the name was generated that way
+  const displayName = team.name.replace(/\s*\(.*\)\s*$/, "").trim() || team.name;
+
   return (
     <div
       className={`absolute ${posClass} z-10 ${bgClass} border rounded-xl px-2.5 py-1.5 backdrop-blur-sm pointer-events-none max-w-[140px]`}
     >
-      <p className="font-bold text-xs text-white truncate">{team.name}</p>
+      <p className="font-bold text-xs text-white truncate">{displayName}</p>
       <div className="flex gap-2 text-xs text-gray-300 mt-0.5">
         <span>⚡{team.energy}</span>
         <span>🗡️{totalAlive}</span>

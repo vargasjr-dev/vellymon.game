@@ -9,6 +9,8 @@ import {
   Text,
   TextStyle,
   Assets,
+  Texture,
+  Rectangle,
 } from "pixi.js";
 
 export type VellymonDisplay = {
@@ -137,6 +139,9 @@ function teamGlow(teamId: 1 | 2) {
 }
 
 const loadingUrls = new Set<string>();
+// Cache cropped textures so we don't recreate them every draw frame
+const croppedTextureCache = new Map<string, Texture>();
+const SPRITE_CROP = 8; // px to trim from each edge of raw sprite sheets
 
 // ─── Grid ↔ Screen coordinate helpers ────────────────────────────────────────
 
@@ -271,7 +276,8 @@ export default function BattleCanvas({
     const gap = 3;
     const tileW = Math.floor((screenW - padding * 2 - gap * (cols - 1)) / cols);
     const tileH = Math.floor((screenH - padding * 2 - gap * (rows - 1)) / rows);
-    const tileSize = Math.min(tileW, tileH, 72);
+    // No hard cap — let the grid fill the available canvas area naturally
+    const tileSize = Math.min(tileW, tileH);
     const cornerRadius = 6;
 
     const gridW = cols * tileSize + (cols - 1) * gap;
@@ -460,14 +466,26 @@ export default function BattleCanvas({
       const avatarSize = tileSize * 0.6;
 
       if (vm.imageUrl && Assets.cache.has(vm.imageUrl)) {
-        const sprite = new Sprite(Assets.get(vm.imageUrl));
-        sprite.width = avatarSize;
-        sprite.height = avatarSize;
-        sprite.anchor.set(0.5);
-        sprite.x = centerX;
-        sprite.y = centerY - 2;
-        boardContainer.addChild(sprite);
-      } else {
+          // Use a cropped texture (trim SPRITE_CROP px per side) so the mon
+          // fills more of the tile rather than floating in whitespace.
+          let tex = croppedTextureCache.get(vm.imageUrl);
+          if (!tex) {
+            const base: Texture = Assets.get(vm.imageUrl);
+            const c = SPRITE_CROP;
+            tex = new Texture({
+              source: base.source,
+              frame: new Rectangle(c, c, base.width - c * 2, base.height - c * 2),
+            });
+            croppedTextureCache.set(vm.imageUrl, tex);
+          }
+          const sprite = new Sprite(tex);
+          sprite.width = avatarSize;
+          sprite.height = avatarSize;
+          sprite.anchor.set(0.5);
+          sprite.x = centerX;
+          sprite.y = centerY - 2;
+          boardContainer.addChild(sprite);
+        } else {
         const circle = new Graphics();
         circle.circle(centerX, centerY - 2, avatarSize / 2);
         circle.fill(teamGlow(vm.teamId));
