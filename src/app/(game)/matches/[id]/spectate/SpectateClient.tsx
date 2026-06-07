@@ -534,10 +534,15 @@ export default function SpectateClient({ matchId }: Props) {
     a.timeoutId = setTimeout(advancePreview, 420);
   }, [startExecutePhase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stable no-op: spectate mode has no vellymon selection.
-  // Must be stable (useCallback) so BattleCanvas's draw doesn't change on every render,
-  // which would otherwise destroy and recreate the Pixi app mid-animation.
-  const handleSelectVellymon = useCallback(() => {}, []);
+  // Mon card overlay — tapping any vellymon on the board opens its card.
+  const [selectedMonUuid, setSelectedMonUuid] = useState<string | null>(null);
+
+  // Must be stable (useCallback with no deps) so BattleCanvas's draw effect
+  // doesn't fire on every render and destroy/recreate the Pixi app mid-animation.
+  const handleSelectVellymon = useCallback(
+    (uuid: string | null) => setSelectedMonUuid(uuid),
+    [],
+  );
 
   const stepForward = useCallback(() => {
     if (!turnSnapshots || !isReplay) return;
@@ -770,17 +775,26 @@ export default function SpectateClient({ matchId }: Props) {
         {/* Compact team HUDs overlaid on board corners */}
         {t1 && <CompactTeamHUD team={t1} color="blue" position="top-left" />}
         {t2 && <CompactTeamHUD team={t2} color="red" position="bottom-right" />}
+        {/* Mon card overlay — shown when a vellymon is tapped */}
+        {selectedMonUuid && (
+          <MonCardOverlay
+            uuid={selectedMonUuid}
+            teams={teams}
+            onClose={() => setSelectedMonUuid(null)}
+          />
+        )}
         <BattleCanvas
           boardWidth={boardWidth}
           boardHeight={boardHeight}
           spaces={boardSpaces}
           vellymons={allVellymons}
           yourTeamId={1}
-          selectedVellymon={null}
+          selectedVellymon={selectedMonUuid}
           onSelectVellymon={handleSelectVellymon}
           commandedUuids={new Set()}
           overlays={overlays ?? undefined}
           tween={activeTween ?? undefined}
+          tapAllVellymons
         />
       </div>
 
@@ -884,6 +898,134 @@ function TurnLogDrawer({
             <span className="text-yellow-400 text-xs font-bold">
               🏆 Team {log.winResult.winner} wins by {log.winResult.condition}
             </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mon Card Overlay ─────────────────────────────────────────────────────────
+
+function MonCardOverlay({
+  uuid,
+  teams,
+  onClose,
+}: {
+  uuid: string;
+  teams: [TeamDisplay, TeamDisplay] | null;
+  onClose: () => void;
+}) {
+  if (!teams) return null;
+  let vm: VellymonDisplay | undefined;
+  let teamId: 1 | 2 = 1;
+  for (const t of teams) {
+    const found = t.active.find((v) => v.uuid === uuid);
+    if (found) {
+      vm = found;
+      teamId = t.id;
+      break;
+    }
+  }
+  if (!vm) return null;
+
+  const pct = vm.maxHp > 0 ? vm.hp / vm.maxHp : 0;
+  const barColor =
+    pct > 0.5 ? "bg-green-500" : pct > 0.25 ? "bg-yellow-500" : "bg-red-500";
+  const borderColor =
+    teamId === 1 ? "border-blue-500/60" : "border-red-500/60";
+  const headerBg = teamId === 1 ? "bg-blue-900/70" : "bg-red-900/70";
+
+  return (
+    <div
+      className="absolute inset-0 z-20 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className={`bg-[#0d1520] border-2 ${borderColor} rounded-2xl p-4 mx-4 w-full max-w-[280px]`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          className={`${headerBg} rounded-xl px-3 py-2 mb-3 flex items-center justify-between`}
+        >
+          <span className="font-bold text-white text-base">{vm.name}</span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Sprite */}
+        {vm.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={vm.imageUrl}
+            alt={vm.name}
+            className="w-20 h-20 mx-auto mb-3 rounded-xl object-contain"
+          />
+        ) : (
+          <div
+            className={`w-20 h-20 mx-auto mb-3 rounded-full opacity-60 ${teamId === 1 ? "bg-blue-500" : "bg-red-500"}`}
+          />
+        )}
+
+        {/* HP */}
+        <div className="mb-3">
+          <div className="flex justify-between text-xs text-gray-400 mb-1">
+            <span>HP</span>
+            <span className="font-mono">
+              {vm.hp}/{vm.maxHp}
+            </span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${barColor} transition-all`}
+              style={{ width: `${pct * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="bg-gray-800/60 rounded-xl px-3 py-2 text-center">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wide">
+              Speed
+            </p>
+            <p className="text-white font-bold text-lg">{vm.speed}</p>
+          </div>
+          <div className="bg-gray-800/60 rounded-xl px-3 py-2 text-center">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wide">
+              Attack
+            </p>
+            <p className="text-white font-bold text-lg">{vm.attack}</p>
+          </div>
+        </div>
+
+        {/* Moves */}
+        {vm.attacks.length > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1.5">
+              Moves
+            </p>
+            <div className="space-y-1">
+              {vm.attacks.map((atk, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between bg-gray-800/60 rounded-lg px-2.5 py-1.5"
+                >
+                  <span className="text-white text-xs font-medium">
+                    {atk.name}
+                  </span>
+                  <div className="flex gap-2 text-[11px]">
+                    <span className="text-orange-400">💥 {atk.damage}</span>
+                    <span className="text-yellow-400">⚡ {atk.energyCost}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
