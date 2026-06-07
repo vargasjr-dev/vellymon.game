@@ -96,6 +96,8 @@ type Props = {
   overlays?: Overlays;
   /** When provided and key changes, animates vellymon positions internally via Pixi ticker. */
   tween?: TweenTarget;
+  /** When true, all vellymons (not just yours) fire pointertap — used in spectate/replay mode. */
+  tapAllVellymons?: boolean;
 };
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
@@ -204,6 +206,7 @@ export default function BattleCanvas({
   commandedUuids,
   overlays,
   tween,
+  tapAllVellymons,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
@@ -222,6 +225,7 @@ export default function BattleCanvas({
     selectedVellymon,
     commandedUuids,
     overlays,
+    tapAllVellymons: false,
   });
   const drawRef = useRef<() => void>();
 
@@ -234,6 +238,7 @@ export default function BattleCanvas({
     selectedVellymon,
     commandedUuids,
     overlays,
+    tapAllVellymons: tapAllVellymons ?? false,
   };
 
   const draw = useCallback(() => {
@@ -248,6 +253,7 @@ export default function BattleCanvas({
       selectedVellymon: selVm,
       commandedUuids: cmdSet,
       overlays: ovl,
+      tapAllVellymons: tapAll,
     } = stateRef.current;
     // Use tween-interpolated positions when active; fall back to prop
     const vms = displayVmsRef.current ?? stateRef.current.vellymons;
@@ -384,7 +390,7 @@ export default function BattleCanvas({
         tile.stroke({ color: borderColor, width: vm ? 2 : 1 });
         boardContainer.addChild(tile);
 
-        if (vm && isYours) {
+        if (vm && (isYours || tapAll)) {
           tile.eventMode = "static";
           tile.cursor = "pointer";
           const vuuid = vm.uuid;
