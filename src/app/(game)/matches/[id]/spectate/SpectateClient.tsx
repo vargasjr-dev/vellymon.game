@@ -732,15 +732,9 @@ export default function SpectateClient({ matchId }: Props) {
           </div>
         )}
 
-        {/* Right: badge */}
-        <div className="flex items-center gap-1.5">
-          {isReplay ? (
-            <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded font-mono">
-              📼 REPLAY
-            </span>
-          ) : gameOver ? (
-            <span className="text-xs text-yellow-400">🏆 FINAL</span>
-          ) : (
+        {/* Right: live indicator only (no REPLAY badge — causes layout drift) */}
+        <div className="w-16 flex items-center justify-end gap-1.5">
+          {!isReplay && !gameOver && (
             <>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs text-gray-500">
@@ -755,12 +749,6 @@ export default function SpectateClient({ matchId }: Props) {
       {isReplay && logOpen && currentLog && (
         <TurnLogDrawer log={currentLog} lookup={vellymonLookup} />
       )}
-
-      {/* ── Team HUDs ── */}
-      <div className="flex gap-2 px-3 py-2 shrink-0">
-        {t1 && <TeamHUD team={t1} color="blue" />}
-        {t2 && <TeamHUD team={t2} color="red" />}
-      </div>
 
       {/* ── Game over banner ── */}
       {gameOver &&
@@ -779,6 +767,9 @@ export default function SpectateClient({ matchId }: Props) {
 
       {/* ── Board canvas ── */}
       <div className="flex-1 relative min-h-0">
+        {/* Compact team HUDs overlaid on board corners */}
+        {t1 && <CompactTeamHUD team={t1} color="blue" position="top-left" />}
+        {t2 && <CompactTeamHUD team={t2} color="red" position="bottom-right" />}
         <BattleCanvas
           boardWidth={boardWidth}
           boardHeight={boardHeight}
@@ -900,57 +891,34 @@ function TurnLogDrawer({
   );
 }
 
-// ─── Team HUD ─────────────────────────────────────────────────────────────────
+// ─── Compact Team HUD (corner overlay) ───────────────────────────────────────
 
-function TeamHUD({
+function CompactTeamHUD({
   team,
   color,
+  position,
 }: {
   team: TeamDisplay;
   color: "blue" | "red";
+  position: "top-left" | "bottom-right";
 }) {
-  const borderClass =
-    color === "blue" ? "border-blue-500/30" : "border-red-500/30";
-  const bgClass = color === "blue" ? "bg-blue-950/60" : "bg-red-950/60";
-  const alive = team.active.filter((v) => !v.isKO);
+  const posClass =
+    position === "top-left" ? "top-2 left-2" : "bottom-2 right-2";
+  const bgClass =
+    color === "blue"
+      ? "bg-blue-950/85 border-blue-500/40"
+      : "bg-red-950/85 border-red-500/40";
+  const aliveOnField = team.active.filter((v) => !v.isKO).length;
+  const totalAlive = aliveOnField + team.benchCount;
 
   return (
     <div
-      className={`flex-1 ${bgClass} border ${borderClass} rounded-lg px-3 py-1.5`}
+      className={`absolute ${posClass} z-10 ${bgClass} border rounded-xl px-2.5 py-1.5 backdrop-blur-sm pointer-events-none max-w-[140px]`}
     >
-      <p className="font-bold text-sm truncate">{team.name}</p>
+      <p className="font-bold text-xs text-white truncate">{team.name}</p>
       <div className="flex gap-2 text-xs text-gray-300 mt-0.5">
         <span>⚡{team.energy}</span>
-        <span>🗡️{alive.length} active</span>
-        <span>📦{team.benchCount} bench</span>
-        <span>💀{team.knockedCount} KO</span>
-      </div>
-      <div className="mt-1 space-y-0.5">
-        {alive.map((v) => {
-          const pct = Math.round((v.hp / v.maxHp) * 100);
-          const barColor =
-            pct > 50
-              ? "bg-green-500"
-              : pct > 25
-                ? "bg-yellow-500"
-                : "bg-red-500";
-          return (
-            <div key={v.uuid} className="flex items-center gap-1">
-              <span className="text-[10px] text-gray-400 w-14 truncate">
-                {v.name}
-              </span>
-              <div className="flex-1 h-1 bg-gray-700 rounded-full">
-                <div
-                  className={`h-full rounded-full ${barColor}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <span className="text-[10px] text-gray-500 w-8 text-right">
-                {v.hp}/{v.maxHp}
-              </span>
-            </div>
-          );
-        })}
+        <span>🗡️{totalAlive}</span>
       </div>
     </div>
   );
