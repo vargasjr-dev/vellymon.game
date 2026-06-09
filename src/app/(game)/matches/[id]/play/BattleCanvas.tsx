@@ -141,7 +141,9 @@ function teamGlow(teamId: 1 | 2) {
 const loadingUrls = new Set<string>();
 // Cache cropped textures so we don't recreate them every draw frame
 const croppedTextureCache = new Map<string, Texture>();
-const SPRITE_CROP = 8; // px to trim from each edge of raw sprite sheets
+// Sprites are 1408×1408 with ~25% whitespace padding on each side.
+// Crop proportionally so the mon fills the tile regardless of source resolution.
+const SPRITE_CROP_FRAC = 0.25;
 
 // ─── Grid ↔ Screen coordinate helpers ────────────────────────────────────────
 
@@ -463,7 +465,7 @@ export default function BattleCanvas({
         bw,
         myTeam,
       );
-      const avatarSize = tileSize * 0.6;
+      const avatarSize = tileSize * 0.88;
 
       if (vm.imageUrl && Assets.cache.has(vm.imageUrl)) {
           // Use a cropped texture (trim SPRITE_CROP px per side) so the mon
@@ -471,7 +473,7 @@ export default function BattleCanvas({
           let tex = croppedTextureCache.get(vm.imageUrl);
           if (!tex) {
             const base: Texture = Assets.get(vm.imageUrl);
-            const c = SPRITE_CROP;
+            const c = Math.round(base.width * SPRITE_CROP_FRAC);
             tex = new Texture({
               source: base.source,
               frame: new Rectangle(c, c, base.width - c * 2, base.height - c * 2),
