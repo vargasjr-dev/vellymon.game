@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import TurnHistory, { type TurnSnapshot } from "../play/TurnHistory";
 import type {
@@ -489,9 +490,9 @@ function buildVellymonLookup(
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-type Props = { matchId: string };
+type Props = { matchId: string; initialTurn?: number };
 
-export default function SpectateClient({ matchId }: Props) {
+export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -538,6 +539,9 @@ export default function SpectateClient({ matchId }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  const router = useRouter();
+  const pathname = usePathname();
+
   const isReplay = turnSnapshots !== null && turnSnapshots.length > 0;
 
   // ── Initial load ─────────────────────────────────────────────────────────
@@ -561,12 +565,13 @@ export default function SpectateClient({ matchId }: Props) {
         const snapshots = data.turnSnapshots ?? [];
 
         if (snapshots.length > 0) {
-          setTurnSnapshots(snapshots);
-          setTurnLogs(data.turnLogs ?? []);
-          setReplayIndex(0);
-          setLoading(false);
-          return;
-        }
+            setTurnSnapshots(snapshots);
+            setTurnLogs(data.turnLogs ?? []);
+            // Restore position from ?turn= query param, clamped to valid range
+            setReplayIndex(Math.min(initialTurn, snapshots.length - 1));
+            setLoading(false);
+            return;
+          }
 
         // Live mode
         setLiveState(parseGameState(data.gameState));
@@ -619,6 +624,13 @@ export default function SpectateClient({ matchId }: Props) {
   useEffect(() => {
     setLogOpen(false);
   }, [replayIndex]);
+
+  // Sync ?turn= query param so a refresh restores the current position
+  useEffect(() => {
+    if (!isReplay) return;
+    const url = `${pathname}?turn=${replayIndex}`;
+    router.replace(url, { scroll: false });
+  }, [replayIndex, isReplay, pathname, router]);
 
   // Cleanup timeouts on unmount (Pixi ticker cleanup is handled by BattleCanvas)
   useEffect(() => {
