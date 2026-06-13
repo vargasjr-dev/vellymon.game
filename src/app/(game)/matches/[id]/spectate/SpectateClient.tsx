@@ -10,6 +10,33 @@ import type {
   VellymonDisplay as CanvasVellymon,
 } from "../play/BattleCanvas";
 
+// ─── Power description lookup (client-safe) ───────────────────────────────────
+// Import the power registry side-effects and vellymon library at module level
+// so getPower() is populated. These files have no Node.js deps — safe to run in browser.
+import { VELLYMON_LIBRARY } from "../../../../../../server/vellymonLibrary";
+import { getPower } from "../../../../../../server/specialPowers";
+import "../../../../../../server/powers"; // side-effect: registers all powers
+
+/** Map from lowercase vellymon name → power description (or undefined if no power). */
+const POWER_DESC_BY_NAME = new Map<string, string>(
+  VELLYMON_LIBRARY.flatMap((v) => {
+    if (!v.specialPowerId) return [];
+    const power = getPower(v.specialPowerId);
+    if (!power?.description) return [];
+    return [[v.name.toLowerCase(), power.description]];
+  }),
+);
+
+/** Map from lowercase vellymon name → power name. */
+const POWER_NAME_BY_NAME = new Map<string, string>(
+  VELLYMON_LIBRARY.flatMap((v) => {
+    if (!v.specialPowerId) return [];
+    const power = getPower(v.specialPowerId);
+    if (!power?.name) return [];
+    return [[v.name.toLowerCase(), power.name]];
+  }),
+);
+
 const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), {
   ssr: false,
 });
@@ -1126,6 +1153,32 @@ function MonCardOverlay({
             <p className="text-white font-bold text-lg">{vm.attack}</p>
           </div>
         </div>
+
+        {/* Special Power */}
+        {(() => {
+          const powerName = POWER_NAME_BY_NAME.get(vm.name.toLowerCase());
+          const powerDesc = POWER_DESC_BY_NAME.get(vm.name.toLowerCase());
+          if (!powerName && !powerDesc) return null;
+          return (
+            <div className="mb-3">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1.5">
+                Special Power
+              </p>
+              <div className="bg-purple-900/40 border border-purple-500/30 rounded-xl px-3 py-2">
+                {powerName && (
+                  <p className="text-purple-300 text-xs font-semibold mb-0.5">
+                    ✨ {powerName}
+                  </p>
+                )}
+                {powerDesc && (
+                  <p className="text-gray-300 text-xs leading-relaxed">
+                    {powerDesc}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Moves */}
         {vm.attacks.length > 0 && (
