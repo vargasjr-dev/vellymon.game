@@ -761,6 +761,11 @@ export default function SpectateClient({ matchId }: Props) {
 
   // Vellymons for BattleCanvas — always the current snapshot state.
   // During tween, BattleCanvas overrides positions internally via its ticker.
+  // Stable empty set — never changes; passing `new Set()` inline creates a new
+  // reference every render, which fires the vellymons useEffect in BattleCanvas
+  // and clears committed displayVmsRef positions during multi-step animations.
+  const emptyCommandedUuids = useMemo(() => new Set<string>(), []);
+
   const allVellymons = useMemo(
     () => [
       ...(t1?.active.map((v: VellymonDisplay) => ({
@@ -939,7 +944,7 @@ export default function SpectateClient({ matchId }: Props) {
           yourTeamId={1}
           selectedVellymon={selectedMonUuid}
           onSelectVellymon={handleSelectVellymon}
-          commandedUuids={new Set()}
+          commandedUuids={emptyCommandedUuids}
           overlays={overlays ?? undefined}
           tween={activeTween ?? undefined}
           tapAllVellymons
