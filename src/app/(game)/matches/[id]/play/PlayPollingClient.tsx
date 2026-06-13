@@ -691,11 +691,11 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                   Switching to Team {activeTeamId}...
                 </p>
               </div>
-            ) : !selectedVm ? (
-              <div>
-                {/* Pending commands summary */}
+            ) : (
+              <div className="mb-2">
+                {/* Pending commands summary — always rendered to keep bar height stable */}
                 {pendingCommands.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 mb-2 justify-center">
+                  <div className="flex flex-wrap gap-1 justify-center">
                     {pendingCommands.map((cmd) => {
                       const vm = yourTeam?.active.find(
                         (v) => v.uuid === cmd.vellymonUuid,
@@ -719,12 +719,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                     })}
                   </div>
                 ) : (
-                  <p className="text-center text-sm text-gray-500 mb-2">
+                  <p className="text-center text-sm text-gray-500">
                     Tap a vellymon to issue commands
                   </p>
                 )}
               </div>
-            ) : null}
+            )}
 
             {/* Submit button — always visible */}
             {!waitingForSwitch && (
