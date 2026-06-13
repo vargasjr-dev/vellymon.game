@@ -5,10 +5,9 @@ import { auth } from "~/lib/auth.server";
 import { isAdmin } from "~/lib/admin";
 import { listAiProfiles } from "~/data/aiProfiles.server";
 import { VELLYMON_LIBRARY } from "../../../../../server/vellymonLibrary";
-import "../../../../../server/powers"; // register all special powers
+import "../../../../../server/powers";
 import { getPower } from "../../../../../server/specialPowers";
 import ProfileCreateForm from "./ProfileCreateForm";
-import ProfileDeleteButton from "./ProfileDeleteButton";
 
 export default async function ProfilesPage() {
   const headersList = await headers();
@@ -17,7 +16,6 @@ export default async function ProfilesPage() {
 
   const profiles = await listAiProfiles();
 
-  // Build full vellymon data including power name/description for the selector
   const allVellymons = VELLYMON_LIBRARY.map((v) => ({
     name: v.name,
     hp: v.hp,
@@ -32,7 +30,7 @@ export default async function ProfilesPage() {
   }));
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-6 flex items-center gap-4">
         <Link href="/admin" className="text-gray-500 hover:text-gray-700 text-sm">
           ← Admin
@@ -40,65 +38,31 @@ export default async function ProfilesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">🤖 AI Player Profiles</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            LLM-driven AI personas. Each profile has a prompt, a team, and a
-            randomness setting that shapes how it plays.
+            LLM-driven AI personas. Click a profile to view details and match history.
           </p>
         </div>
       </div>
 
-      {/* Existing profiles */}
+      {/* Profile list — name only */}
       {profiles.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center text-gray-500 mb-8">
           No profiles yet. Create one below.
         </div>
       ) : (
-        <div className="grid gap-4 mb-8">
+        <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden mb-8">
           {profiles.map((p) => (
-            <div
+            <Link
               key={p.id}
-              className="bg-white border border-gray-200 rounded-xl p-4 flex items-start justify-between gap-4"
+              href={`/admin/profiles/${p.id}`}
+              className="flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition group"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-gray-900">{p.name}</span>
-                  <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-mono">
-                    {p.id}
-                  </span>
-                  <span className="text-xs bg-blue-50 text-blue-700 rounded px-1.5 py-0.5">
-                    🎲 {typeof p.randomness === "number" ? p.randomness.toFixed(2) : "0.50"}
-                  </span>
-                </div>
-                {p.description && (
-                  <p className="text-sm text-gray-500 mb-2 line-clamp-2">
-                    {p.description}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-1">
-                  {(p.teamNames as string[]).map((name, i) => (
-                    <span
-                      key={i}
-                      className={`text-xs rounded px-1.5 py-0.5 ${
-                        i < 4
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "bg-gray-50 text-gray-500 border border-gray-200"
-                      }`}
-                    >
-                      {name}
-                      {i >= 4 && <span className="ml-0.5 opacity-60"> bench</span>}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  href={`/admin/profiles/${p.id}`}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  History →
-                </Link>
-                <ProfileDeleteButton profileId={p.id} profileName={p.name} />
-              </div>
-            </div>
+              <span className="font-medium text-gray-900 group-hover:text-blue-600 transition">
+                {p.name}
+              </span>
+              <span className="text-sm text-gray-400 group-hover:text-blue-500 transition">
+                →
+              </span>
+            </Link>
           ))}
         </div>
       )}
