@@ -22,6 +22,15 @@ function StatPill({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+const RANK_EMOJI: Record<string, string> = {
+  bronze: "🥉",
+  silver: "🥈",
+  gold: "🥇",
+  platinum: "💎",
+  diamond: "💠",
+  legend: "👑",
+};
+
 interface MatchSummaryProps {
   summary: MatchSummaryData;
   currentUserId: string;
@@ -129,6 +138,17 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
                 </span>
               </div>
 
+              {/* Rank badge */}
+              {!row.isSparring && row.rank && (
+                <div className="mb-3 flex items-center gap-1.5">
+                  <span className="text-base">{RANK_EMOJI[row.rank] ?? "🎖️"}</span>
+                  <span className="text-xs font-semibold text-gray-600 capitalize">{row.rank}</span>
+                  {row.mmr !== null && (
+                    <span className="text-xs text-gray-400 ml-1">{row.mmr} MMR</span>
+                  )}
+                </div>
+              )}
+
               {/* Stat Pills */}
               <div className="flex flex-wrap gap-2">
                 <StatPill label="KOs Dealt" value={row.enemyKOs} />
@@ -179,6 +199,14 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
           Match History
         </Link>
       </div>
+
+      {/* Spectate replay */}
+      <Link
+        href={`/matches/${summary.matchUuid}/spectate`}
+        className="block w-full text-center bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold transition"
+      >
+        🎬 Watch Replay
+      </Link>
 
       {rematchError && (
         <p className="text-sm text-red-500 text-center mt-2">{rematchError}</p>

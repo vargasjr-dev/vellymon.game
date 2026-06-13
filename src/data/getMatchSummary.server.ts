@@ -1,5 +1,5 @@
 import { db } from "../../data/db";
-import { matchStats, gameSession, gamePlayer, user, team } from "../../data/schema";
+import { matchStats, gameSession, gamePlayer, user, team, userRank } from "../../data/schema";
 import { eq } from "drizzle-orm";
 
 export type MatchStatRow = {
@@ -17,6 +17,10 @@ export type MatchStatRow = {
   /** Calculated client-side — mirrors matchProgression.ts logic */
   xpAwarded: number;
   creditsAwarded: number;
+  /** Current rank tier for this player (null for unranked / sparring) */
+  rank: string | null;
+  /** Current MMR (null for unranked / sparring) */
+  mmr: number | null;
 };
 
 export type MatchSummaryData = {
@@ -68,11 +72,34 @@ const getMatchSummary = async (
       }
     }
 
+    // Fetch current rank for all players in this match
+    const userIds = Array.from(byUser.keys());
+    const rankRows = userIds.length > 0
+      ? await db
+          .select({ userId: userRank.userId, rank: userRank.rank, mmr: userRank.mmr })
+          .from(userRank)
+          .where(eq(userRank.userId, userIds[0])) // drizzle inList not needed for typical 2-player match
+      : [];
+    // For matches with more than one player, fetch remaining ranks
+    const rankMap = new Map<string, { rank: string; mmr: number }>();
+    for (const r of rankRows) rankMap.set(r.userId, { rank: r.rank, mmr: r.mmr });
+    if (userIds.length > 1) {
+      for (const uid of userIds.slice(1)) {
+        const extra = await db
+          .select({ rank: userRank.rank, mmr: userRank.mmr })
+          .from(userRank)
+          .where(eq(userRank.userId, uid))
+          .limit(1);
+        if (extra[0]) rankMap.set(uid, { rank: extra[0].rank, mmr: extra[0].mmr });
+      }
+    }
+
     const stats: MatchStatRow[] = Array.from(byUser.values()).map((row) => {
       const won = row.result === "win";
       const isSparring = row.isSparring;
       const creditsAwarded = 10 + (won && !isSparring ? 25 : 0);
       const xpAwarded = Math.round((won ? 100 : 50) * (!isSparring ? 1.5 : 1));
+      const rankInfo = rankMap.get(row.userId);
 
       return {
         userId: row.userId,
@@ -88,6 +115,8 @@ const getMatchSummary = async (
         completedAt: row.completedAt,
         xpAwarded,
         creditsAwarded,
+        rank: rankInfo?.rank ?? null,
+        mmr: rankInfo?.mmr ?? null,
       };
     });
 
