@@ -105,8 +105,36 @@ function getVellymonAtPosition(
 }
 
 /**
+ * Snapshot-aware variant: find the vellymon that occupied `pos` at the START
+ * of the turn (before any moves resolved).  Returns the LIVE VellymonState
+ * object so that damage can still be applied to the correct entity, but only
+ * matches against pre-turn positions to prevent movers from being hit when
+ * they stepped into the attacker's line of fire mid-turn.
+ */
+function getVellymonAtPositionFromSnapshot(
+  state: GameState,
+  pos: Position,
+  snapshot: Map<string, Position | null>,
+): VellymonState | undefined {
+  for (const team of state.teams) {
+    for (const v of team.active) {
+      if (v.isKO) continue;
+      const snapPos = snapshot.get(v.uuid);
+      if (snapPos && snapPos.x === pos.x && snapPos.y === pos.y) {
+        return v; // live object, snapshot position
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Scan along a direction from a position for the first enemy within range.
  * Returns the position of the first enemy found, or null if none.
+ *
+ * When `positionSnapshot` is provided, occupancy is checked against
+ * start-of-turn positions instead of live positions — this prevents a mon that
+ * moved INTO the attack path during the same turn from being erroneously hit.
  */
 function scanForTarget(
   state: GameState,
@@ -114,6 +142,7 @@ function scanForTarget(
   direction: Direction,
   range: number,
   ownTeam: TeamState,
+  positionSnapshot?: Map<string, Position | null>,
 ): { position: Position; target: VellymonState } | null {
   const offset = directionToOffset(direction);
 
@@ -137,8 +166,11 @@ function scanForTarget(
     const space = getSpace(state.board, pos);
     if (!space || space.type === "void") break;
 
-    // Check for any vellymon at this position
-    const occupant = getVellymonAtPosition(state, pos);
+    // Check for any vellymon at this position (snapshot-aware when provided)
+    const occupant = positionSnapshot
+      ? getVellymonAtPositionFromSnapshot(state, pos, positionSnapshot)
+      : getVellymonAtPosition(state, pos);
+
     if (occupant) {
       // Skip own team (don't friendly-fire, but also stop scanning — can't shoot through allies)
       const isOwnTeam = ownTeam.active.some((v) => v.uuid === occupant.uuid);
@@ -340,6 +372,7 @@ export function resolveAttack(
   command: AttackCommand,
   team: TeamState,
   state: GameState,
+  positionSnapshot?: Map<string, Position | null>,
 ): CommandResult {
   const vellymon = team.active.find(
     (v) => v.uuid === command.vellymonUuid && !v.isKO,
@@ -361,13 +394,16 @@ export function resolveAttack(
     };
   }
 
-  // Scan for first enemy in direction within range
+  // Scan for first enemy in direction within range.
+  // Use start-of-turn snapshot so that a mon which moved INTO the attack path
+  // during this same turn doesn't get erroneously hit.
   const hit = scanForTarget(
     state,
     vellymon.position,
     command.direction,
     attack.range,
     team,
+    positionSnapshot,
   );
 
   if (!hit) {
@@ -460,12 +496,13 @@ export function resolveCommand(
   command: Command,
   team: TeamState,
   state: GameState,
+  positionSnapshot?: Map<string, Position | null>,
 ): CommandResult {
   switch (command.type) {
     case "move":
       return resolveMove(command, team, state);
     case "attack":
-      return resolveAttack(command, team, state);
+      return resolveAttack(command, team, state, positionSnapshot);
     case "harvest":
       return resolveHarvest(command, team, state);
   }
