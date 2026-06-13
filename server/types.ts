@@ -99,4 +99,12 @@ export type GameState = {
   matchUuid: string;
   /** Game phase */
   phase: "setup" | "playing" | "ended";
+  /**
+   * Possession arrow for speed-tie resolution.
+   * The team whose arrow it is acts first when commands are fully tied
+   * (same phase, same speed, same base damage). Initialized randomly on the
+   * first actual tie and flips after each tie group it resolves.
+   * Intentionally omitted from match UI.
+   */
+  possessionArrow?: 1 | 2;
 };

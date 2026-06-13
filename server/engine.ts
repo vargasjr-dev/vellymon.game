@@ -145,16 +145,93 @@ export function startTurn(
   return createTurnTimer(state.turn, timerSeconds);
 }
 
+// ─── Speed-Tie Resolution ────────────────────────────────────────────────────
+
+/** Phase execution order: harvest acts first, then moves, then attacks. */
+function getPhasePriority(command: Command): number {
+  switch (command.type) {
+    case "harvest": return 0;
+    case "move":    return 1;
+    case "attack":  return 2;
+  }
+}
+
+/**
+ * Returns the move's base damage for attacks, 0 for all other command types.
+ * Lower damage goes first within the attack phase (speed-tie tiebreaker #2).
+ */
+function getAttackBaseDamage(command: Command, team: TeamState): number {
+  if (command.type !== "attack") return 0;
+  const vellymon = team.active.find((v) => v.uuid === command.vellymonUuid);
+  return vellymon?.attacks[command.attackIndex]?.damage ?? 0;
+}
+
+/**
+ * Applies possession-arrow tiebreaking in-place within any groups of commands
+ * that are fully tied on phase + speed + baseDamage.
+ *
+ * The arrow is initialized randomly on the first actual tie and flips after
+ * each tie group it resolves. It ONLY advances when it is the deciding
+ * factor — groups with a single command leave the arrow unchanged.
+ */
+function resolveArrowTies(
+  commands: Array<{ team: { id: 1 | 2 }; phase: number; speed: number; baseDamage: number }>,
+  state: GameState,
+): void {
+  let i = 0;
+  while (i < commands.length) {
+    // Find the end of this tie group (same phase + speed + baseDamage)
+    let j = i + 1;
+    while (
+      j < commands.length &&
+      commands[j].phase === commands[i].phase &&
+      commands[j].speed === commands[i].speed &&
+      commands[j].baseDamage === commands[i].baseDamage
+    ) {
+      j++;
+    }
+
+    const groupSize = j - i;
+    if (groupSize > 1) {
+      // Initialize arrow randomly on first actual tie
+      if (state.possessionArrow === undefined) {
+        state.possessionArrow = Math.random() < 0.5 ? 1 : 2;
+      }
+      const arrow = state.possessionArrow;
+
+      // Stable sort within the group: arrow team's commands go first
+      const group = commands.slice(i, j);
+      group.sort((a, b) => {
+        const aScore = a.team.id === arrow ? 0 : 1;
+        const bScore = b.team.id === arrow ? 0 : 1;
+        return aScore - bScore;
+      });
+      commands.splice(i, groupSize, ...group);
+
+      // Flip the arrow for the next tie
+      state.possessionArrow = arrow === 1 ? 2 : 1;
+    }
+
+    i = j;
+  }
+}
+
 /**
  * Resolve a full turn once both players have submitted (or timer expired).
  *
  * Resolution order:
  * 1. Collect all commands from both teams
- * 2. Sort by vellymon speed (highest first)
- * 3. Resolve each command in speed order
+ * 2. Sort by the three-tier priority system (see sortCommands / resolveArrowTies)
+ * 3. Resolve each command in priority order
  * 4. Process KOs and bench entries
  * 5. Update occupation counters
  * 6. Check win conditions
+ *
+ * Priority tiers (ties cascade to the next tier):
+ *   1. Phase      — harvest → move → attack
+ *   2. Speed      — higher speed acts first (within the same phase)
+ *   3. Base damage — lower move damage acts first (attack phase only)
+ *   4. Possession arrow — alternating, random first pick, only advances on actual ties
  */
 export function resolveTurn(
   state: GameState,
@@ -181,6 +258,10 @@ export function resolveTurn(
     command: Command;
     team: TeamState;
     speed: number;
+    /** Execution phase: 0=harvest, 1=move, 2=attack */
+    phase: number;
+    /** Move's base damage (0 for non-attacks). Used as tiebreaker within attacks. */
+    baseDamage: number;
     validationError: string | null;
   };
 
@@ -189,6 +270,8 @@ export function resolveTurn(
       command: cmd,
       team,
       speed: getVellymonSpeed(team, cmd.vellymonUuid),
+      phase: getPhasePriority(cmd),
+      baseDamage: getAttackBaseDamage(cmd, team),
       validationError: validateCommand(cmd, team, state),
     }));
 
@@ -197,8 +280,17 @@ export function resolveTurn(
     ...tagCommands(t2Commands, team2),
   ];
 
-  // Sort by speed descending (highest speed acts first)
-  allCommands.sort((a, b) => b.speed - a.speed);
+  // Sort by: phase asc → speed desc → base damage asc (attacks only).
+  // Commands still tied on all three criteria are broken by the possession arrow below.
+  allCommands.sort((a, b) => {
+    if (a.phase !== b.phase) return a.phase - b.phase;
+    if (a.speed !== b.speed) return b.speed - a.speed;
+    if (a.baseDamage !== b.baseDamage) return a.baseDamage - b.baseDamage;
+    return 0;
+  });
+
+  // Break remaining ties using the possession arrow (mutates state.possessionArrow).
+  resolveArrowTies(allCommands, state);
 
   // Snapshot all vellymon positions BEFORE any commands execute.
   // Attack target scanning uses these start-of-turn positions so that a mon
