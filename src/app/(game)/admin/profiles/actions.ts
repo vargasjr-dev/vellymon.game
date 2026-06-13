@@ -47,53 +47,63 @@ async function autoSelectMons(
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic({ apiKey });
 
-  const monList = available
-    .map(
-      (v) =>
-        `- ${v.name} [${v.archetype}] (HP ${v.hp}, ATK ${v.attack}, SPD ${v.speed}) — "${v.flavor}"`,
-    )
-    .join("\n");
+  // Full roster in the system prompt so Haiku has stable context per-call.
+  // Stats drive selection — no archetype labels to avoid pigeonholing the meta.
+  const fullRoster = VELLYMON_LIBRARY.map(
+    (v) =>
+      `- ${v.name} (HP ${v.hp}, ATK ${v.attack}, SPD ${v.speed}) — "${v.flavor}"`,
+  ).join("\n");
 
-  const existingText =
-    existing.length > 0
-      ? `Current partial team: ${existing.join(", ")}\n`
-      : "";
+  const systemPrompt = `You are a vellymon team-builder. Select vellymons whose stats best match an AI player profile's described playstyle.
 
-  const prompt = `You are helping build a vellymon team for an AI player profile.
+Prioritise raw stat alignment: a speed-focused profile gets high-SPD mons, an aggressive profile gets high-ATK mons, a durable profile gets high-HP mons. Mix and match freely — there are no prescribed combinations.
 
-Profile description (this defines the AI's playstyle and personality):
-"${description}"
+Full vellymon roster:
+${fullRoster}
 
-${existingText}You need to pick exactly ${count} vellymon${count > 1 ? "s" : ""} to add to the team.
-The team is 8 vellymons total — which ones start or sit on the bench is decided later at pregame.
+Call select_mons with exactly the number of picks requested. Do not pick mons already on the team.`;
 
-Each vellymon entry shows: name [archetype] (HP, ATK, SPD) — flavor text.
-Archetypes: speedster (high SPD), tank (high HP), glass_cannon (high ATK/low HP), support, balanced.
+  const existingNote =
+    existing.length > 0 ? `\nAlready on team (do not pick): ${existing.join(", ")}` : "";
 
-Available vellymons:
-${monList}
+  const userMessage = `Profile description: "${description}"${existingNote}
+Pick ${count} vellymon${count > 1 ? "s" : ""} to add to the team.`;
 
-Pick ${count} that best match the profile's description and strategy.
-Pay close attention to the stats — if the description emphasises speed/aggression/bulk, match the archetype and stats accordingly.
-Return ONLY a JSON array of the vellymon names, nothing else.
-Example: ["Aerobolt", "Zipfang"]`;
+  const selectTool = {
+    name: "select_mons",
+    description: `Select exactly ${count} vellymon${count > 1 ? "s" : ""} for the team.`,
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        selections: {
+          type: "array" as const,
+          items: { type: "string" as const },
+          description:
+            "Names of the selected vellymons, exactly as they appear in the roster.",
+        },
+      },
+      required: ["selections"],
+    },
+  };
 
   const msg = await client.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 256,
-    system:
-      "You are a competitive team-builder. Select vellymons whose stats and archetype best fit the described playstyle. Prioritise stat alignment over thematic name/flavor matching.",
-    messages: [{ role: "user", content: prompt }],
+    system: systemPrompt,
+    tools: [selectTool],
+    tool_choice: { type: "tool", name: "select_mons" },
+    messages: [{ role: "user", content: userMessage }],
   });
 
-  const text =
-    msg.content[0]?.type === "text" ? msg.content[0].text.trim() : "[]";
-
+  const toolUse = msg.content.find((b) => b.type === "tool_use");
   let picked: string[] = [];
-  try {
-    picked = JSON.parse(text);
-  } catch {
-    // If JSON parse fails, fall back to random
+  if (toolUse?.type === "tool_use") {
+    const input = toolUse.input as { selections?: string[] };
+    picked = Array.isArray(input.selections) ? input.selections : [];
+  }
+
+  if (picked.length === 0) {
+    // Unexpected — tool call returned nothing; fall back to random
     const shuffled = available.sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count).map((v) => v.name);
   }
