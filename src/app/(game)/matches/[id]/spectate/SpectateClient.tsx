@@ -200,142 +200,97 @@ function snapshotToVellymons(snap: RawGameState): CanvasVellymon[] {
   return result;
 }
 
-/** Build overlay ghosts + arrows for a single command preview. */
-function buildPreviewOverlay(
+/**
+ * Scan along an attack direction in the pre-turn snapshot to find the actual
+ * hit tile. Needed so the arrow draws to where the target actually was, not
+ * just attacker + 1 tile (which is wrong for range-2+ attacks).
+ */
+function findAttackTargetTile(
   cmd: RawCommandResult,
-  snap: RawGameState,
-  lookup: Map<string, { name: string; teamId: 1 | 2 }>,
-): Overlays {
-  const info = lookup.get(cmd.command.vellymonUuid);
-  if (!info) return {};
-  const teamId = info.teamId;
-
-  // Find current vellymon position in snapshot
-  const team = snap.teams.find((t) => t.id === teamId);
-  const vm = team?.active.find((v) => v.uuid === cmd.command.vellymonUuid);
-  if (!vm?.position) return {};
-
-  const { x, y } = vm.position;
-  const dir = cmd.command.direction as Dir | undefined;
-  const offset = dir ? DIR_OFFSETS[dir] : null;
-
-  const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
-
-  if (cmd.command.type === "move" && offset) {
-    const tx = x + offset.dx;
-    const ty = y + offset.dy;
-    return {
-      ghosts: [{ x: tx, y: ty, teamId, alpha: 1 }],
-      arrows: [
-        { fromX: x, fromY: y, toX: tx, toY: ty, color: teamColor, alpha: 0.85 },
-      ],
-    };
+  attackerPos: { x: number; y: number },
+  dir: Dir,
+  fromSnap: RawGameState,
+): { x: number; y: number } {
+  const offset = DIR_OFFSETS[dir];
+  // Get attack range from snapshot
+  let range = 1;
+  for (const t of fromSnap.teams) {
+    const v = t.active.find((av) => av.uuid === cmd.command.vellymonUuid);
+    if (v) {
+      const atk = v.attacks?.[cmd.command.attackIndex ?? 0];
+      if (atk) range = atk.range;
+      break;
+    }
   }
-
-  if (cmd.command.type === "attack" && offset) {
-    const tx = x + offset.dx;
-    const ty = y + offset.dy;
-    return {
-      arrows: [
-        { fromX: x, fromY: y, toX: tx, toY: ty, color: 0xff6b6b, alpha: 0.9 },
-      ],
+  // Find attacker's team id
+  const attackerTeamId = fromSnap.teams.find((t) =>
+    t.active.some((v) => v.uuid === cmd.command.vellymonUuid),
+  )?.id;
+  // Scan for first enemy along direction within range
+  for (let d = 1; d <= range; d++) {
+    const pos = {
+      x: attackerPos.x + offset.dx * d,
+      y: attackerPos.y + offset.dy * d,
     };
+    if (
+      pos.x < 0 ||
+      pos.x >= fromSnap.boardWidth ||
+      pos.y < 0 ||
+      pos.y >= fromSnap.boardHeight
+    )
+      break;
+    for (const t of fromSnap.teams) {
+      if (t.id === attackerTeamId) continue;
+      const hit = t.active.find(
+        (v) =>
+          !v.isKO && v.position?.x === pos.x && v.position?.y === pos.y,
+      );
+      if (hit) return pos;
+    }
   }
-
-  // Harvest — arrow pointing in harvest direction
-  if (cmd.command.type === "harvest" && offset) {
-    const tx = x + offset.dx;
-    const ty = y + offset.dy;
-    return {
-      arrows: [
-        { fromX: x, fromY: y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.8 },
-      ],
-    };
-  }
-
-  return {};
+  // Fallback — attacker + 1 tile
+  return { x: attackerPos.x + offset.dx, y: attackerPos.y + offset.dy };
 }
 
-/** Build impact labels from turn log (damage numbers, KO badges). */
-function buildImpactOverlays(log: RawTurnLog, snap: RawGameState): Overlays {
-  const labels: Overlays["labels"] = [];
-  for (const r of log.commandResults) {
-    if (!r.damageDealt && !r.targetKO) continue;
-    // Find target position in the "after" snap by searching all teams
-    // Attack direction tells us which tile was hit — but it's easiest to look up
-    // the target vellymon from the snap (it'll be at its post-turn position)
-    for (const team of snap.teams) {
-      for (const vm of team.active) {
-        // We can't perfectly match command → target without traversal, so we
-        // show damage labels at the *attacker's* post-turn position offset by dir.
-        // A solid UX approximation.
-        void vm; // suppress unused warning — loop is for structure
-      }
-    }
-    // Find attacker position in snap
-    let attackerPos: { x: number; y: number } | null = null;
-    for (const team of snap.teams) {
-      const vm = team.active.find((v) => v.uuid === r.command.vellymonUuid);
-      if (vm?.position) {
-        attackerPos = vm.position;
-        break;
-      }
-    }
-    if (!attackerPos) continue;
-    const dir = r.command.direction as Dir | undefined;
-    const offset = dir ? DIR_OFFSETS[dir] : null;
-    const labelX = offset ? attackerPos.x + offset.dx : attackerPos.x;
-    const labelY = offset ? attackerPos.y + offset.dy : attackerPos.y;
-
-    if (r.targetKO) {
-      labels.push({
-        x: labelX,
-        y: labelY,
-        text: "💀 KO!",
-        color: 0xff4444,
-        alpha: 1,
-      });
-    } else if (r.damageDealt) {
-      labels.push({
-        x: labelX,
-        y: labelY,
-        text: `-${r.damageDealt}`,
-        color: 0xfbbf24,
-        alpha: 1,
-      });
-    }
-  }
-  return { labels };
-}
-
-/** One step in a sequential (Pokémon-style) turn animation. */
-type AnimStep = {
+/**
+ * Unified step: one command's full animation (preview arrow → tween → optional
+ * recoil for attacks → optional impact label). The runner chains these
+ * sequentially so the board shows P1→A1→P2→A2→... instead of all P then all A.
+ */
+type UnifiedStep = {
   key: string;
-  from: CanvasVellymon[];
-  to: CanvasVellymon[];
-  /** Damage / KO label to show after this step's tween completes. */
-  impact: Overlays | null;
+  // Arrow(s) to accumulate before this step tweens
+  previewOverlay: Overlays;
+  previewMs: number;
+  // Primary tween (move to new pos, or lunge toward target for attacks)
+  tweenFrom: CanvasVellymon[];
+  tweenTo: CanvasVellymon[];
+  tweenMs: number;
+  // Recoil tween (attacks only — snap attacker back to original pos)
+  recoilTo?: CanvasVellymon[];
+  recoilMs?: number;
+  // Impact label after execute
+  impactOverlay: Overlays | null;
+  impactMs: number;
 };
 
 /**
- * Break a turn into per-command animation steps, sorted by speed (already
- * sorted in previewCmds). Each step moves/acts one vellymon at a time.
- * A final "reconciliation" step snaps to the true toSnap so KOs/HP changes
- * are always correct at the end.
+ * Build a unified step list for one turn.
+ * Each entry covers preview + animation for a single command.
+ * A final reconciliation step snaps to the true toSnap state.
  */
-function buildSequentialSteps(
+function buildUnifiedSteps(
   sortedCmds: RawCommandResult[],
   fromSnap: RawGameState,
   toSnap: RawGameState,
-): AnimStep[] {
-  const steps: AnimStep[] = [];
+  lookup: Map<string, { name: string; teamId: 1 | 2 }>,
+): UnifiedStep[] {
+  const steps: UnifiedStep[] = [];
 
-  // Incrementally track positions as each command executes
   const workingPos = new Map<string, { x: number; y: number }>();
   const baseVms = snapshotToVellymons(fromSnap);
   baseVms.forEach((v) => workingPos.set(v.uuid, { x: v.x, y: v.y }));
 
-  // Snapshot all vms using accumulated working positions
   function snapshot(): CanvasVellymon[] {
     return baseVms.map((v) => {
       const pos = workingPos.get(v.uuid);
@@ -344,60 +299,111 @@ function buildSequentialSteps(
   }
 
   let stepIdx = 0;
+
   for (const cmd of sortedCmds) {
     if (!cmd.success) continue;
     const uuid = cmd.command.vellymonUuid;
+    const info = lookup.get(uuid);
+    const teamId = info?.teamId ?? 1;
+    const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
+    const cur = workingPos.get(uuid);
+    if (!cur) continue;
 
-    const from = snapshot();
-    let posChanged = false;
+    const dir = cmd.command.direction as Dir | undefined;
+    const offset = dir ? DIR_OFFSETS[dir] : null;
 
-    if (cmd.command.type === "move" && cmd.command.direction) {
-      const dir = cmd.command.direction as Dir;
-      const delta = DIR_OFFSETS[dir];
-      if (delta) {
-        const cur = workingPos.get(uuid);
-        if (cur) {
-          workingPos.set(uuid, { x: cur.x + delta.dx, y: cur.y + delta.dy });
-          posChanged = true;
-        }
-      }
-    }
+    if (cmd.command.type === "move" && offset) {
+      // Preview: ghost at destination + arrow
+      const previewOverlay: Overlays = {
+        ghosts: [{ x: cur.x + offset.dx, y: cur.y + offset.dy, teamId, alpha: 1 }],
+        arrows: [{ fromX: cur.x, fromY: cur.y, toX: cur.x + offset.dx, toY: cur.y + offset.dy, color: teamColor, alpha: 0.85 }],
+      };
 
-    const to = snapshot();
+      const from = snapshot();
+      workingPos.set(uuid, { x: cur.x + offset.dx, y: cur.y + offset.dy });
+      const to = snapshot();
 
-    // Impact label at target tile (same offset logic as buildImpactOverlays)
-    let impact: Overlays | null = null;
-    if ((cmd.damageDealt && cmd.damageDealt > 0) || cmd.targetKO) {
-      const attackerPos = workingPos.get(uuid);
-      if (attackerPos) {
-        const dir = cmd.command.direction as Dir | undefined;
-        const offset = dir ? DIR_OFFSETS[dir] : null;
-        impact = {
-          labels: [
-            {
-              x: offset ? attackerPos.x + offset.dx : attackerPos.x,
-              y: offset ? attackerPos.y + offset.dy : attackerPos.y,
-              text: cmd.targetKO ? "💀 KO!" : `-${cmd.damageDealt}`,
-              color: cmd.targetKO ? 0xff4444 : 0xfbbf24,
-              alpha: 1,
-            },
-          ],
+      steps.push({
+        key: String(stepIdx++),
+        previewOverlay,
+        previewMs: 300,
+        tweenFrom: from,
+        tweenTo: to,
+        tweenMs: 260,
+        impactOverlay: null,
+        impactMs: 0,
+      });
+    } else if (cmd.command.type === "attack" && offset) {
+      // Find real target tile by scanning the pre-snap
+      const targetTile = findAttackTargetTile(cmd, cur, dir!, fromSnap);
+
+      // Preview: arrow extending to the actual hit tile
+      const previewOverlay: Overlays = {
+        arrows: [{ fromX: cur.x, fromY: cur.y, toX: targetTile.x, toY: targetTile.y, color: 0xff6b6b, alpha: 0.9 }],
+      };
+
+      // Lunge: attacker briefly moves 0.35 tiles toward target direction
+      const from = snapshot();
+      workingPos.set(uuid, { x: cur.x + offset.dx * 0.35, y: cur.y + offset.dy * 0.35 });
+      const lunged = snapshot();
+      workingPos.set(uuid, cur); // snap back
+      const back = snapshot();
+
+      // Impact at actual hit tile
+      let impactOverlay: Overlays | null = null;
+      if ((cmd.damageDealt && cmd.damageDealt > 0) || cmd.targetKO) {
+        impactOverlay = {
+          labels: [{
+            x: targetTile.x,
+            y: targetTile.y,
+            text: cmd.targetKO ? "💀 KO!" : `-${cmd.damageDealt}`,
+            color: cmd.targetKO ? 0xff4444 : 0xfbbf24,
+            alpha: 1,
+          }],
         };
       }
-    }
 
-    // Only emit a step if something actually happens
-    if (posChanged || impact) {
-      steps.push({ key: String(stepIdx++), from, to, impact });
+      steps.push({
+        key: String(stepIdx++),
+        previewOverlay,
+        previewMs: 300,
+        tweenFrom: from,
+        tweenTo: lunged,
+        tweenMs: 110,
+        recoilTo: back,
+        recoilMs: 80,
+        impactOverlay,
+        impactMs: 400,
+      });
+    } else if (cmd.command.type === "harvest" && offset) {
+      // Harvest: just show a green arrow, no position change
+      const previewOverlay: Overlays = {
+        arrows: [{ fromX: cur.x, fromY: cur.y, toX: cur.x + offset.dx, toY: cur.y + offset.dy, color: 0x4ade80, alpha: 0.8 }],
+      };
+      const from = snapshot();
+      steps.push({
+        key: String(stepIdx++),
+        previewOverlay,
+        previewMs: 300,
+        tweenFrom: from,
+        tweenTo: from,
+        tweenMs: 60,
+        impactOverlay: null,
+        impactMs: 0,
+      });
     }
   }
 
-  // Final reconciliation — short snap to true toSnap (handles KOs, HP, edge cases)
+  // Final reconciliation — snaps to true toSnap (handles KOs, HP, any edge cases)
   steps.push({
     key: "final",
-    from: snapshot(),
-    to: snapshotToVellymons(toSnap),
-    impact: null,
+    previewOverlay: {},
+    previewMs: 0,
+    tweenFrom: snapshot(),
+    tweenTo: snapshotToVellymons(toSnap),
+    tweenMs: 80,
+    impactOverlay: null,
+    impactMs: 0,
   });
 
   return steps;
@@ -436,34 +442,30 @@ export default function SpectateClient({ matchId }: Props) {
   const [replayIndex, setReplayIndex] = useState(0);
   const [logOpen, setLogOpen] = useState(false);
 
-  // Animation state (Phase 1 → Preview, Phase 2 → Execute, Phase 3 → Impact)
-  type AnimPhase = "idle" | "previewing" | "executing" | "impacting";
+  // Animation state — unified P1A1P2A2 loop
+  type AnimPhase = "idle" | "animating";
   const [animPhase, setAnimPhase] = useState<AnimPhase>("idle");
   const [overlays, setOverlays] = useState<Overlays | null>(null);
   // tween is passed straight to BattleCanvas — it handles interpolation internally (no React 60fps updates)
   const [activeTween, setActiveTween] = useState<TweenTarget | null>(null);
   const animRef = useRef<{
     pendingIndex: number;
-    previewCmds: RawCommandResult[];
-    previewIdx: number;
     fromSnap: RawGameState | null;
     toSnap: RawGameState | null;
     log: RawTurnLog | null;
     lookup: Map<string, { name: string; teamId: 1 | 2 }>;
     timeoutId: ReturnType<typeof setTimeout> | null;
-    // Sequential execution
-    sequentialSteps: AnimStep[];
+    // Unified step list: each entry = preview + animation for one command
+    unifiedSteps: UnifiedStep[];
     stepIdx: number;
   }>({
     pendingIndex: 0,
-    previewCmds: [],
-    previewIdx: 0,
     fromSnap: null,
     toSnap: null,
     log: null,
     lookup: new Map(),
     timeoutId: null,
-    sequentialSteps: [],
+    unifiedSteps: [],
     stepIdx: 0,
   });
 
@@ -566,93 +568,97 @@ export default function SpectateClient({ matchId }: Props) {
   }, []);
 
   // ── Animation state machine ───────────────────────────────────────────────
-  // Forward refs allow mutual recursion between runStep ↔ finishAnimation
-  // without circular dependency issues in useCallback.
-  const finishAnimationRef = useRef<() => void>(() => {});
-  const runStepRef = useRef<() => void>(() => {});
-
-  const startExecutePhase = useCallback(() => {
-    const a = animRef.current;
-    if (!a.fromSnap || !a.toSnap) return;
-    setAnimPhase("executing");
-    setOverlays(null);
-
-    // Build per-command steps (Pokémon-style: one mon acts at a time)
-    a.sequentialSteps = buildSequentialSteps(
-      a.previewCmds,
-      a.fromSnap,
-      a.toSnap,
-    );
-    a.stepIdx = 0;
-    runStepRef.current();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const runStep = useCallback(() => {
-    const a = animRef.current;
-
-    if (a.stepIdx >= a.sequentialSteps.length) {
-      finishAnimationRef.current();
-      return;
-    }
-
-    const step = a.sequentialSteps[a.stepIdx];
-    a.stepIdx += 1;
-
-    const isFinal = step.key === "final";
-
-    setActiveTween({
-      key: `${a.pendingIndex}-${step.key}`,
-      from: step.from,
-      to: step.to,
-      // Final reconciliation snap is nearly instant; individual steps are snappy
-      duration: isFinal ? 80 : 320,
-      onComplete: () => {
-        setActiveTween(null);
-        if (step.impact) {
-          setAnimPhase("impacting");
-          setOverlays(step.impact);
-          a.timeoutId = setTimeout(() => {
-            setOverlays(null);
-            setAnimPhase("executing");
-            runStepRef.current();
-          }, 420);
-        } else {
-          runStepRef.current();
-        }
-      },
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Keep forward refs in sync every render
-  runStepRef.current = runStep;
+  // Forward ref allows runUnifiedStep to call itself recursively without
+  // stale-closure issues.
+  const runUnifiedStepRef = useRef<() => void>(() => {});
 
   const finishAnimation = useCallback(() => {
     const a = animRef.current;
+    if (a.timeoutId !== null) clearTimeout(a.timeoutId);
+    a.timeoutId = null;
     setOverlays(null);
     setActiveTween(null);
     setAnimPhase("idle");
     setReplayIndex(a.pendingIndex);
   }, []);
+  const finishAnimationRef = useRef(finishAnimation);
   finishAnimationRef.current = finishAnimation;
 
-  const advancePreview = useCallback(() => {
+  const runUnifiedStep = useCallback(() => {
     const a = animRef.current;
-    const cmd = a.previewCmds[a.previewIdx];
-    if (!cmd || !a.fromSnap) {
-      // All previews shown — move to execute
-      startExecutePhase();
+
+    if (a.stepIdx >= a.unifiedSteps.length) {
+      finishAnimationRef.current();
       return;
     }
-    const ovl = buildPreviewOverlay(cmd, a.fromSnap, a.lookup);
-    // Accumulate overlays so all arrows remain visible throughout the preview phase
-    setOverlays((prev) => ({
-      ghosts: [...(prev?.ghosts ?? []), ...(ovl.ghosts ?? [])],
-      arrows: [...(prev?.arrows ?? []), ...(ovl.arrows ?? [])],
-      labels: [...(prev?.labels ?? []), ...(ovl.labels ?? [])],
-    }));
-    a.previewIdx += 1;
-    a.timeoutId = setTimeout(advancePreview, 420);
-  }, [startExecutePhase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const step = a.unifiedSteps[a.stepIdx];
+    a.stepIdx += 1;
+
+    // 1 — Accumulate preview arrow for this command
+    if (step.previewOverlay && (step.previewOverlay.arrows?.length || step.previewOverlay.ghosts?.length)) {
+      setOverlays((prev) => ({
+        ghosts: [...(prev?.ghosts ?? []), ...(step.previewOverlay.ghosts ?? [])],
+        arrows: [...(prev?.arrows ?? []), ...(step.previewOverlay.arrows ?? [])],
+        labels: prev?.labels ?? [],
+      }));
+    }
+
+    // 2 — Wait preview duration, then tween
+    const fireTween = () => {
+      setActiveTween({
+        key: `${a.pendingIndex}-${step.key}`,
+        from: step.tweenFrom,
+        to: step.tweenTo,
+        duration: step.tweenMs,
+        onComplete: () => {
+          setActiveTween(null);
+
+          if (step.recoilTo) {
+            // Attack recoil: snap attacker back
+            setActiveTween({
+              key: `${a.pendingIndex}-${step.key}-recoil`,
+              from: step.tweenTo,
+              to: step.recoilTo,
+              duration: step.recoilMs ?? 80,
+              onComplete: () => {
+                setActiveTween(null);
+                afterExecute();
+              },
+            });
+          } else {
+            afterExecute();
+          }
+        },
+      });
+    };
+
+    const afterExecute = () => {
+      if (step.impactOverlay) {
+        // Show impact label, then continue
+        setOverlays((prev) => ({
+          ghosts: prev?.ghosts ?? [],
+          arrows: prev?.arrows ?? [],
+          labels: [...(prev?.labels ?? []), ...(step.impactOverlay?.labels ?? [])],
+        }));
+        a.timeoutId = setTimeout(() => {
+          // Clear impact label (keep arrows)
+          setOverlays((prev) => ({ ...prev, labels: [] }));
+          runUnifiedStepRef.current();
+        }, step.impactMs);
+      } else {
+        runUnifiedStepRef.current();
+      }
+    };
+
+    if (step.previewMs > 0) {
+      a.timeoutId = setTimeout(fireTween, step.previewMs);
+    } else {
+      fireTween();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  runUnifiedStepRef.current = runUnifiedStep;
 
   // Mon card overlay — tapping any vellymon on the board opens its card.
   const [selectedMonUuid, setSelectedMonUuid] = useState<string | null>(null);
@@ -675,15 +681,7 @@ export default function SpectateClient({ matchId }: Props) {
     const log = turnLogs[replayIndex] ?? null;
     const lookup = buildVellymonLookup(fromSnap);
 
-    const a = animRef.current;
-    a.pendingIndex = nextIdx;
-    a.fromSnap = fromSnap;
-    a.toSnap = toSnap;
-    a.log = log;
-    a.lookup = lookup;
-    a.previewIdx = 0;
-
-    // Sort commands by vellymon speed (fastest first — highest speed = first preview)
+    // Sort commands by vellymon speed (fastest first)
     const cmds = log?.commandResults ?? [];
     const getSpeed = (uuid: string): number => {
       for (const team of fromSnap.teams) {
@@ -698,20 +696,22 @@ export default function SpectateClient({ matchId }: Props) {
       (x, y) =>
         getSpeed(y.command.vellymonUuid) - getSpeed(x.command.vellymonUuid),
     );
-    a.previewCmds = sortedCmds;
 
-    // Start Phase 1: show "before" board (replayIndex hasn't changed yet), kick off preview sequence
-    setAnimPhase("previewing");
-    advancePreview();
+    const a = animRef.current;
+    a.pendingIndex = nextIdx;
+    a.fromSnap = fromSnap;
+    a.toSnap = toSnap;
+    a.log = log;
+    a.lookup = lookup;
+    // Build unified steps: each command gets its own preview+animate cycle
+    a.unifiedSteps = buildUnifiedSteps(sortedCmds, fromSnap, toSnap, lookup);
+    a.stepIdx = 0;
+
+    setAnimPhase("animating");
+    setOverlays(null);
+    runUnifiedStepRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    turnSnapshots,
-    replayIndex,
-    turnLogs,
-    animPhase,
-    isReplay,
-    advancePreview,
-  ]);
+  }, [turnSnapshots, replayIndex, turnLogs, animPhase, isReplay]);
 
   // ── Replay display state ──────────────────────────────────────────────────
   const replayParsed = useMemo(() => {
