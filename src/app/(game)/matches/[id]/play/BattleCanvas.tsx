@@ -664,9 +664,12 @@ export default function BattleCanvas({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Guard: don't redraw via React when a tween is actively running (ticker owns the draw loop)
+  // Guard: don't redraw via React when a tween ticker is running.
+  // When vellymons prop changes (replayIndex advances after full animation), clear
+  // the committed displayVmsRef so the new snapshot takes over.
   useEffect(() => {
-    if (displayVmsRef.current !== null) return; // tween active — skip
+    if (activeTweenKeyRef.current !== null) return; // ticker running — skip
+    displayVmsRef.current = null; // release committed positions; use fresh prop
     draw();
   }, [
     boardWidth,
@@ -701,7 +704,10 @@ export default function BattleCanvas({
       drawRef.current?.();
       if (raw >= 1) {
         app.ticker.remove(ticker);
-        displayVmsRef.current = null; // hand back control to React prop
+        // Keep displayVmsRef at final position — don't revert to the React prop
+        // (which is still fromSnap during multi-step animations). The prop guard
+        // below clears it only when vellymons actually advances to the next snapshot.
+        displayVmsRef.current = lerpVellymons(from, to, 1);
         activeTweenKeyRef.current = null;
         onComplete?.();
       }
