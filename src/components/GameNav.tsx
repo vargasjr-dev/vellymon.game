@@ -5,11 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navLinks = [
-  { href: "/player", label: "Hub" },
-  { href: "/roster", label: "Roster" },
-  { href: "/market", label: "Market" },
-  { href: "/teams", label: "Teams" },
-  { href: "/matches", label: "Matches" },
+  { href: "/player", label: "🏠 Hub" },
+  { href: "/roster", label: "🐾 Roster" },
+  { href: "/market", label: "🛒 Market" },
+  { href: "/teams", label: "👥 Teams" },
+  { href: "/matches", label: "🎮 Matches" },
   { href: "/practice", label: "🤖 Practice", premium: true },
   { href: "/season", label: "🏆 Season" },
   { href: "/ranked", label: "⚔️ Ranked" },
@@ -27,9 +27,11 @@ interface GameNavProps {
   activeQuestCount?: number;
   /** Current login streak — shows 🔥N badge on account button when streak > 1 */
   currentStreak?: number;
+  /** Show admin-only nav link */
+  isAdmin?: boolean;
 }
 
-export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount, activeQuestCount, currentStreak }: GameNavProps) {
+export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount, activeQuestCount, currentStreak, isAdmin }: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -102,42 +104,54 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
           {/* Desktop Links */}
           <div className="hidden md:flex items-center space-x-1">
             {navLinks.map((link) => {
-              const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
-              const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
-              const questCount = link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
-              return (
+                const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
+                const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
+                const questCount = link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-3 py-2 rounded-lg text-sm font-medium transition ${
+                      isActive(link.href)
+                        ? "bg-blue-600 text-white"
+                        : isPremiumLocked
+                          ? "text-gray-500 hover:bg-gray-800 hover:text-gray-400"
+                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                    }`}
+                  >
+                    {link.label}
+                    {"premium" in link && link.premium && (
+                      <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
+                        {isSubscriber ? "⭐" : "PRO"}
+                      </span>
+                    )}
+                    {showNewDot && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                      </span>
+                    )}
+                    {questCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
+                        {questCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+              {isAdmin && (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    isActive(link.href)
-                      ? "bg-blue-600 text-white"
-                      : isPremiumLocked
-                        ? "text-gray-500 hover:bg-gray-800 hover:text-gray-400"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  href="/admin"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    isActive("/admin")
+                      ? "bg-red-600 text-white"
+                      : "text-red-400 hover:bg-gray-800 hover:text-red-300"
                   }`}
                 >
-                  {link.label}
-                  {"premium" in link && link.premium && (
-                    <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
-                      {isSubscriber ? "⭐" : "PRO"}
-                    </span>
-                  )}
-                  {showNewDot && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-                    </span>
-                  )}
-                  {questCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
-                      {questCount}
-                    </span>
-                  )}
+                  🛠️ Admin
                 </Link>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
           {/* Credit Balance (Desktop) */}
           {isSubscriber && creditBalance !== undefined && (
@@ -334,6 +348,19 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                 </Link>
               );
             })}
+
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  isActive("/admin")
+                    ? "bg-red-600 text-white"
+                    : "text-red-400 hover:bg-gray-800 hover:text-red-300"
+                }`}
+              >
+                🛠️ Admin
+              </Link>
+            )}
 
             {/* Mobile Credit Balance */}
             {isSubscriber && creditBalance !== undefined && (

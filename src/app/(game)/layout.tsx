@@ -8,6 +8,7 @@ import { getSubscriptionInfo } from "../../../lib/subscription";
 import { getNewAchievementCount } from "~/data/getNewAchievementCount.server";
 import { getActiveQuestCount } from "~/data/getActiveQuestCount.server";
 import { getStreakCount } from "~/data/getStreakCount.server";
+import { isAdmin } from "~/lib/admin";
 
 export default async function GameLayout({
   children,
@@ -50,6 +51,7 @@ export default async function GameLayout({
           newAchievementCount={newAchievementCount}
           activeQuestCount={activeQuestCount}
           currentStreak={currentStreak}
+          isAdmin={isAdmin(session)}
         />
         <main>{children}</main>
       </ToastProvider>
