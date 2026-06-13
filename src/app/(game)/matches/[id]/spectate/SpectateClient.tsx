@@ -976,18 +976,20 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
         <TurnLogDrawer log={currentLog} lookup={vellymonLookup} />
       )}
 
-      {/* ── Game over banner ── */}
+      {/* ── Game over banner — fixed overlay so it doesn't shift the board ── */}
       {gameOver &&
         (isReplay
           ? replayIndex === (turnSnapshots?.length ?? 1) - 1
           : true) && (
-          <div className="mx-3 mb-2 bg-yellow-900/40 border border-yellow-500/40 rounded-xl px-4 py-3 text-center shrink-0">
-            <p className="text-yellow-300 font-bold text-lg">
-              🏆 {gameOver.winner} wins!
-            </p>
-            <p className="text-yellow-500 text-sm capitalize">
-              Victory by {gameOver.condition}
-            </p>
+          <div className="fixed inset-x-0 top-16 z-[70] flex justify-center pointer-events-none px-4">
+            <div className="bg-yellow-900/90 border border-yellow-500/60 rounded-xl px-6 py-3 text-center shadow-lg backdrop-blur-sm">
+              <p className="text-yellow-300 font-bold text-lg">
+                🏆 {gameOver.winner} wins!
+              </p>
+              <p className="text-yellow-500 text-sm capitalize">
+                Victory by {gameOver.condition}
+              </p>
+            </div>
           </div>
         )}
 
