@@ -10,7 +10,7 @@ import {
   VELLYMON_LIBRARY,
   type VellymonTemplate,
 } from "../../server/vellymonLibrary";
-import { calculateDamage } from "../../server/archetypes";
+
 
 /**
  * Generate a deterministic UUID from a vellymon library ID.
@@ -39,8 +39,9 @@ function templateToStats(t: VellymonTemplate): VellymonStats {
     speed: t.speed,
     energy: 0, // Energy is team-wide now, not per-vellymon
     attacks: t.attacks.map((atk) => ({
+      key: atk.key,
       name: atk.name,
-      damage: calculateDamage(atk, t.attack),
+      damage: atk.damage,
       energyCost: atk.energyCost,
     })),
     flavor: t.flavor,

@@ -22,6 +22,8 @@ export interface VellymonStats {
 }
 
 export interface Attack {
+  /** References the canonical key in ATTACK_TEMPLATES */
+  key: string;
   name: string;
   damage: number;
   energyCost: number;

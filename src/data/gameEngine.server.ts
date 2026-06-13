@@ -21,7 +21,7 @@ import {
   VELLYMON_LIBRARY,
   type VellymonTemplate,
 } from "../../server/vellymonLibrary";
-import { calculateDamage } from "../../server/archetypes";
+
 import {
   initializeGame,
   startTurn,
@@ -313,8 +313,9 @@ function buildAITeamSetup(
       speed: template.speed,
       attack: template.attack,
       attacks: template.attacks.map((a) => ({
+        key: a.key,
         name: a.name,
-        damage: calculateDamage(a, template.attack),
+        damage: a.damage,
         energyCost: a.energyCost,
         range: a.range,
       })),
@@ -385,8 +386,9 @@ async function buildTeamSetup(
       speed: template.speed,
       attack: template.attack,
       attacks: template.attacks.map((a) => ({
+        key: a.key,
         name: a.name,
-        damage: calculateDamage(a, template.attack),
+        damage: a.damage,
         energyCost: a.energyCost,
         range: a.range,
       })),

@@ -55,7 +55,7 @@ export type VellymonSetup = {
   maxHp: number;
   speed: number;
   attack: number;
-  attacks: { name: string; damage: number; energyCost: number; range: number }[];
+  attacks: { key: string; name: string; damage: number; energyCost: number; range: number }[];
   spawnPosition: Position;
   imageUrl?: string;
 };

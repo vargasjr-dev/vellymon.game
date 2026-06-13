@@ -5,7 +5,7 @@ import {
   VELLYMON_LIBRARY,
   type VellymonTemplate,
 } from "../../../../../server/vellymonLibrary";
-import { calculateDamage } from "../../../../../server/archetypes";
+
 
 /** Generate static params for all 64 vellymons */
 export function generateStaticParams() {
@@ -123,7 +123,7 @@ export default async function VellymonDetailPage({
             <h2 className="text-lg font-bold text-gray-900 mb-3">Attacks</h2>
             <div className="space-y-3">
               {vellymon.attacks.map((atk, i) => {
-                const totalDamage = calculateDamage(atk, vellymon.attack);
+                const totalDamage = atk.damage + vellymon.attack;
                 return (
                   <div
                     key={i}

@@ -18,10 +18,11 @@ export type StatRange = {
 };
 
 export type AttackTemplate = {
+  /** Canonical identifier — matches the key in ATTACK_TEMPLATES */
+  key: string;
   name: string;
-  baseDamage: number;
-  /** Multiplier applied to vellymon's attack stat */
-  attackMultiplier: number;
+  /** Canonical base damage — same for every mon that carries this attack */
+  damage: number;
   energyCost: number;
   range: number;
 };
@@ -44,13 +45,13 @@ export type Archetype = {
 // ─── Attack Templates ────────────────────────────────────────────────────────
 
 export const ATTACK_TEMPLATES: Record<string, AttackTemplate> = {
-  poke: { name: "Poke", baseDamage: 3, attackMultiplier: 0.3, energyCost: 2, range: 1 },
-  strike: { name: "Strike", baseDamage: 8, attackMultiplier: 0.5, energyCost: 4, range: 1 },
-  slam: { name: "Slam", baseDamage: 12, attackMultiplier: 0.7, energyCost: 6, range: 1 },
-  nuke: { name: "Nuke", baseDamage: 15, attackMultiplier: 1.0, energyCost: 8, range: 1 },
-  snipe: { name: "Snipe", baseDamage: 6, attackMultiplier: 0.4, energyCost: 3, range: 2 },
-  lob: { name: "Lob", baseDamage: 10, attackMultiplier: 0.6, energyCost: 5, range: 2 },
-  chip: { name: "Chip", baseDamage: 2, attackMultiplier: 0.2, energyCost: 2, range: 2 },
+  poke:   { key: "poke",   name: "Poke",   damage: 3,  energyCost: 2, range: 1 },
+  strike: { key: "strike", name: "Strike", damage: 8,  energyCost: 4, range: 1 },
+  slam:   { key: "slam",   name: "Slam",   damage: 12, energyCost: 6, range: 1 },
+  nuke:   { key: "nuke",   name: "Nuke",   damage: 15, energyCost: 8, range: 1 },
+  snipe:  { key: "snipe",  name: "Snipe",  damage: 6,  energyCost: 3, range: 2 },
+  lob:    { key: "lob",    name: "Lob",    damage: 10, energyCost: 5, range: 2 },
+  chip:   { key: "chip",   name: "Chip",   damage: 2,  energyCost: 2, range: 2 },
 };
 
 const T = ATTACK_TEMPLATES;
@@ -132,14 +133,6 @@ export const TOTAL_VELLYMONS = Object.values(ARCHETYPES).reduce(
   (sum, a) => sum + a.count,
   0,
 );
-
-/** Calculate effective damage for an attack given a vellymon's attack stat */
-export function calculateDamage(
-  template: AttackTemplate,
-  attackStat: number,
-): number {
-  return Math.round(template.baseDamage + template.attackMultiplier * attackStat);
-}
 
 /** Validate stat budget: HP + (Attack × 5) + (Speed × 8) should be ~160 ± 20 */
 export function validateStatBudget(
