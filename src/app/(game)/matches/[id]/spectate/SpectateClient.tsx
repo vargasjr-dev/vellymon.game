@@ -125,6 +125,7 @@ type RawCommandResult = {
   energyDelta?: number;
   damageDealt?: number;
   targetKO?: boolean;
+  targetUuid?: string;
 };
 
 type RawBenchEntry = {
@@ -1065,6 +1066,8 @@ function TurnLogDrawer({
           // own team perspective so directions read correctly on screen.
           const monTeamId = info?.teamId ?? 1;
           const dirStr = gameDirToScreenLabel(r.command.direction, true, monTeamId);
+          const targetInfo = r.targetUuid ? lookup.get(r.targetUuid) : null;
+          const victimStr = targetInfo ? ` → ${targetInfo.name}` : "";
           const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";
           const koStr = r.targetKO ? " 💀 KO!" : "";
           const energyStr =
@@ -1078,13 +1081,16 @@ function TurnLogDrawer({
               </span>
               <span className="text-gray-500">{icon}</span>
               <span className="text-gray-300">
-                {r.command.type}
-                {dirStr}
-              </span>
-              {dmgStr && (
-                <span className="text-orange-400 font-mono">{dmgStr}</span>
-              )}
-              {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
+                  {r.command.type}
+                  {dirStr}
+                </span>
+                {victimStr && (
+                  <span className="text-gray-400">{victimStr}</span>
+                )}
+                {dmgStr && (
+                  <span className="text-orange-400 font-mono">{dmgStr}</span>
+                )}
+                {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
               {energyStr && (
                 <span className="text-yellow-400 font-mono">{energyStr}</span>
               )}
