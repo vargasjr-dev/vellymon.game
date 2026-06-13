@@ -679,6 +679,9 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
 
     // 2 — Wait preview duration, then tween
     const fireTween = () => {
+      // Ghost circles are only meaningful during the preview pause — clear them
+      // the moment the tween starts so they don't linger during animation.
+      setOverlays((prev) => prev ? { ...prev, ghosts: [] } : prev);
       setActiveTween({
         key: `${a.pendingIndex}-${step.key}`,
         from: step.tweenFrom,
