@@ -200,6 +200,17 @@ export function resolveTurn(
   // Sort by speed descending (highest speed acts first)
   allCommands.sort((a, b) => b.speed - a.speed);
 
+  // Snapshot all vellymon positions BEFORE any commands execute.
+  // Attack target scanning uses these start-of-turn positions so that a mon
+  // which moves INTO an attacker's line of fire during the same turn is not
+  // erroneously hit (simultaneous-command semantics).
+  const positionSnapshot = new Map<string, Position | null>();
+  for (const team of state.teams) {
+    for (const v of team.active) {
+      positionSnapshot.set(v.uuid, v.position ? { ...v.position } : null);
+    }
+  }
+
   // Resolve commands in speed order — invalid ones get logged as failures
   const commandResults: CommandResult[] = [];
   for (const { command, team, validationError } of allCommands) {
@@ -210,7 +221,7 @@ export function resolveTurn(
         reason: validationError,
       });
     } else {
-      const result = resolveCommand(command, team, state);
+      const result = resolveCommand(command, team, state, positionSnapshot);
       commandResults.push(result);
     }
   }
