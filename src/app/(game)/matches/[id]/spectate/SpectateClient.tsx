@@ -315,13 +315,20 @@ function buildUnifiedSteps(
   const steps: UnifiedStep[] = [];
 
   const workingPos = new Map<string, { x: number; y: number }>();
+  // Track HP separately so damage can be applied at the moment of impact
+  // (when the lunge peaks) rather than only at the final reconciliation step.
+  const workingHp = new Map<string, number>();
   const baseVms = snapshotToVellymons(fromSnap);
-  baseVms.forEach((v) => workingPos.set(v.uuid, { x: v.x, y: v.y }));
+  baseVms.forEach((v) => {
+    workingPos.set(v.uuid, { x: v.x, y: v.y });
+    workingHp.set(v.uuid, v.hp);
+  });
 
   function snapshot(): CanvasVellymon[] {
     return baseVms.map((v) => {
       const pos = workingPos.get(v.uuid);
-      return pos ? { ...v, x: pos.x, y: pos.y } : { ...v };
+      const hp = workingHp.get(v.uuid) ?? v.hp;
+      return pos ? { ...v, x: pos.x, y: pos.y, hp } : { ...v, hp };
     });
   }
 
@@ -371,8 +378,35 @@ function buildUnifiedSteps(
 
       // Lunge: attacker briefly moves 0.35 tiles toward target direction
       const from = snapshot();
+
+      // Apply damage to target's workingHp NOW so the HP bar drops at the
+      // moment of impact (t=1 of the lunge tween = attacker reaches peak).
+      // lerpVellymons snaps hp at t=1, so "from" keeps old HP during the
+      // lunge and the new HP is visible the instant contact is made.
+      if (cmd.damageDealt && cmd.damageDealt > 0) {
+        const attackerTeamId = fromSnap.teams.find((t) =>
+          t.active.some((v) => v.uuid === uuid),
+        )?.id;
+        for (const t of fromSnap.teams) {
+          if (t.id === attackerTeamId) continue;
+          const hit = t.active.find(
+            (v) =>
+              !v.isKO &&
+              v.position?.x === targetTile.x &&
+              v.position?.y === targetTile.y,
+          );
+          if (hit) {
+            workingHp.set(
+              hit.uuid,
+              Math.max(0, (workingHp.get(hit.uuid) ?? hit.hp) - cmd.damageDealt),
+            );
+            break;
+          }
+        }
+      }
+
       workingPos.set(uuid, { x: cur.x + offset.dx * 0.35, y: cur.y + offset.dy * 0.35 });
-      const lunged = snapshot();
+      const lunged = snapshot(); // target HP already updated — bar drops at impact
       workingPos.set(uuid, cur); // snap back
       const back = snapshot();
 
