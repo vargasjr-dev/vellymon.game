@@ -50,7 +50,7 @@ async function autoSelectMons(
   const monList = available
     .map(
       (v) =>
-        `- ${v.name} (HP ${v.hp}, ATK ${v.attack}, SPD ${v.speed}) — "${v.flavor}"`,
+        `- ${v.name} [${v.archetype}] (HP ${v.hp}, ATK ${v.attack}, SPD ${v.speed}) — "${v.flavor}"`,
     )
     .join("\n");
 
@@ -64,20 +64,25 @@ async function autoSelectMons(
 Profile description (this defines the AI's playstyle and personality):
 "${description}"
 
-${existingText}
-You need to pick exactly ${count} vellymon${count > 1 ? "s" : ""} to add to the team.
+${existingText}You need to pick exactly ${count} vellymon${count > 1 ? "s" : ""} to add to the team.
 The team is 8 vellymons total — which ones start or sit on the bench is decided later at pregame.
+
+Each vellymon entry shows: name [archetype] (HP, ATK, SPD) — flavor text.
+Archetypes: speedster (high SPD), tank (high HP), glass_cannon (high ATK/low HP), support, balanced.
 
 Available vellymons:
 ${monList}
 
 Pick ${count} that best match the profile's description and strategy.
+Pay close attention to the stats — if the description emphasises speed/aggression/bulk, match the archetype and stats accordingly.
 Return ONLY a JSON array of the vellymon names, nothing else.
-Example: ["Aerobolt", "Buldrok"]`;
+Example: ["Aerobolt", "Zipfang"]`;
 
   const msg = await client.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 256,
+    system:
+      "You are a competitive team-builder. Select vellymons whose stats and archetype best fit the described playstyle. Prioritise stat alignment over thematic name/flavor matching.",
     messages: [{ role: "user", content: prompt }],
   });
 
