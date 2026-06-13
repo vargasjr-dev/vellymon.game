@@ -880,8 +880,8 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
       <div className="fixed inset-0 bg-[#0a0f1a] flex items-center justify-center">
         <div className="text-center text-white max-w-md px-4">
           <p className="text-red-400 mb-4">{error}</p>
-          <Link href="/matches" className="text-blue-400 hover:underline">
-            ← All matches
+          <Link href={`/matches/${matchId}`} className="text-blue-400 hover:underline">
+            ← Match summary
           </Link>
         </div>
       </div>
@@ -893,7 +893,7 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
       {/* ── Top bar ── */}
       <div className="flex justify-between items-center px-4 py-2 shrink-0 border-b border-gray-800">
         <Link
-          href="/matches"
+          href={`/matches/${matchId}`}
           className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
         >
           ← Back
