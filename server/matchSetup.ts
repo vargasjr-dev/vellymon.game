@@ -7,7 +7,7 @@
 
 import { GAME_CONFIG } from "./config";
 import { getDefaultSpawnPositions } from "./board";
-import { calculateDamage } from "./archetypes";
+
 import type { VellymonTemplate } from "./vellymonLibrary";
 import type { TeamSetup, VellymonSetup } from "./engine";
 
@@ -35,8 +35,9 @@ export function buildTeamSetup(
     speed: t.speed,
     attack: t.attack,
     attacks: t.attacks.map((a) => ({
+      key: a.key,
       name: a.name,
-      damage: calculateDamage(a, t.attack),
+      damage: a.damage,
       energyCost: a.energyCost,
       range: a.range,
     })),

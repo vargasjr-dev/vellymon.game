@@ -28,6 +28,8 @@ export type BoardSpace = {
 // ─── Vellymon State ──────────────────────────────────────────────────────────
 
 export type Attack = {
+  /** References the canonical key in ATTACK_TEMPLATES */
+  key: string;
   name: string;
   damage: number;
   energyCost: number;
