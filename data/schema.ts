@@ -456,18 +456,53 @@ export const userRankRelations = relations(userRank, ({ one }) => ({
 // Lightweight store for CLI-uploaded matches — no user FK, no player tracking.
 // Lets the spectate view work for matches played outside the web client.
 
+// ─── AI Player Profiles ───────────────────────────────────────────────────────
+// Named AI personas used for automated playtesting.
+// A profile defines a fixed team composition + difficulty tier.
+// Profiles are referenced from matchSnapshot so you can query match history
+// per-profile and compare head-to-head records.
+
+export const aiProfile = pgTable("aiProfile", {
+  id: text("id").primaryKey(), // short slug, e.g. "aggro-hard"
+  name: varchar("name", { length: 64 }).notNull(),
+  /** Ordered list of vellymon names from VELLYMON_LIBRARY (6 total: 4 active + 2 bench) */
+  teamNames: json("teamNames").$type<string[]>().notNull(),
+  /** "easy" | "medium" | "hard" */
+  aiDifficulty: varchar("aiDifficulty", { length: 16 }).notNull().default("medium"),
+  /** Optional notes about this profile's playstyle */
+  description: text("description"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
 export const matchSnapshot = pgTable("matchSnapshot", {
   id: text("id").primaryKey(),
   gameState: json("gameState").notNull(),
   turnSnapshots: json("turnSnapshots"), // per-turn game states: GameState[], index 0 = initial
   turnLogs: json("turnLogs"), // per-turn action logs: TurnLog[], parallel to turnSnapshots[1+]
   status: varchar("status", { length: 32 }).notNull().default("completed"),
+  /** AI profile for team 1 (null for human/anonymous matches) */
+  p1ProfileId: text("p1ProfileId").references(() => aiProfile.id, { onDelete: "set null" }),
+  /** AI profile for team 2 (null for human/anonymous matches) */
+  p2ProfileId: text("p2ProfileId").references(() => aiProfile.id, { onDelete: "set null" }),
   uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+export const matchSnapshotRelations = relations(matchSnapshot, ({ one }) => ({
+  p1Profile: one(aiProfile, {
+    fields: [matchSnapshot.p1ProfileId],
+    references: [aiProfile.id],
+    relationName: "p1",
+  }),
+  p2Profile: one(aiProfile, {
+    fields: [matchSnapshot.p2ProfileId],
+    references: [aiProfile.id],
+    relationName: "p2",
+  }),
+}));
 
 // ─── Match Stats ─────────────────────────────────────────────────────────────
 // Per-player statistics written once when a match completes.

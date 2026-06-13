@@ -36,6 +36,22 @@ export default async function AdminPage() {
         <AdminMatchForm />
       </div>
 
+      {/* AI Player Profiles */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">🤖 AI Player Profiles</h2>
+        <p className="text-gray-600 mb-4">
+          Create named AI personas with fixed teams. Run head-to-head matches via{" "}
+          <code className="bg-gray-100 px-1 rounded text-sm">bun scripts/auto-match.ts --p1 &lt;id&gt; --p2 &lt;id&gt;</code>,
+          then view W/L history and head-to-head records per profile.
+        </p>
+        <Link
+          href="/admin/profiles"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+        >
+          Manage Profiles →
+        </Link>
+      </div>
+
       {/* Stripe Configuration */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-2">

@@ -2,12 +2,13 @@
 /**
  * auto-match.ts — plays a full AI vs AI vellymon match and uploads it.
  *
- * Strategy:
- *   - Each active vellymon picks the best action each turn:
- *     1. Attack if an enemy is in range
- *     2. Move toward the nearest enemy
- *     3. Harvest if energy is low and standing on a harvestable space
- *   - Max 15 turns then force-end
+ * Usage:
+ *   bun scripts/auto-match.ts --p1 <profileId> --p2 <profileId>   Run two profiles head-to-head
+ *   bun scripts/auto-match.ts --random                             Random teams (no profiles)
+ *   bun scripts/auto-match.ts --list                               List all profiles in DB
+ *
+ * Profiles are stored in the aiProfile DB table. Create them through the
+ * admin UI at /admin/profiles.
  */
 
 import { resolve, join } from "node:path";
@@ -23,16 +24,20 @@ import {
   type TurnLog,
 } from "../server/engine";
 import { submitCommands } from "../server/turnTimer";
-import type { GameState, VellymonState, BoardSpace } from "../server/types";
+import { generateAICommands, type AIDifficulty } from "../server/ai-opponent";
+import { db } from "../data/db";
+import { aiProfile, matchSnapshot } from "../data/schema";
+import { eq } from "drizzle-orm";
+import type { GameState } from "../server/types";
 import type { Command } from "../server/commands";
 import type { TurnTimerState } from "../server/turnTimer";
 
-// ─── State dir ───────────────────────────────────────────────────────────────
+// ─── State dir ────────────────────────────────────────────────────────────────
 
 const STATE_DIR = resolve(new URL(".", import.meta.url).pathname, "../.vellymon");
 if (!existsSync(STATE_DIR)) mkdirSync(STATE_DIR, { recursive: true });
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function shortId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -47,97 +52,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-}
-
-// ─── AI: pick best command for a vellymon ────────────────────────────────────
-
-const DIRS = ["up", "down", "left", "right"] as const;
-type Dir = typeof DIRS[number];
-
-function moveDir(pos: { x: number; y: number }, dir: Dir): { x: number; y: number } {
-  const d = { x: pos.x, y: pos.y };
-  if (dir === "up") d.y -= 1;
-  if (dir === "down") d.y += 1;
-  if (dir === "left") d.x -= 1;
-  if (dir === "right") d.x += 1;
-  return d;
-}
-
-function isOnBoard(pos: { x: number; y: number }, gs: GameState): boolean {
-  return pos.x >= 0 && pos.x < gs.boardWidth && pos.y >= 0 && pos.y < gs.boardHeight;
-}
-
-function pickCommand(vm: VellymonState, teamId: 1 | 2, gs: GameState): Command {
-  const myPos = vm.position!;
-  const enemyTeam = gs.teams.find((t) => t.id !== teamId)!;
-  const enemies = enemyTeam.active.filter((e) => !e.isKO && e.position);
-  const myTeam = gs.teams.find((t) => t.id === teamId)!;
-
-  // 1. Attack if any enemy is in range and we have enough energy
-  if (enemies.length > 0 && vm.attacks.length > 0 && myTeam.energy >= vm.attacks[0].energyCost) {
-    const attack = vm.attacks[0];
-    for (const e of enemies) {
-      if (!e.position) continue;
-      if (dist(myPos, e.position) <= attack.range) {
-        const dx = e.position.x - myPos.x;
-        const dy = e.position.y - myPos.y;
-        const dir: Dir =
-          Math.abs(dx) >= Math.abs(dy)
-            ? dx > 0 ? "right" : "left"
-            : dy > 0 ? "down" : "up";
-        return { type: "attack", vellymonUuid: vm.uuid, attackIndex: 0, direction: dir };
-      }
-    }
-  }
-
-  // 2. Harvest if energy is low and standing on a harvestable space
-  const mySpace = gs.board.find(
-    (s: BoardSpace) => s.position.x === myPos.x && s.position.y === myPos.y,
-  );
-  const maxAttackCost = vm.attacks[0]?.energyCost ?? 10;
-  if (myTeam.energy < maxAttackCost * 2 && mySpace?.type === "harvestable") {
-    for (const dir of DIRS) {
-      const neighbor = moveDir(myPos, dir);
-      if (isOnBoard(neighbor, gs)) {
-        return { type: "harvest", vellymonUuid: vm.uuid, direction: dir };
-      }
-    }
-  }
-
-  // 3. Move toward the nearest enemy
-  if (enemies.length > 0) {
-    const nearest = enemies.reduce((best, e) =>
-      e.position && dist(myPos, e.position) < dist(myPos, best.position!) ? e : best,
-    );
-    if (nearest.position) {
-      const dx = nearest.position.x - myPos.x;
-      const dy = nearest.position.y - myPos.y;
-      const dir: Dir =
-        Math.abs(dx) >= Math.abs(dy)
-          ? dx > 0 ? "right" : "left"
-          : dy > 0 ? "down" : "up";
-      const next = moveDir(myPos, dir);
-      if (isOnBoard(next, gs)) {
-        return { type: "move", vellymonUuid: vm.uuid, direction: dir };
-      }
-    }
-  }
-
-  // 4. Fallback: advance in team direction
-  const defaultDir: Dir = teamId === 1 ? "right" : "left";
-  const next = moveDir(myPos, defaultDir);
-  if (isOnBoard(next, gs)) return { type: "move", vellymonUuid: vm.uuid, direction: defaultDir };
-  return { type: "move", vellymonUuid: vm.uuid, direction: "down" };
-}
-
-function buildCommands(teamId: 1 | 2, gs: GameState): Command[] {
-  const team = gs.teams.find((t) => t.id === teamId)!;
-  return team.active.filter((v) => !v.isKO && v.position).map((v) => pickCommand(v, teamId, gs));
-}
-
-// ─── Match file type ─────────────────────────────────────────────────────────
+// ─── Match file type ──────────────────────────────────────────────────────────
 
 type MatchFile = {
   id: string;
@@ -147,22 +62,117 @@ type MatchFile = {
   pendingCommands: Record<string, Command[]>;
   turnLogs: TurnLog[];
   turnSnapshots: GameState[];
-  stats: Record<string, { damageDealt: number; damageTaken: number; harvests: number; kos: number; moves: number }>;
+  p1ProfileId?: string;
+  p2ProfileId?: string;
 };
 
-// ─── Main ────────────────────────────────────────────────────────────────────
+// ─── Parse args ───────────────────────────────────────────────────────────────
 
-const MAX_TURNS = 15;
+const args = process.argv.slice(2);
+const p1Flag = args.indexOf("--p1");
+const p2Flag = args.indexOf("--p2");
+const isRandom = args.includes("--random");
+const isList = args.includes("--list");
+
+// ─── List profiles ────────────────────────────────────────────────────────────
+
+if (isList) {
+  const profiles = await db.select().from(aiProfile).orderBy(aiProfile.createdAt);
+  if (profiles.length === 0) {
+    console.log("No AI profiles found. Create some at /admin/profiles.");
+    process.exit(0);
+  }
+  console.log(`\n${"ID".padEnd(24)} ${"Name".padEnd(28)} ${"Difficulty".padEnd(10)} Team`);
+  console.log("─".repeat(100));
+  for (const p of profiles) {
+    const team = (p.teamNames as string[]).slice(0, 4).join(", ");
+    console.log(
+      `${p.id.padEnd(24)} ${p.name.padEnd(28)} ${p.aiDifficulty.padEnd(10)} ${team}`,
+    );
+  }
+  console.log();
+  process.exit(0);
+}
+
+// ─── Load profiles (or build random teams) ────────────────────────────────────
+
+type ProfileConfig = {
+  id?: string;
+  name: string;
+  teamNames: string[];
+  aiDifficulty: AIDifficulty;
+};
+
+let p1Config: ProfileConfig;
+let p2Config: ProfileConfig;
+
+if (!isRandom && p1Flag !== -1 && p2Flag !== -1) {
+  const p1Id = args[p1Flag + 1];
+  const p2Id = args[p2Flag + 1];
+
+  if (!p1Id || !p2Id) {
+    console.error("Usage: auto-match.ts --p1 <profileId> --p2 <profileId>");
+    process.exit(1);
+  }
+
+  const [p1Row] = await db.select().from(aiProfile).where(eq(aiProfile.id, p1Id));
+  const [p2Row] = await db.select().from(aiProfile).where(eq(aiProfile.id, p2Id));
+
+  if (!p1Row) { console.error(`❌ Profile not found: ${p1Id}`); process.exit(1); }
+  if (!p2Row) { console.error(`❌ Profile not found: ${p2Id}`); process.exit(1); }
+
+  p1Config = {
+    id: p1Row.id,
+    name: p1Row.name,
+    teamNames: p1Row.teamNames as string[],
+    aiDifficulty: p1Row.aiDifficulty as AIDifficulty,
+  };
+  p2Config = {
+    id: p2Row.id,
+    name: p2Row.name,
+    teamNames: p2Row.teamNames as string[],
+    aiDifficulty: p2Row.aiDifficulty as AIDifficulty,
+  };
+} else {
+  // --random or no args: pick random teams from the library
+  const picked = shuffle(VELLYMON_LIBRARY).slice(0, 16);
+  p1Config = {
+    name: "Random Team 1",
+    teamNames: picked.slice(0, 8).map((v) => v.name),
+    aiDifficulty: "medium",
+  };
+  p2Config = {
+    name: "Random Team 2",
+    teamNames: picked.slice(8, 16).map((v) => v.name),
+    aiDifficulty: "medium",
+  };
+}
+
+// ─── Build team setups ────────────────────────────────────────────────────────
+
+function resolveTeamTemplates(names: string[]) {
+  return names.map((name) => {
+    const t = VELLYMON_LIBRARY.find((v) => v.name.toLowerCase() === name.toLowerCase());
+    if (!t) throw new Error(`Unknown vellymon name: "${name}"`);
+    return t;
+  });
+}
+
+const setup1 = buildTeamSetup(resolveTeamTemplates(p1Config.teamNames), 1);
+setup1.teamName = p1Config.name;
+
+const setup2 = buildTeamSetup(resolveTeamTemplates(p2Config.teamNames), 2);
+setup2.teamName = p2Config.name;
+
+// ─── Run match ────────────────────────────────────────────────────────────────
+
+const MAX_TURNS = 20;
 const id = shortId();
 
-console.log(`\n⚔️  Auto-match ${id} — AI vs AI (max ${MAX_TURNS} turns)\n`);
-
-const picked = shuffle(VELLYMON_LIBRARY).slice(0, 16);
-const setup1 = buildTeamSetup(picked.slice(0, 8), 1);
-const setup2 = buildTeamSetup(picked.slice(8, 16), 2);
-
-console.log(`Team 1: ${setup1.teamName}`);
-console.log(`Team 2: ${setup2.teamName}\n`);
+console.log(`\n⚔️  Auto-match ${id}`);
+console.log(`   P1: ${p1Config.name} (${p1Config.aiDifficulty})`);
+console.log(`   P2: ${p2Config.name} (${p2Config.aiDifficulty})`);
+console.log();
 
 const gs = initializeGame(id, setup1, setup2);
 
@@ -174,20 +184,14 @@ const match: MatchFile = {
   pendingCommands: {},
   turnLogs: [],
   turnSnapshots: [JSON.parse(JSON.stringify(gs)) as GameState],
-  stats: {},
+  p1ProfileId: p1Config.id,
+  p2ProfileId: p2Config.id,
 };
 
-for (const t of gs.teams) {
-  for (const vm of [...t.active, ...t.bench]) {
-    match.stats[vm.uuid] = { damageDealt: 0, damageTaken: 0, harvests: 0, kos: 0, moves: 0 };
-  }
-}
-
-// ── Turn loop ─────────────────────────────────────────────────────────────────
 while (isGameActive(gs) && gs.turn < MAX_TURNS) {
   const timer = startTurn(gs);
-  submitCommands(timer, 1, buildCommands(1, gs));
-  submitCommands(timer, 2, buildCommands(2, gs));
+  submitCommands(timer, 1, generateAICommands(gs, 1, p1Config.aiDifficulty));
+  submitCommands(timer, 2, generateAICommands(gs, 2, p2Config.aiDifficulty));
 
   const turnLog = resolveTurn(gs, timer);
   match.turnLogs.push(turnLog);
@@ -196,22 +200,30 @@ while (isGameActive(gs) && gs.turn < MAX_TURNS) {
   const [t1, t2] = gs.teams;
   const alive1 = t1.active.filter((v) => !v.isKO).length;
   const alive2 = t2.active.filter((v) => !v.isKO).length;
-  const winSuffix = gs.result ? ` → ${getWinner(gs)?.name} WINS (${gs.result.condition})` : "";
-  console.log(`Turn ${gs.turn}: T1 ${alive1} alive (${t1.energy}⚡) | T2 ${alive2} alive (${t2.energy}⚡)${winSuffix}`);
+  const winSuffix = gs.result
+    ? ` → ${getWinner(gs)?.name} WINS (${gs.result.condition})`
+    : "";
+  console.log(
+    `Turn ${gs.turn}: T1 ${alive1} alive (${t1.energy}⚡) | T2 ${alive2} alive (${t2.energy}⚡)${winSuffix}`,
+  );
 
   if (!isGameActive(gs)) break;
 }
 
 match.gameState = gs;
 
+const winner = getWinner(gs);
 const outPath = join(STATE_DIR, `${id}.json`);
 writeFileSync(outPath, JSON.stringify(match, null, 2));
 console.log(`\n✅ Match saved → .vellymon/${id}.json`);
-console.log(`   Turns played: ${gs.turn} | Snapshots: ${match.turnSnapshots.length}`);
-console.log(gs.result ? `   Winner: ${getWinner(gs)?.name} (${gs.result.condition})` : "   Result: max turns reached");
+console.log(`   Turns: ${gs.turn} | Snapshots: ${match.turnSnapshots.length}`);
+console.log(
+  winner
+    ? `   Winner: ${winner.name} (${gs.result?.condition})`
+    : "   Result: max turns reached (no winner)",
+);
 
-// ── Upload ────────────────────────────────────────────────────────────────────
-console.log("\nUploading...");
+// ─── Upload ───────────────────────────────────────────────────────────────────
 
 const configPath = join(STATE_DIR, "config.json");
 let baseUrl = "https://vellymon.game";
@@ -221,14 +233,16 @@ if (existsSync(configPath)) {
     const cfg = JSON.parse(readFileSync(configPath, "utf-8")) as Record<string, string>;
     if (cfg.url) baseUrl = cfg.url;
     if (cfg.apiKey) apiKey = cfg.apiKey;
-  } catch { /* ignore */ }
+  } catch {}
 }
 apiKey = process.env.VELLYMON_UPLOAD_API_KEY ?? apiKey;
 
 if (!apiKey) {
-  console.error("❌ No API key. Set VELLYMON_UPLOAD_API_KEY or add to .vellymon/config.json");
+  console.error("\n❌ No API key — set VELLYMON_UPLOAD_API_KEY or add to .vellymon/config.json");
   process.exit(1);
 }
+
+console.log("\nUploading...");
 
 const res = await fetch(`${baseUrl}/api/matches/upload`, {
   method: "POST",
@@ -239,6 +253,8 @@ const res = await fetch(`${baseUrl}/api/matches/upload`, {
     turnSnapshots: match.turnSnapshots,
     turnLogs: match.turnLogs,
     status: "completed",
+    p1ProfileId: match.p1ProfileId ?? null,
+    p2ProfileId: match.p2ProfileId ?? null,
   }),
 });
 
@@ -248,5 +264,5 @@ if (!res.ok) {
   process.exit(1);
 }
 
-const result = await res.json() as { ok: boolean; spectateUrl: string };
+const result = (await res.json()) as { ok: boolean; spectateUrl: string };
 console.log(`✅ Spectate: ${result.spectateUrl}`);
