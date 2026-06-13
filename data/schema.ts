@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, timestamp, json, text, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, timestamp, json, text, boolean, index, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const vellymonInstance = pgTable("vellymonInstance", {
@@ -463,14 +463,20 @@ export const userRankRelations = relations(userRank, ({ one }) => ({
 // per-profile and compare head-to-head records.
 
 export const aiProfile = pgTable("aiProfile", {
-  id: text("id").primaryKey(), // short slug, e.g. "aggro-hard"
+  id: text("id").primaryKey(), // auto-generated slug from name, e.g. "aggro-hard"
   name: varchar("name", { length: 64 }).notNull(),
   /** Ordered list of vellymon names from VELLYMON_LIBRARY (6 total: 4 active + 2 bench) */
   teamNames: json("teamNames").$type<string[]>().notNull(),
-  /** "easy" | "medium" | "hard" */
-  aiDifficulty: varchar("aiDifficulty", { length: 16 }).notNull().default("medium"),
-  /** Optional notes about this profile's playstyle */
-  description: text("description"),
+  /**
+   * LLM temperature proxy (0.0 = deterministic, 1.0 = very random).
+   * Maps to the `temperature` param when driving LLM-based profiles.
+   */
+  randomness: real("randomness").notNull().default(0.5),
+  /**
+   * The system prompt that defines this AI player's personality and strategy.
+   * Required — this is what differentiates LLM profiles from each other.
+   */
+  description: text("description").notNull().default(""),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
