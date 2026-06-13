@@ -919,9 +919,10 @@ export default function SpectateClient({ matchId }: Props) {
 
       {/* ── Board canvas ── */}
       <div className="flex-1 relative min-h-0">
-        {/* Compact team HUDs overlaid on board corners */}
-        {t1 && <CompactTeamHUD team={t1} color="blue" position="top-left" />}
-        {t2 && <CompactTeamHUD team={t2} color="red" position="bottom-right" />}
+        {/* Compact team HUDs overlaid on board corners.
+            yourTeamId=1 → Team 1 renders at bottom, Team 2 at top. */}
+        {t1 && <CompactTeamHUD team={t1} color="blue" position="bottom-left" />}
+        {t2 && <CompactTeamHUD team={t2} color="red" position="top-right" />}
         {/* Mon card overlay — shown when a vellymon is tapped */}
         {selectedMonUuid && (
           <MonCardOverlay
@@ -1218,10 +1219,16 @@ function CompactTeamHUD({
 }: {
   team: TeamDisplay;
   color: "blue" | "red";
-  position: "top-left" | "bottom-right";
+  position: "top-left" | "top-right" | "bottom-left" | "bottom-right";
 }) {
   const posClass =
-    position === "top-left" ? "top-2 left-2" : "bottom-2 right-2";
+    position === "top-left"
+      ? "top-2 left-2"
+      : position === "top-right"
+        ? "top-2 right-2"
+        : position === "bottom-left"
+          ? "bottom-2 left-2"
+          : "bottom-2 right-2";
   const bgClass =
     color === "blue"
       ? "bg-blue-950/85 border-blue-500/40"
