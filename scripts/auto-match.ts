@@ -24,7 +24,7 @@ import {
   type TurnLog,
 } from "../server/engine";
 import { submitCommands } from "../server/turnTimer";
-import { generateAICommands, type AIDifficulty } from "../server/ai-opponent";
+import { generateAICommands } from "../server/ai-opponent";
 import { db } from "../data/db";
 import { aiProfile, matchSnapshot } from "../data/schema";
 import { eq } from "drizzle-orm";
@@ -87,7 +87,7 @@ if (isList) {
   for (const p of profiles) {
     const team = (p.teamNames as string[]).slice(0, 4).join(", ");
     console.log(
-      `${p.id.padEnd(24)} ${p.name.padEnd(28)} ${p.aiDifficulty.padEnd(10)} ${team}`,
+      `${p.id.padEnd(24)} ${p.name.padEnd(28)} ${"r=" + (p.randomness ?? 0.5).toFixed(2).padEnd(8)} ${team}`,
     );
   }
   console.log();
@@ -97,10 +97,11 @@ if (isList) {
 // ─── Load profiles (or build random teams) ────────────────────────────────────
 
 type ProfileConfig = {
-  id?: string;
+  id: string;
   name: string;
   teamNames: string[];
-  aiDifficulty: AIDifficulty;
+  randomness: number;
+  // TODO: replace generateAICommands with LLM runner using profile.description + board state
 };
 
 let p1Config: ProfileConfig;
@@ -125,26 +126,28 @@ if (!isRandom && p1Flag !== -1 && p2Flag !== -1) {
     id: p1Row.id,
     name: p1Row.name,
     teamNames: p1Row.teamNames as string[],
-    aiDifficulty: p1Row.aiDifficulty as AIDifficulty,
+    randomness: (p1Row.randomness as number | null) ?? 0.5,
   };
   p2Config = {
     id: p2Row.id,
     name: p2Row.name,
     teamNames: p2Row.teamNames as string[],
-    aiDifficulty: p2Row.aiDifficulty as AIDifficulty,
+    randomness: (p2Row.randomness as number | null) ?? 0.5,
   };
 } else {
   // --random or no args: pick random teams from the library
   const picked = shuffle(VELLYMON_LIBRARY).slice(0, 16);
   p1Config = {
+    id: "random-1",
     name: "Random Team 1",
     teamNames: picked.slice(0, 8).map((v) => v.name),
-    aiDifficulty: "medium",
+    randomness: 0.5,
   };
   p2Config = {
+    id: "random-2",
     name: "Random Team 2",
     teamNames: picked.slice(8, 16).map((v) => v.name),
-    aiDifficulty: "medium",
+    randomness: 0.5,
   };
 }
 
@@ -170,8 +173,8 @@ const MAX_TURNS = 20;
 const id = shortId();
 
 console.log(`\n⚔️  Auto-match ${id}`);
-console.log(`   P1: ${p1Config.name} (${p1Config.aiDifficulty})`);
-console.log(`   P2: ${p2Config.name} (${p2Config.aiDifficulty})`);
+console.log(`   P1: ${p1Config.name} (randomness=${p1Config.randomness.toFixed(2)})`);
+console.log(`   P2: ${p2Config.name} (randomness=${p2Config.randomness.toFixed(2)})`);
 console.log();
 
 const gs = initializeGame(id, setup1, setup2);
@@ -190,8 +193,9 @@ const match: MatchFile = {
 
 while (isGameActive(gs) && gs.turn < MAX_TURNS) {
   const timer = startTurn(gs);
-  submitCommands(timer, 1, generateAICommands(gs, 1, p1Config.aiDifficulty));
-  submitCommands(timer, 2, generateAICommands(gs, 2, p2Config.aiDifficulty));
+  // TODO: Replace with LLM runner — use profile description + board state description as user message
+  submitCommands(timer, 1, generateAICommands(gs, 1, "medium"));
+  submitCommands(timer, 2, generateAICommands(gs, 2, "medium"));
 
   const turnLog = resolveTurn(gs, timer);
   match.turnLogs.push(turnLog);

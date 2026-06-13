@@ -63,16 +63,8 @@ export default async function ProfileDetailPage({
           <h1 className="text-2xl font-bold text-gray-900">{profile.name}</h1>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs font-mono text-gray-500">{profile.id}</span>
-            <span
-              className={`text-xs rounded px-1.5 py-0.5 font-medium ${
-                profile.aiDifficulty === "hard"
-                  ? "bg-red-100 text-red-700"
-                  : profile.aiDifficulty === "medium"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-green-100 text-green-700"
-              }`}
-            >
-              {profile.aiDifficulty}
+            <span className="text-xs bg-blue-50 text-blue-700 rounded px-1.5 py-0.5">
+              🎲 {typeof profile.randomness === "number" ? profile.randomness.toFixed(2) : "0.50"} randomness
             </span>
           </div>
         </div>

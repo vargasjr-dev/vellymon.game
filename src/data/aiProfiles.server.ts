@@ -18,13 +18,13 @@ export async function getAiProfile(id: string): Promise<AiProfile | null> {
   return row ?? null;
 }
 
-/** Create a profile. Throws if ID already exists. */
+/** Create a profile. ID is auto-generated from name (slug). Throws if slug already exists. */
 export async function createAiProfile(data: {
   id: string;
   name: string;
   teamNames: string[];
-  aiDifficulty: "easy" | "medium" | "hard";
-  description?: string;
+  randomness: number;
+  description: string;
 }): Promise<AiProfile> {
   const [row] = await db
     .insert(aiProfile)

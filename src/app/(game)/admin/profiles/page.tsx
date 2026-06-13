@@ -5,6 +5,8 @@ import { auth } from "~/lib/auth.server";
 import { isAdmin } from "~/lib/admin";
 import { listAiProfiles } from "~/data/aiProfiles.server";
 import { VELLYMON_LIBRARY } from "../../../../../server/vellymonLibrary";
+import "../../../../../server/powers"; // register all special powers
+import { getPower } from "../../../../../server/specialPowers";
 import ProfileCreateForm from "./ProfileCreateForm";
 import ProfileDeleteButton from "./ProfileDeleteButton";
 
@@ -14,7 +16,20 @@ export default async function ProfilesPage() {
   if (!isAdmin(session)) notFound();
 
   const profiles = await listAiProfiles();
-  const allNames = VELLYMON_LIBRARY.map((v) => v.name).sort();
+
+  // Build full vellymon data including power name/description for the selector
+  const allVellymons = VELLYMON_LIBRARY.map((v) => ({
+    name: v.name,
+    hp: v.hp,
+    attack: v.attack,
+    speed: v.speed,
+    flavor: v.flavor,
+    imageUrl: v.imageUrl,
+    powerName: v.specialPowerId ? getPower(v.specialPowerId)?.name : undefined,
+    powerDescription: v.specialPowerId
+      ? getPower(v.specialPowerId)?.description
+      : undefined,
+  }));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -25,7 +40,8 @@ export default async function ProfilesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">🤖 AI Player Profiles</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            Named AI personas for automated playtesting. Each profile has a fixed team + difficulty tier.
+            LLM-driven AI personas. Each profile has a prompt, a team, and a
+            randomness setting that shapes how it plays.
           </p>
         </div>
       </div>
@@ -48,20 +64,14 @@ export default async function ProfilesPage() {
                   <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-mono">
                     {p.id}
                   </span>
-                  <span
-                    className={`text-xs rounded px-1.5 py-0.5 font-medium ${
-                      p.aiDifficulty === "hard"
-                        ? "bg-red-100 text-red-700"
-                        : p.aiDifficulty === "medium"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-green-100 text-green-700"
-                    }`}
-                  >
-                    {p.aiDifficulty}
+                  <span className="text-xs bg-blue-50 text-blue-700 rounded px-1.5 py-0.5">
+                    🎲 {typeof p.randomness === "number" ? p.randomness.toFixed(2) : "0.50"}
                   </span>
                 </div>
                 {p.description && (
-                  <p className="text-sm text-gray-500 mb-2">{p.description}</p>
+                  <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                    {p.description}
+                  </p>
                 )}
                 <div className="flex flex-wrap gap-1">
                   {(p.teamNames as string[]).map((name, i) => (
@@ -74,7 +84,7 @@ export default async function ProfilesPage() {
                       }`}
                     >
                       {name}
-                      {i >= 4 && <span className="ml-0.5 opacity-60">bench</span>}
+                      {i >= 4 && <span className="ml-0.5 opacity-60"> bench</span>}
                     </span>
                   ))}
                 </div>
@@ -96,7 +106,7 @@ export default async function ProfilesPage() {
       {/* Create form */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Profile</h2>
-        <ProfileCreateForm allVellymonNames={allNames} />
+        <ProfileCreateForm vellymons={allVellymons} />
       </div>
     </div>
   );

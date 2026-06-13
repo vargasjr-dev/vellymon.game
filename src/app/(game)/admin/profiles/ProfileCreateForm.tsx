@@ -2,44 +2,36 @@
 
 import { useState, useTransition } from "react";
 import { createProfileAction } from "./actions";
-
-const DIFFICULTIES = ["easy", "medium", "hard"] as const;
+import MonTeamSelector, { type VellymonData } from "./MonTeamSelector";
 
 export default function ProfileCreateForm({
-  allVellymonNames,
+  vellymons,
 }: {
-  allVellymonNames: string[];
+  vellymons: VellymonData[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Team builder — up to 6 slots
+  // 6 slots: [active1, active2, active3, active4, bench1, bench2]
   const [slots, setSlots] = useState<string[]>(["", "", "", "", "", ""]);
+  const [randomness, setRandomness] = useState(0.5);
 
-  function setSlot(i: number, value: string) {
-    setSlots((prev) => {
-      const next = [...prev];
-      next[i] = value;
-      return next;
-    });
-  }
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setSuccess(false);
 
     const fd = new FormData(e.currentTarget);
-    // Inject teamNames from controlled slots (FormData textarea is a fallback)
-    const validSlots = slots.filter(Boolean);
-    fd.set("teamNames", validSlots.join(","));
+    fd.set("teamNames", slots.filter(Boolean).join(","));
+    fd.set("randomness", String(randomness));
 
     startTransition(async () => {
       try {
         await createProfileAction(fd);
         setSuccess(true);
         setSlots(["", "", "", "", "", ""]);
+        setRandomness(0.5);
         (e.target as HTMLFormElement).reset();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to create profile");
@@ -47,89 +39,90 @@ export default function ProfileCreateForm({
     });
   }
 
+  const filledCount = slots.filter(Boolean).length;
+  const needsAutoSelect = filledCount < 6;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            ID <span className="text-gray-400 font-normal">(slug, e.g. aggro-hard)</span>
-          </label>
-          <input
-            name="id"
-            required
-            pattern="[a-z0-9\-]+"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-            placeholder="aggro-hard"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-          <input
-            name="name"
-            required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            placeholder="Aggro Hard"
-          />
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
-        <select
-          name="aiDifficulty"
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          defaultValue="medium"
-        >
-          {DIFFICULTIES.map((d) => (
-            <option key={d} value={d}>
-              {d.charAt(0).toUpperCase() + d.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Team{" "}
-          <span className="text-gray-400 font-normal">
-            (slots 1–4 = active starters, 5–6 = bench)
-          </span>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Name
         </label>
-        <div className="grid grid-cols-2 gap-2">
-          {slots.map((val, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 w-12 shrink-0">
-                {i < 4 ? `Active ${i + 1}` : `Bench ${i - 3}`}
-              </span>
-              <select
-                value={val}
-                onChange={(e) => setSlot(i, e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-              >
-                <option value="">— pick —</option>
-                {allVellymonNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-gray-400 mt-1">
-          At least 4 active slots required. Bench slots are optional.
+        <input
+          name="name"
+          required
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          placeholder="Aggro Hard"
+        />
+        <p className="text-xs text-gray-400 mt-0.5">
+          ID will be auto-generated from this name
         </p>
       </div>
 
+      {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description <span className="text-gray-400 font-normal">(optional)</span>
+          Prompt{" "}
+          <span className="text-gray-400 font-normal">(required)</span>
         </label>
-        <input
+        <textarea
           name="description"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          placeholder="Fast aggro team, targets low-HP mons first"
+          required
+          rows={4}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-400"
+          placeholder="Describe this AI player's personality and strategy. This becomes the user message prefix for every turn.&#10;&#10;Example: You are an aggressive vellymon player. Always push forward and attack the nearest enemy. Prioritize targeting low-HP mons to finish them off quickly. Don't retreat unless you have no other option."
         />
+        <p className="text-xs text-gray-400 mt-0.5">
+          This is the AI player's identity — it shapes every decision it makes.
+        </p>
+      </div>
+
+      {/* Randomness slider */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700">
+            Randomness
+          </label>
+          <span className="text-sm font-mono text-gray-600">
+            {randomness.toFixed(2)}
+          </span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={randomness}
+          onChange={(e) => setRandomness(parseFloat(e.target.value))}
+          className="w-full accent-blue-600"
+        />
+        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+          <span>0.0 — Deterministic</span>
+          <span>1.0 — Very random</span>
+        </div>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Maps to LLM temperature. Lower = more predictable play; higher = more creative/chaotic.
+        </p>
+      </div>
+
+      {/* Mon selector */}
+      <div>
+        <MonTeamSelector
+          vellymons={vellymons}
+          slots={slots}
+          onChange={setSlots}
+        />
+        {needsAutoSelect && filledCount === 0 && (
+          <p className="text-xs text-purple-600 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mt-2">
+            ✨ Leave all slots empty and Haiku will pick a team that fits your prompt.
+          </p>
+        )}
+        {needsAutoSelect && filledCount > 0 && (
+          <p className="text-xs text-purple-600 mt-1">
+            ✨ {6 - filledCount} slot{6 - filledCount > 1 ? "s" : ""} will be auto-filled by Haiku based on your prompt.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -148,7 +141,7 @@ export default function ProfileCreateForm({
         disabled={pending}
         className="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50"
       >
-        {pending ? "Creating..." : "Create Profile"}
+        {pending ? "Creating…" : "Create Profile"}
       </button>
     </form>
   );
