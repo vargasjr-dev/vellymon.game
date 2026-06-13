@@ -72,7 +72,7 @@ function generateEasyCommand(
       const atk = vellymon.attacks[i];
       if (atk && aiTeam.energy >= atk.energyCost) {
         for (const dir of DIRECTIONS) {
-          if (findTarget(vellymon, dir, atk.range, enemyTeam)) {
+          if (findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam)) {
             options.push({
               type: "attack",
               vellymonUuid: vellymon.uuid,
@@ -113,7 +113,7 @@ function generateMediumCommand(
       const atk = vellymon.attacks[i];
       if (atk && aiTeam.energy >= atk.energyCost) {
         for (const dir of DIRECTIONS) {
-          if (findTarget(vellymon, dir, atk.range, enemyTeam)) {
+          if (findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam)) {
             return {
               type: "attack",
               vellymonUuid: vellymon.uuid,
@@ -196,7 +196,7 @@ function generateHardSingleCommand(
       if (atk && remainingEnergy >= atk.energyCost) {
         const atkIdx = vellymon.attacks.indexOf(atk);
         for (const dir of DIRECTIONS) {
-          const target = findTarget(vellymon, dir, atk.range, enemyTeam);
+          const target = findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam);
           if (target && target.hp <= atk.damage * (vellymon.attack / 100)) {
             return {
               type: "attack",
@@ -214,7 +214,7 @@ function generateHardSingleCommand(
       const atk = vellymon.attacks[i];
       if (atk && remainingEnergy >= atk.energyCost) {
         for (const dir of DIRECTIONS) {
-          if (findTarget(vellymon, dir, atk.range, enemyTeam)) {
+          if (findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam)) {
             return {
               type: "attack",
               vellymonUuid: vellymon.uuid,
@@ -329,6 +329,7 @@ function findTarget(
   direction: Direction,
   range: number,
   enemyTeam: TeamState,
+  ownTeam?: TeamState,
 ): VellymonState | null {
   if (!vellymon.position) return null;
   const offset = directionToOffset(direction);
@@ -338,6 +339,18 @@ function findTarget(
       x: vellymon.position.x + offset.x * r,
       y: vellymon.position.y + offset.y * r,
     };
+
+    // Stop if a friendly unit blocks the line of sight (mirrors engine scanForTarget)
+    if (ownTeam) {
+      const friendlyBlocker = ownTeam.active.find(
+        (f) =>
+          !f.isKO &&
+          f.uuid !== vellymon.uuid &&
+          f.position?.x === checkPos.x &&
+          f.position?.y === checkPos.y,
+      );
+      if (friendlyBlocker) return null;
+    }
 
     for (const enemy of enemyTeam.active) {
       if (
