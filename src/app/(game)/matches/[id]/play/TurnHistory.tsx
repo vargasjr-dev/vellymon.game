@@ -53,6 +53,54 @@ export type TurnSnapshot = {
   log: TurnLogData;
 };
 
+// ─── Direction helpers ────────────────────────────────────────────────────────
+
+type Dir = "up" | "down" | "left" | "right";
+
+/**
+ * Convert a game-space direction to a screen-space label.
+ * The board is rotated 90° clockwise in portrait mode for team 1 (your team at
+ * the bottom), so game "right" appears as screen "down", etc.
+ * In landscape or when direction is absent, returns the raw direction string.
+ */
+function gameDirToScreenLabel(
+  gameDir: string | undefined,
+  isPortrait: boolean,
+  teamId: 1 | 2,
+): string {
+  if (!gameDir) return "";
+  if (!isPortrait) return ` ${gameDir}`;
+
+  const labels: Record<Dir, string> = {
+    up: " up",
+    down: " down",
+    left: " left",
+    right: " right",
+  };
+
+  if (teamId === 1) {
+    // Team 1: game right → screen down, game left → screen up,
+    //         game up → screen left, game down → screen right
+    const map: Record<Dir, string> = {
+      right: " down",
+      left: " up",
+      up: " left",
+      down: " right",
+    };
+    return map[gameDir as Dir] ?? labels[gameDir as Dir] ?? ` ${gameDir}`;
+  } else {
+    // Team 2 (mirrored): game right → screen up, game left → screen down,
+    //                    game up → screen right, game down → screen left
+    const map: Record<Dir, string> = {
+      right: " up",
+      left: " down",
+      up: " right",
+      down: " left",
+    };
+    return map[gameDir as Dir] ?? labels[gameDir as Dir] ?? ` ${gameDir}`;
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Find vellymon name from uuid across both team snapshots */
@@ -87,9 +135,16 @@ function turnSummaryIcons(log: TurnLogData): string {
   return icons.join(" ");
 }
 
-function formatResult(r: CommandResult, teams: TeamSnap[]): string {
+function formatResult(
+  r: CommandResult,
+  teams: TeamSnap[],
+  isPortrait: boolean,
+  yourTeamId: 1 | 2,
+): string {
   const name = findName(teams, r.command.vellymonUuid);
-  const dir = r.command.direction ? ` ${r.command.direction}` : "";
+  // Determine which team this mon belongs to so we use their perspective
+  const monTeamId = teams.find((t) => t.active.some((v) => v.uuid === r.command.vellymonUuid))?.id ?? yourTeamId;
+  const dir = gameDirToScreenLabel(r.command.direction, isPortrait, monTeamId);
 
   if (!r.success) {
     return `${name} ${r.command.type}${dir} — failed${r.reason ? `: ${r.reason}` : ""}`;
@@ -118,9 +173,11 @@ type Props = {
   history: TurnSnapshot[];
   isOpen: boolean;
   onToggle: () => void;
+  isPortrait?: boolean;
+  yourTeamId?: 1 | 2;
 };
 
-export default function TurnHistory({ history, isOpen, onToggle }: Props) {
+export default function TurnHistory({ history, isOpen, onToggle, isPortrait = false, yourTeamId = 1 }: Props) {
   const [expandedTurn, setExpandedTurn] = useState<number | null>(null);
 
   if (history.length === 0 && !isOpen) return null;
@@ -202,7 +259,7 @@ export default function TurnHistory({ history, isOpen, onToggle }: Props) {
                           <div key={i} className="flex items-start gap-1.5 text-xs">
                             <span className="shrink-0">{icon}</span>
                             <span className={`${teamColor} ${!r.success ? "line-through opacity-50" : ""}`}>
-                              {formatResult(r, snap.teamsBefore)}
+                              {formatResult(r, snap.teamsBefore, isPortrait, yourTeamId)}
                             </span>
                           </div>
                         );

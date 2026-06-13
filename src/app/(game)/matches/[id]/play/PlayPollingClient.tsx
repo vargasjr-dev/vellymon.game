@@ -760,6 +760,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         history={turnHistory}
         isOpen={historyOpen}
         onToggle={() => setHistoryOpen(!historyOpen)}
+        isPortrait={isPortrait}
+        yourTeamId={yourTeam?.id ?? 1}
       />
 
       {/* Game menu (opens from your team card) */}

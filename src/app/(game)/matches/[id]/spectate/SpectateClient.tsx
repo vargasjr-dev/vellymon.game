@@ -194,9 +194,28 @@ function parseGameState(gs: RawGameState) {
   };
 }
 
-// ─── Animation helpers ────────────────────────────────────────────────────────
+// ─── Direction helpers ────────────────────────────────────────────────────────
 
 type Dir = "up" | "down" | "left" | "right";
+
+/** Convert game-space direction to a screen-space label for display in logs. */
+function gameDirToScreenLabel(
+  gameDir: string | undefined,
+  isPortrait: boolean,
+  teamId: 1 | 2,
+): string {
+  if (!gameDir) return "";
+  if (!isPortrait) return ` ${gameDir}`;
+  if (teamId === 1) {
+    const map: Record<Dir, string> = { right: " down", left: " up", up: " left", down: " right" };
+    return map[gameDir as Dir] ?? ` ${gameDir}`;
+  } else {
+    const map: Record<Dir, string> = { right: " up", left: " down", up: " right", down: " left" };
+    return map[gameDir as Dir] ?? ` ${gameDir}`;
+  }
+}
+
+// ─── Animation helpers ────────────────────────────────────────────────────────
 const DIR_OFFSETS: Record<Dir, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
   down: { dx: 0, dy: 1 },
@@ -1042,7 +1061,10 @@ function TurnLogDrawer({
               : r.command.type === "harvest"
                 ? "🌿"
                 : "👟";
-          const dirStr = r.command.direction ? ` ${r.command.direction}` : "";
+          // Spectate is always portrait with yourTeamId=1; use the attacker's
+          // own team perspective so directions read correctly on screen.
+          const monTeamId = info?.teamId ?? 1;
+          const dirStr = gameDirToScreenLabel(r.command.direction, true, monTeamId);
           const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";
           const koStr = r.targetKO ? " 💀 KO!" : "";
           const energyStr =
