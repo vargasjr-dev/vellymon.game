@@ -308,6 +308,101 @@ function buildImpactOverlays(log: RawTurnLog, snap: RawGameState): Overlays {
   return { labels };
 }
 
+/** One step in a sequential (Pokémon-style) turn animation. */
+type AnimStep = {
+  key: string;
+  from: CanvasVellymon[];
+  to: CanvasVellymon[];
+  /** Damage / KO label to show after this step's tween completes. */
+  impact: Overlays | null;
+};
+
+/**
+ * Break a turn into per-command animation steps, sorted by speed (already
+ * sorted in previewCmds). Each step moves/acts one vellymon at a time.
+ * A final "reconciliation" step snaps to the true toSnap so KOs/HP changes
+ * are always correct at the end.
+ */
+function buildSequentialSteps(
+  sortedCmds: RawCommandResult[],
+  fromSnap: RawGameState,
+  toSnap: RawGameState,
+): AnimStep[] {
+  const steps: AnimStep[] = [];
+
+  // Incrementally track positions as each command executes
+  const workingPos = new Map<string, { x: number; y: number }>();
+  const baseVms = snapshotToVellymons(fromSnap);
+  baseVms.forEach((v) => workingPos.set(v.uuid, { x: v.x, y: v.y }));
+
+  // Snapshot all vms using accumulated working positions
+  function snapshot(): CanvasVellymon[] {
+    return baseVms.map((v) => {
+      const pos = workingPos.get(v.uuid);
+      return pos ? { ...v, x: pos.x, y: pos.y } : { ...v };
+    });
+  }
+
+  let stepIdx = 0;
+  for (const cmd of sortedCmds) {
+    if (!cmd.success) continue;
+    const uuid = cmd.command.vellymonUuid;
+
+    const from = snapshot();
+    let posChanged = false;
+
+    if (cmd.command.type === "move" && cmd.command.direction) {
+      const dir = cmd.command.direction as Dir;
+      const delta = DIR_OFFSETS[dir];
+      if (delta) {
+        const cur = workingPos.get(uuid);
+        if (cur) {
+          workingPos.set(uuid, { x: cur.x + delta.dx, y: cur.y + delta.dy });
+          posChanged = true;
+        }
+      }
+    }
+
+    const to = snapshot();
+
+    // Impact label at target tile (same offset logic as buildImpactOverlays)
+    let impact: Overlays | null = null;
+    if ((cmd.damageDealt && cmd.damageDealt > 0) || cmd.targetKO) {
+      const attackerPos = workingPos.get(uuid);
+      if (attackerPos) {
+        const dir = cmd.command.direction as Dir | undefined;
+        const offset = dir ? DIR_OFFSETS[dir] : null;
+        impact = {
+          labels: [
+            {
+              x: offset ? attackerPos.x + offset.dx : attackerPos.x,
+              y: offset ? attackerPos.y + offset.dy : attackerPos.y,
+              text: cmd.targetKO ? "💀 KO!" : `-${cmd.damageDealt}`,
+              color: cmd.targetKO ? 0xff4444 : 0xfbbf24,
+              alpha: 1,
+            },
+          ],
+        };
+      }
+    }
+
+    // Only emit a step if something actually happens
+    if (posChanged || impact) {
+      steps.push({ key: String(stepIdx++), from, to, impact });
+    }
+  }
+
+  // Final reconciliation — short snap to true toSnap (handles KOs, HP, edge cases)
+  steps.push({
+    key: "final",
+    from: snapshot(),
+    to: snapshotToVellymons(toSnap),
+    impact: null,
+  });
+
+  return steps;
+}
+
 /** Build a uuid → {name, teamId} lookup from a RawGameState (pre-turn state). */
 function buildVellymonLookup(
   gs: RawGameState,
@@ -356,6 +451,9 @@ export default function SpectateClient({ matchId }: Props) {
     log: RawTurnLog | null;
     lookup: Map<string, { name: string; teamId: 1 | 2 }>;
     timeoutId: ReturnType<typeof setTimeout> | null;
+    // Sequential execution
+    sequentialSteps: AnimStep[];
+    stepIdx: number;
   }>({
     pendingIndex: 0,
     previewCmds: [],
@@ -365,6 +463,8 @@ export default function SpectateClient({ matchId }: Props) {
     log: null,
     lookup: new Map(),
     timeoutId: null,
+    sequentialSteps: [],
+    stepIdx: 0,
   });
 
   // Live mode
@@ -466,10 +566,10 @@ export default function SpectateClient({ matchId }: Props) {
   }, []);
 
   // ── Animation state machine ───────────────────────────────────────────────
-  // Forward ref so startExecutePhase can call finishAnimation before it's defined
-  const finishAnimationRef = useRef<() => void>(() => {
-    /* filled below */
-  });
+  // Forward refs allow mutual recursion between runStep ↔ finishAnimation
+  // without circular dependency issues in useCallback.
+  const finishAnimationRef = useRef<() => void>(() => {});
+  const runStepRef = useRef<() => void>(() => {});
 
   const startExecutePhase = useCallback(() => {
     const a = animRef.current;
@@ -477,33 +577,54 @@ export default function SpectateClient({ matchId }: Props) {
     setAnimPhase("executing");
     setOverlays(null);
 
-    // Hand the animation off to BattleCanvas — it uses its Pixi ticker internally.
-    // This fires onComplete when done, with zero React state updates per frame.
+    // Build per-command steps (Pokémon-style: one mon acts at a time)
+    a.sequentialSteps = buildSequentialSteps(
+      a.previewCmds,
+      a.fromSnap,
+      a.toSnap,
+    );
+    a.stepIdx = 0;
+    runStepRef.current();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const runStep = useCallback(() => {
+    const a = animRef.current;
+
+    if (a.stepIdx >= a.sequentialSteps.length) {
+      finishAnimationRef.current();
+      return;
+    }
+
+    const step = a.sequentialSteps[a.stepIdx];
+    a.stepIdx += 1;
+
+    const isFinal = step.key === "final";
+
     setActiveTween({
-      key: a.pendingIndex,
-      from: snapshotToVellymons(a.fromSnap),
-      to: snapshotToVellymons(a.toSnap),
-      duration: 480,
+      key: `${a.pendingIndex}-${step.key}`,
+      from: step.from,
+      to: step.to,
+      // Final reconciliation snap is nearly instant; individual steps are snappy
+      duration: isFinal ? 80 : 320,
       onComplete: () => {
-        // Phase 3: show impact labels briefly, then finish
-        const impactOverlays = a.log
-          ? buildImpactOverlays(a.log, a.toSnap!)
-          : null;
-        const hasImpact = (impactOverlays?.labels?.length ?? 0) > 0;
-        setAnimPhase("impacting");
         setActiveTween(null);
-        if (hasImpact) {
-          setOverlays(impactOverlays);
+        if (step.impact) {
+          setAnimPhase("impacting");
+          setOverlays(step.impact);
           a.timeoutId = setTimeout(() => {
             setOverlays(null);
-            finishAnimationRef.current();
-          }, 450);
+            setAnimPhase("executing");
+            runStepRef.current();
+          }, 420);
         } else {
-          a.timeoutId = setTimeout(() => finishAnimationRef.current(), 100);
+          runStepRef.current();
         }
       },
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep forward refs in sync every render
+  runStepRef.current = runStep;
 
   const finishAnimation = useCallback(() => {
     const a = animRef.current;
@@ -512,7 +633,6 @@ export default function SpectateClient({ matchId }: Props) {
     setAnimPhase("idle");
     setReplayIndex(a.pendingIndex);
   }, []);
-  // Keep forward ref in sync
   finishAnimationRef.current = finishAnimation;
 
   const advancePreview = useCallback(() => {
@@ -958,17 +1078,20 @@ function MonCardOverlay({
           </button>
         </div>
 
-        {/* Sprite */}
+        {/* Sprite — background-size 200% crops the 25% whitespace padding per side */}
         {vm.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={vm.imageUrl}
-            alt={vm.name}
-            className="w-20 h-20 mx-auto mb-3 rounded-xl object-contain"
+          <div
+            className="w-32 h-32 mx-auto mb-3 rounded-xl"
+            style={{
+              backgroundImage: `url(${vm.imageUrl})`,
+              backgroundSize: "200%",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
           />
         ) : (
           <div
-            className={`w-20 h-20 mx-auto mb-3 rounded-full opacity-60 ${teamId === 1 ? "bg-blue-500" : "bg-red-500"}`}
+            className={`w-32 h-32 mx-auto mb-3 rounded-full opacity-60 ${teamId === 1 ? "bg-blue-500" : "bg-red-500"}`}
           />
         )}
 
