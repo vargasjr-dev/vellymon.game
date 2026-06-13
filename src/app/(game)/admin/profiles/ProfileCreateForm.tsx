@@ -13,8 +13,8 @@ export default function ProfileCreateForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // 6 slots: [active1, active2, active3, active4, bench1, bench2]
-  const [slots, setSlots] = useState<string[]>(["", "", "", "", "", ""]);
+  // 8 slots — starters vs bench decided at pregame, not here
+  const [slots, setSlots] = useState<string[]>(["", "", "", "", "", "", "", ""]);
   const [randomness, setRandomness] = useState(0.5);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -30,7 +30,7 @@ export default function ProfileCreateForm({
       try {
         await createProfileAction(fd);
         setSuccess(true);
-        setSlots(["", "", "", "", "", ""]);
+        setSlots(["", "", "", "", "", "", "", ""]);
         setRandomness(0.5);
         (e.target as HTMLFormElement).reset();
       } catch (err) {
@@ -40,7 +40,6 @@ export default function ProfileCreateForm({
   }
 
   const filledCount = slots.filter(Boolean).length;
-  const needsAutoSelect = filledCount < 6;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -113,14 +112,9 @@ export default function ProfileCreateForm({
           slots={slots}
           onChange={setSlots}
         />
-        {needsAutoSelect && filledCount === 0 && (
-          <p className="text-xs text-purple-600 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mt-2">
-            ✨ Leave all slots empty and Haiku will pick a team that fits your prompt.
-          </p>
-        )}
-        {needsAutoSelect && filledCount > 0 && (
-          <p className="text-xs text-purple-600 mt-1">
-            ✨ {6 - filledCount} slot{6 - filledCount > 1 ? "s" : ""} will be auto-filled by Haiku based on your prompt.
+        {filledCount === 0 && (
+          <p className="text-xs text-gray-400 mt-2">
+            ✨ Leave all slots empty and a team will be auto-picked based on your prompt.
           </p>
         )}
       </div>

@@ -66,7 +66,7 @@ Profile description (this defines the AI's playstyle and personality):
 
 ${existingText}
 You need to pick exactly ${count} vellymon${count > 1 ? "s" : ""} to add to the team.
-Slots 1-4 are active starters; slots 5-6 are bench reserves.
+The team is 8 vellymons total — which ones start or sit on the bench is decided later at pregame.
 
 Available vellymons:
 ${monList}
@@ -144,22 +144,16 @@ export async function createProfileAction(formData: FormData) {
     throw new Error(`Unknown vellymon names: ${unknown.join(", ")}`);
   }
 
-  // Auto-fill remaining slots via Haiku if < 6 were picked
-  if (teamNames.length < 4) {
-    // Need at least 4 actives — pick enough to reach 6 (4 active + 2 bench)
-    const needed = 6 - teamNames.length;
-    const autoPicked = await autoSelectMons(description, teamNames, needed);
-    teamNames = [...teamNames, ...autoPicked];
-  } else if (teamNames.length < 6) {
-    // Have 4-5 — fill up to 6
-    const needed = 6 - teamNames.length;
+  // Auto-fill remaining slots up to 8 (starters vs bench decided at pregame)
+  if (teamNames.length < 8) {
+    const needed = 8 - teamNames.length;
     const autoPicked = await autoSelectMons(description, teamNames, needed);
     teamNames = [...teamNames, ...autoPicked];
   }
 
-  // Final validation: exactly 6
-  if (teamNames.length !== 6) {
-    throw new Error("Could not build a 6-vellymon team");
+  // Final validation: exactly 8
+  if (teamNames.length !== 8) {
+    throw new Error("Could not build an 8-vellymon team");
   }
 
   await createAiProfile({ id, name, teamNames, randomness, description });
