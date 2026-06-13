@@ -3,7 +3,8 @@ import { isAdmin } from "~/lib/admin";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import AdminMatchForm from "./AdminMatchForm";
+import ImpersonatePanel from "./ImpersonatePanel";
+import { getSubscriptionInfo } from "../../../../lib/subscription";
 
 export default async function AdminPage() {
   const headersList = await headers();
@@ -12,6 +13,9 @@ export default async function AdminPage() {
   if (!isAdmin(session)) {
     notFound();
   }
+
+  const subInfo = await getSubscriptionInfo(session!.user.id);
+  const currentStatus = subInfo?.subscriptionStatus ?? "none";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -38,17 +42,14 @@ export default async function AdminPage() {
         </Link>
       </div>
 
-      {/* Quick random admin match */}
+      {/* Impersonate free / pro */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
-          🎲 Quick Random Match
-        </h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">🎭 Impersonate Subscription</h2>
         <p className="text-gray-600 mb-4">
-          Auto-generates two random teams from all 64 vellymons (8 per
-          team). You play as both sides — fast way to test special powers and balance.
+          Toggle your own account between Free and Pro for testing. Writes directly
+          to the DB — does not touch Stripe.
         </p>
-
-        <AdminMatchForm />
+        <ImpersonatePanel currentStatus={currentStatus} />
       </div>
 
       {/* AI Player Profiles */}
