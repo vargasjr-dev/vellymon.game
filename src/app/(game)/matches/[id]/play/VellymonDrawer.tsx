@@ -93,10 +93,10 @@ export default function VellymonDrawer({
   return (
     <>
       {/* Dim overlay — tap to close */}
-      <div className="absolute inset-0 bg-black/50 z-10" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 z-[80]" onClick={onClose} />
 
       {/* Drawer — slides up from bottom */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#0c1220] border-t border-gray-700 rounded-t-2xl max-h-[65%] overflow-y-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-[#0c1220] border-t border-gray-700 rounded-t-2xl max-h-[65%] overflow-y-auto">
         {/* Drag handle */}
         <div className="flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 bg-gray-600 rounded-full" />
