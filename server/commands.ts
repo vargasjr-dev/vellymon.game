@@ -217,18 +217,8 @@ export function validateCommand(
         return `Not enough energy (need ${attack.energyCost}, have ${team.energy})`;
       }
 
-      // Require a valid target in range — prevents wasting energy on empty air
-      const hitCheck = scanForTarget(
-        state,
-        vellymon.position,
-        command.direction,
-        attack.range,
-        team,
-      );
-      if (!hitCheck) {
-        return "No target in range";
-      }
-
+      // No target check here — attacking into empty space is allowed and costs
+      // energy (whiff penalty). resolveAttack handles the no-hit case.
       return null;
     }
 
@@ -283,19 +273,9 @@ export function getAvailableCommands(
   // Move is always available (validation checks bounds at resolution)
   available.push("move");
 
-  // Attack available only if team has energy AND there's a valid target in some direction
+  // Attack available whenever the team has energy — whiffing is allowed (costs energy)
   if (hasEnergy(team)) {
-    const directions: Direction[] = ["up", "down", "left", "right"];
-    const hasAnyTarget = vellymon.attacks.some(
-      (atk) =>
-        team.energy >= atk.energyCost &&
-        directions.some(
-          (dir) => scanForTarget(state, vellymon.position!, dir, atk.range, team) !== null,
-        ),
-    );
-    if (hasAnyTarget) {
-      available.push("attack");
-    }
+    available.push("attack");
   }
 
   // Harvest is always shown — direction validation happens at resolution
