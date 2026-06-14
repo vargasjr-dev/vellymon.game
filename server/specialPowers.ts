@@ -106,6 +106,15 @@ export type HookContext = {
 export type CommandHookContext = HookContext & {
   /** The command being resolved */
   command: CommandRef;
+  /**
+   * The result of the resolved command — available in onAfterCommand hooks.
+   * Lets powers know whether the attack hit, how much damage was dealt, and who was hit.
+   */
+  commandResult?: {
+    success: boolean;
+    damageDealt?: number;
+    targetUuid?: string;
+  };
 };
 
 export type KnockoutHookContext = HookContext & {
