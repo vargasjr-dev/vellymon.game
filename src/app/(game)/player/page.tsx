@@ -74,8 +74,6 @@ export default async function PlayerHubPage() {
   const activeMatchCount = matches.filter(
     (m) => m.status === "waiting" || m.status === "ready" || m.status === "playing",
   ).length;
-  const displayName = session.user.name || "Trainer";
-
   const rank = (activeRank?.rank ?? "bronze") as Rank;
   const stars = activeRank?.stars ?? 0;
   const maxStars = STARS_PER_RANK[rank];
@@ -83,16 +81,6 @@ export default async function PlayerHubPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Greeting */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {displayName}!
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Here&apos;s your Vellymon overview.
-        </p>
-      </div>
-
       {/* Rank + Currency Banner */}
       <div className={`mb-8 bg-gradient-to-br ${RANK_BG[rank]} border-2 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4`}>
         {/* Rank section */}
