@@ -242,9 +242,9 @@ function resolveArrowTies(
  * 6. Check win conditions
  *
  * Priority tiers (ties cascade to the next tier):
- *   1. Phase      — harvest → move → attack
- *   2. Speed      — higher speed acts first (within the same phase)
- *   3. Base damage — lower move damage acts first (attack phase only)
+ *   1. Speed      — higher speed acts first (across all command types)
+ *   2. Phase      — on speed tie: harvest → move → attack
+ *   3. Base damage — lower move damage acts first (attack phase only, speed+phase tied)
  *   4. Possession arrow — alternating, random first pick, only advances on actual ties
  */
 export function resolveTurn(
@@ -294,11 +294,13 @@ export function resolveTurn(
     ...tagCommands(t2Commands, team2),
   ];
 
-  // Sort by: phase asc → speed desc → base damage asc (attacks only).
+  // Sort by: speed desc → phase asc (tiebreaker) → base damage asc (attacks only).
+  // Speed is the primary key — a fast attacker always beats a slow harvester.
+  // Phase (harvest < move < attack) only breaks ties between equal-speed commands.
   // Commands still tied on all three criteria are broken by the possession arrow below.
   allCommands.sort((a, b) => {
-    if (a.phase !== b.phase) return a.phase - b.phase;
     if (a.speed !== b.speed) return b.speed - a.speed;
+    if (a.phase !== b.phase) return a.phase - b.phase;
     if (a.baseDamage !== b.baseDamage) return a.baseDamage - b.baseDamage;
     return 0;
   });
