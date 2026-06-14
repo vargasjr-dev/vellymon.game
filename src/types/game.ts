@@ -27,6 +27,7 @@ export interface Attack {
   name: string;
   damage: number;
   energyCost: number;
+  range: number;
 }
 
 type SpaceBase = { x: number; y: number };

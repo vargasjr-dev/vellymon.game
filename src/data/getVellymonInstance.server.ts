@@ -39,6 +39,7 @@ export type VellymonInstanceDetail = {
     name: string;
     damage: number;
     energyCost: number;
+    range: number;
   }>;
   // From VellymonTemplate (via VELLYMON_LIBRARY lookup by name)
   archetype: string;
@@ -89,6 +90,7 @@ export async function getVellymonInstance(
       name: a.name,
       damage: a.damage,
       energyCost: a.energyCost,
+      range: a.range,
     })),
     archetype: template?.archetype ?? "balanced",
     powerName: power?.name,

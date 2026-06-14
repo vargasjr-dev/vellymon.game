@@ -43,6 +43,7 @@ function templateToStats(t: VellymonTemplate): VellymonStats {
       name: atk.name,
       damage: atk.damage,
       energyCost: atk.energyCost,
+      range: atk.range,
     })),
     flavor: t.flavor,
     imageUrl: t.imageUrl,

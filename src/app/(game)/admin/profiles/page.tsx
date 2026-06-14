@@ -27,6 +27,12 @@ export default async function ProfilesPage() {
     powerDescription: v.specialPowerId
       ? getPower(v.specialPowerId)?.description
       : undefined,
+    attacks: v.attacks.map((atk) => ({
+      name: atk.name,
+      damage: atk.damage,
+      energyCost: atk.energyCost,
+      range: atk.range,
+    })),
   }));
 
   return (
