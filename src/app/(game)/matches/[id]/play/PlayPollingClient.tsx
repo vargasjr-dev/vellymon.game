@@ -110,6 +110,7 @@ type VellymonDisplay = {
   hp: number;
   maxHp: number;
   speed: number;
+  baseSpeed: number;
   attack: number;
   x: number;
   y: number;
@@ -133,17 +134,18 @@ type RawTeam = {
   name: string;
   energy: number;
   active: Array<{
-    uuid: string;
-    name: string;
-    hp: number;
-    maxHp: number;
-    speed: number;
-    attack: number;
-    attacks?: AttackDisplay[];
-    position: { x: number; y: number } | null;
-    isKO: boolean;
-    imageUrl?: string;
-  }>;
+      uuid: string;
+      name: string;
+      hp: number;
+      maxHp: number;
+      speed: number;
+      baseSpeed: number;
+      attack: number;
+      attacks?: AttackDisplay[];
+      position: { x: number; y: number } | null;
+      isKO: boolean;
+      imageUrl?: string;
+    }>;
   bench: unknown[];
   knocked: unknown[];
 };
@@ -159,6 +161,7 @@ function mapTeam(t: RawTeam): TeamDisplay {
       hp: v.hp,
       maxHp: v.maxHp,
       speed: v.speed,
+      baseSpeed: v.baseSpeed,
       attack: v.attack,
       x: v.position?.x ?? 0,
       y: v.position?.y ?? 0,

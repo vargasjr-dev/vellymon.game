@@ -42,7 +42,10 @@ export type VellymonState = {
   /** Current HP (0 = KO'd) */
   hp: number;
   maxHp: number;
+  /** Effective speed this turn (may be temporarily modified by powers) */
   speed: number;
+  /** Base speed from the vellymon template — never modified */
+  baseSpeed: number;
   attack: number;
   attacks: Attack[];
   /** Current board position (null if KO'd and not yet replaced, or on bench) */

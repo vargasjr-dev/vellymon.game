@@ -33,6 +33,7 @@ export function buildTeamSetup(
     name: t.name,
     maxHp: t.hp,
     speed: t.speed,
+    baseSpeed: t.speed,
     attack: t.attack,
     attacks: t.attacks.map((a) => ({
       key: a.key,

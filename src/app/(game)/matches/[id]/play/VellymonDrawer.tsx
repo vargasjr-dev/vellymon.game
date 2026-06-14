@@ -17,6 +17,7 @@ type VellymonData = {
   hp: number;
   maxHp: number;
   speed: number;
+  baseSpeed: number;
   attack: number;
   attacks: AttackDisplay[];
   isKO: boolean;
@@ -139,7 +140,16 @@ export default function VellymonDrawer({
           {/* Stats row */}
           <div className="flex gap-3 text-xs mb-3">
             <span className="text-red-400">⚔️ ATK {vellymon.attack}</span>
-            <span className="text-yellow-400">💨 SPD {vellymon.speed}</span>
+            {vellymon.speed < vellymon.baseSpeed ? (
+              <span className="text-red-400">
+                💨 SPD {vellymon.speed}{" "}
+                <span className="text-xs opacity-80">
+                  (-{vellymon.baseSpeed - vellymon.speed})
+                </span>
+              </span>
+            ) : (
+              <span className="text-yellow-400">💨 SPD {vellymon.speed}</span>
+            )}
             <span className="text-blue-400">⚡ NRG {teamEnergy}</span>
           </div>
 

@@ -128,6 +128,7 @@ function createVellymonState(setup: VellymonSetup): VellymonState {
     hp: setup.maxHp,
     maxHp: setup.maxHp,
     speed: setup.speed,
+    baseSpeed: setup.speed,
     attack: setup.attack,
     attacks: setup.attacks,
     position: { ...setup.spawnPosition },
@@ -253,6 +254,17 @@ export function resolveTurn(
 ): TurnLog {
   const [team1, team2] = state.teams;
 
+  // Reset speed mods from the previous turn so any temporary buffs/debuffs
+  // (e.g. Barrikade's Iron Curtain −2 SPD, Blinkatt's Phase Shift +5 SPD)
+  // only last for the one turn they were applied.
+  for (const team of state.teams) {
+    for (const v of team.active) {
+      if (v.speed !== v.baseSpeed) {
+        v.speed = v.baseSpeed;
+      }
+    }
+  }
+
   // Get final commands (submitted or auto-generated defaults)
   const team1ActiveUuids = team1.active
     .filter((v) => !v.isKO)
@@ -369,6 +381,36 @@ export function resolveTurn(
           if (Object.keys(energyDeltas).length > 0) {
             result.powerEnergyDeltas = energyDeltas;
           }
+        }
+      }
+    }
+
+    // ── Special power: onDamaged ─────────────────────────────────────────────
+    // Fire on the DEFENDING vellymon after it takes damage from an attack.
+    // Used by: Barrikade (Iron Curtain −2 SPD to attacker), Ferridon (rust aura), etc.
+    if (
+      result.success &&
+      command.type === "attack" &&
+      result.targetUuid &&
+      result.damageDealt &&
+      result.damageDealt > 0
+    ) {
+      const attackerVellymon = team.active.find((v) => v.uuid === command.vellymonUuid);
+      const enemyTeamId = team.id === 1 ? 2 : 1;
+      const enemyTeam = state.teams.find((t) => t.id === enemyTeamId);
+      const defender = enemyTeam?.active.find((v) => v.uuid === result.targetUuid);
+      if (defender?.specialPowerId && attackerVellymon) {
+        const damagedCtx = {
+          self: defender,
+          team: enemyTeamId as 1 | 2,
+          state,
+          turn: state.turn,
+          attacker: attackerVellymon,
+          damage: result.damageDealt,
+        };
+        const damagedEffects = runHook("onDamaged", defender.specialPowerId, damagedCtx);
+        if (damagedEffects.length > 0) {
+          applyEffects(damagedEffects, state);
         }
       }
     }
