@@ -128,7 +128,7 @@ export default function RulesPage() {
           />
           <CommandCard
             name="Attack"
-            cost="Varies (2–8 energy)"
+            cost="Varies (1–3 energy)"
             desc="Use one of your vellymon's two attacks on a target position. Each attack has different damage, range, and energy cost."
           />
           <CommandCard
@@ -162,13 +162,13 @@ export default function RulesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                <AttackRow name="Chip" base={2} scale="×0.2" cost={2} range={2} />
-                <AttackRow name="Poke" base={3} scale="×0.3" cost={2} range={1} />
-                <AttackRow name="Snipe" base={6} scale="×0.4" cost={3} range={2} />
-                <AttackRow name="Strike" base={8} scale="×0.5" cost={4} range={1} />
-                <AttackRow name="Lob" base={10} scale="×0.6" cost={5} range={2} />
-                <AttackRow name="Slam" base={12} scale="×0.7" cost={6} range={1} />
-                <AttackRow name="Nuke" base={15} scale="×1.0" cost={8} range={1} />
+                <AttackRow name="Chip" base={2} scale="×0.2" cost={1} range={2} />
+                <AttackRow name="Poke" base={3} scale="×0.3" cost={1} range={1} />
+                <AttackRow name="Snipe" base={6} scale="×0.4" cost={2} range={2} />
+                <AttackRow name="Strike" base={8} scale="×0.5" cost={2} range={1} />
+                <AttackRow name="Lob" base={10} scale="×0.6" cost={3} range={2} />
+                <AttackRow name="Slam" base={12} scale="×0.7" cost={3} range={1} />
+                <AttackRow name="Nuke" base={15} scale="×1.0" cost={3} range={1} />
               </tbody>
             </table>
           </div>

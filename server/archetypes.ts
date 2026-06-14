@@ -45,13 +45,13 @@ export type Archetype = {
 // ─── Attack Templates ────────────────────────────────────────────────────────
 
 export const ATTACK_TEMPLATES: Record<string, AttackTemplate> = {
-  poke:   { key: "poke",   name: "Poke",   damage: 3,  energyCost: 2, range: 1 },
-  strike: { key: "strike", name: "Strike", damage: 8,  energyCost: 4, range: 1 },
-  slam:   { key: "slam",   name: "Slam",   damage: 12, energyCost: 6, range: 1 },
-  nuke:   { key: "nuke",   name: "Nuke",   damage: 15, energyCost: 8, range: 1 },
-  snipe:  { key: "snipe",  name: "Snipe",  damage: 6,  energyCost: 3, range: 2 },
-  lob:    { key: "lob",    name: "Lob",    damage: 10, energyCost: 5, range: 2 },
-  chip:   { key: "chip",   name: "Chip",   damage: 2,  energyCost: 2, range: 2 },
+  poke:   { key: "poke",   name: "Poke",   damage: 3,  energyCost: 1, range: 1 },
+  strike: { key: "strike", name: "Strike", damage: 8,  energyCost: 2, range: 1 },
+  slam:   { key: "slam",   name: "Slam",   damage: 12, energyCost: 3, range: 1 },
+  nuke:   { key: "nuke",   name: "Nuke",   damage: 15, energyCost: 3, range: 1 },
+  snipe:  { key: "snipe",  name: "Snipe",  damage: 6,  energyCost: 2, range: 2 },
+  lob:    { key: "lob",    name: "Lob",    damage: 10, energyCost: 3, range: 2 },
+  chip:   { key: "chip",   name: "Chip",   damage: 2,  energyCost: 1, range: 2 },
 };
 
 const T = ATTACK_TEMPLATES;

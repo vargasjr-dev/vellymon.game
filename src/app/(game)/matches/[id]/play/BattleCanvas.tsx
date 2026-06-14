@@ -430,16 +430,16 @@ export default function BattleCanvas({
         }
         if (!vm && isHarvestable) {
           const yield_ = space?.harvestYield ?? 1;
-          const fernEmoji = yield_ >= 3 ? "🪴" : yield_ >= 2 ? "🌿" : "🌱";
-          const fernScale = yield_ >= 3 ? 0.32 : yield_ >= 2 ? 0.26 : 0.2;
+          const fernEmoji = yield_ >= 4 ? "🌳" : yield_ >= 3 ? "🪴" : yield_ >= 2 ? "🌿" : "🌱";
+          const fernScale = yield_ >= 4 ? 0.38 : yield_ >= 3 ? 0.32 : yield_ >= 2 ? 0.26 : 0.2;
           const fernColor =
-            yield_ >= 3 ? 0x2d8c4a : yield_ >= 2 ? 0x1f7a3a : 0x1a5c2a;
+            yield_ >= 4 ? 0x1a6b32 : yield_ >= 3 ? 0x2d8c4a : yield_ >= 2 ? 0x1f7a3a : 0x1a5c2a;
           const leaf = new Text({
             text: fernEmoji,
             style: new TextStyle({
               fontSize: Math.min(
                 tileSize * fernScale,
-                yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11,
+                yield_ >= 4 ? 22 : yield_ >= 3 ? 18 : yield_ >= 2 ? 14 : 11,
               ),
               fill: fernColor,
               align: "center",

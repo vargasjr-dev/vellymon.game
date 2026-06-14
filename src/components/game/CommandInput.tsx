@@ -52,6 +52,7 @@ export default function CommandInput({
     (s) => s.x === vellymon.x && s.y === vellymon.y,
   );
   const canHarvest = currentSpace?.type === "harvestable";
+  const harvestYield = currentSpace?.harvestYield ?? 1;
 
   // Check if any attack is affordable
   const canAffordAnyAttack = vellymon.attacks.some(
@@ -130,7 +131,7 @@ export default function CommandInput({
           />
           <CommandButton
             label="🌿 Harvest"
-            sublabel={canHarvest ? "+1 energy" : "Not harvestable"}
+            sublabel={canHarvest ? `+${harvestYield} energy` : "Not harvestable"}
             onClick={() => {
               onSubmitCommand({
                 type: "harvest",
