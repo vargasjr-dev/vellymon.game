@@ -3,6 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 
+export interface VellymonAttack {
+  name: string;
+  damage: number;
+  energyCost: number;
+  range: number;
+}
+
 export interface VellymonData {
   name: string;
   hp: number;
@@ -12,6 +19,7 @@ export interface VellymonData {
   imageUrl?: string;
   powerName?: string;
   powerDescription?: string;
+  attacks?: VellymonAttack[];
 }
 
 interface MonTeamSelectorProps {
@@ -97,6 +105,21 @@ function MonDetailPanel({
         <StatBar label="ATK" value={mon.attack} max={20} color="red" />
         <StatBar label="SPD" value={mon.speed} max={10} color="blue" />
       </div>
+      {mon.attacks && mon.attacks.length > 0 && (
+        <div className="mb-4 space-y-1.5">
+          {mon.attacks.map((atk) => (
+            <div
+              key={atk.name}
+              className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center justify-between"
+            >
+              <span className="text-xs font-semibold text-red-800">{atk.name}</span>
+              <span className="text-[10px] text-gray-500 font-mono">
+                {atk.damage} dmg · {atk.energyCost}⚡ · rng {atk.range}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       {mon.powerName && (
         <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 mb-4">
           <p className="text-xs font-bold text-purple-900 mb-0.5">✨ {mon.powerName}</p>

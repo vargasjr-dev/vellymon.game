@@ -157,6 +157,10 @@ export default async function VellymonDetailPage({
                       <span className="font-medium text-gray-800">Energy:</span>{" "}
                       {attack.energyCost}
                     </span>
+                    <span>
+                      <span className="font-medium text-gray-800">Range:</span>{" "}
+                      {attack.range}
+                    </span>
                   </div>
                 </div>
               ))}
