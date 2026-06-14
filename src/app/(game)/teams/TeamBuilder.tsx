@@ -108,7 +108,7 @@ export default function TeamBuilder({
 
       if (result.success) {
         addToast(result.message, "success");
-        router.push("/teams");
+        router.push("/roster");
         router.refresh();
       } else {
         addToast(result.message, "error");
@@ -247,7 +247,7 @@ export default function TeamBuilder({
       {/* Save Button */}
       <div className="flex items-center justify-between pt-4 border-t border-gray-200">
         <button
-          onClick={() => router.push("/teams")}
+          onClick={() => router.push("/roster")}
           className="text-gray-600 hover:text-gray-900 font-medium transition"
         >
           ← Cancel

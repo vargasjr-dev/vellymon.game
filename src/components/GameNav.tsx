@@ -8,7 +8,6 @@ const navLinks = [
   { href: "/player", label: "🏠 Hub" },
   { href: "/roster", label: "🐾 Roster" },
   { href: "/market", label: "🛒 Market" },
-  { href: "/teams", label: "👥 Teams" },
   { href: "/matches", label: "🎮 Matches" },
   { href: "/practice", label: "🤖 Practice", premium: true },
   { href: "/season", label: "🏆 Season" },

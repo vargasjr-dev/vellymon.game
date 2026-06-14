@@ -74,7 +74,7 @@ export default function PracticeSetup({
           Build a team first, then come back for sparring practice.
         </p>
         <a
-          href="/teams"
+          href="/roster"
           className="inline-block px-6 py-3 bg-blue-600 text-white font-bold rounded-lg"
         >
           Build a Team
