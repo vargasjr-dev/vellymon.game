@@ -17,7 +17,11 @@ export default async function MatchesPage() {
     getOpenMatches(),
     getUserMatches(session.user.id),
     isAdmin
-      ? db.select({ id: matchSnapshot.id, status: matchSnapshot.status, uploadedAt: matchSnapshot.uploadedAt }).from(matchSnapshot).orderBy(desc(matchSnapshot.uploadedAt))
+      ? db.select({
+          id: matchSnapshot.id,
+          gameState: matchSnapshot.gameState,
+          uploadedAt: matchSnapshot.uploadedAt,
+        }).from(matchSnapshot).orderBy(desc(matchSnapshot.uploadedAt))
       : Promise.resolve([]),
   ]);
 
@@ -150,30 +154,46 @@ export default async function MatchesPage() {
               No uploaded snapshots yet.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {uploadedSnapshots.map((snap) => (
-                <div key={snap.id} className="bg-white rounded-lg shadow-md p-4 flex items-center justify-between">
-                  <div>
-                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mr-2 ${
-                      snap.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                    }`}>
-                      {snap.status ?? "unknown"}
-                    </span>
-                    <span className="text-sm font-mono text-gray-700">{snap.id}</span>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Uploaded {snap.uploadedAt
-                        ? new Date(snap.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                        : "—"}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/matches/${snap.id}/spectate`}
-                    className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            <div className="space-y-2">
+              {uploadedSnapshots.map((snap) => {
+                type SnapTeam = { id: 1 | 2; name: string };
+                type SnapResult = { winner: 1 | 2; condition: string } | null;
+                const gs = snap.gameState as { teams?: SnapTeam[]; result?: SnapResult } | null;
+                const teams = gs?.teams ?? [];
+                const result = gs?.result ?? null;
+                const winner = result ? teams.find((t) => t.id === result.winner) : null;
+                const loser = result ? teams.find((t) => t.id !== result.winner) : null;
+                const headline =
+                  winner && loser
+                    ? `${winner.name} defeats ${loser.name}`
+                    : teams.length >= 2
+                    ? `${teams[0].name} vs ${teams[1].name}`
+                    : "Match";
+                const date = snap.uploadedAt
+                  ? new Date(snap.uploadedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—";
+                return (
+                  <div
+                    key={snap.id}
+                    className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
                   >
-                    Spectate →
-                  </Link>
-                </div>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate text-sm">{headline}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{date}</p>
+                    </div>
+                    <Link
+                      href={`/matches/${snap.id}/spectate`}
+                      className="shrink-0 bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Spectate →
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
