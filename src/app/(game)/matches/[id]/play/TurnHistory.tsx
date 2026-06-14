@@ -16,6 +16,7 @@ type CommandResult = {
   damageDealt?: number;
   targetKO?: boolean;
   targetUuid?: string;
+  attackName?: string;
 };
 
 type BenchEntry = {
@@ -159,7 +160,8 @@ function formatResult(
       const victim = targetName ? ` → ${targetName}` : "";
       const dmg = r.damageDealt ? ` −${r.damageDealt} HP` : "";
       const ko = r.targetKO ? " [KO!]" : "";
-      return `${name} attacked${dir}${victim}${dmg}${ko}`;
+      const move = r.attackName ? ` ${r.attackName}` : "";
+      return `${name} used${move}${dir}${victim}${dmg}${ko}`;
     }
     case "harvest": {
       const energy = r.energyDelta ? ` (+${r.energyDelta}⚡)` : "";
