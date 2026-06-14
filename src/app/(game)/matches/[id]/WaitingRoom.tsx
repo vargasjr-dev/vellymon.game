@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "~/components/Toast";
+import ConfirmDialog from "~/components/ConfirmDialog";
 import { getMatchAction, cancelMatchAction, startMatchAction, deleteMatchAction } from "../actions";
 
 // ─── Invite Link Button ───────────────────────────────────────────────────────
@@ -95,6 +96,7 @@ export default function WaitingRoom({
   const [cancelling, setCancelling] = useState(false);
   const [starting, setStarting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isCreator = match.createdBy === currentUserId;
   const isPlayer = match.players.some((p) => p.userId === currentUserId);
@@ -334,25 +336,36 @@ export default function WaitingRoom({
         )}
 
         {userIsAdmin && (
-          <button
-            onClick={async () => {
-              if (!confirm("Permanently delete this match? This cannot be undone.")) return;
-              setDeleting(true);
-              const result = await deleteMatchAction(match.uuid);
-              if (result.success) {
-                addToast("Match deleted", "success");
-                router.push("/matches");
-                router.refresh();
-              } else {
-                addToast(result.message ?? "Failed to delete", "error");
-                setDeleting(false);
-              }
-            }}
-            disabled={deleting}
-            className="block w-full text-center bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50"
-          >
-            {deleting ? "Deleting..." : "🗑️ Delete Match (Admin)"}
-          </button>
+          <>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={deleting}
+              className="block w-full text-center bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "🗑️ Delete Match (Admin)"}
+            </button>
+            <ConfirmDialog
+              open={showDeleteConfirm}
+              title="Delete this match?"
+              message="This will permanently delete the match and all its data. This cannot be undone."
+              confirmLabel="Delete"
+              destructive
+              onConfirm={async () => {
+                setShowDeleteConfirm(false);
+                setDeleting(true);
+                const result = await deleteMatchAction(match.uuid);
+                if (result.success) {
+                  addToast("Match deleted", "success");
+                  router.push("/matches");
+                  router.refresh();
+                } else {
+                  addToast(result.message ?? "Failed to delete", "error");
+                  setDeleting(false);
+                }
+              }}
+              onCancel={() => setShowDeleteConfirm(false)}
+            />
+          </>
         )}
       </div>
     </div>
