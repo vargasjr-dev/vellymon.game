@@ -347,6 +347,11 @@ export function resolveTurn(
             vellymonUuid: command.vellymonUuid,
             direction: command.direction,
           },
+          commandResult: {
+            success: result.success,
+            damageDealt: result.damageDealt,
+            targetUuid: result.targetUuid,
+          },
         };
         const effects = runHook("onAfterCommand", attacker.specialPowerId, ctx);
         if (effects.length > 0) {

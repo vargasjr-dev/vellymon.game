@@ -55,6 +55,11 @@ export type VellymonState = {
   specialPowerId?: string;
   /** Avatar image URL (e.g. /vellymon/aerobolt.png) */
   imageUrl?: string;
+  /**
+   * Persistent per-turn state for powers that need counters/accumulators.
+   * Keys are power-specific strings (e.g. "gearGrind"). Serialized with GameState.
+   */
+  powerState?: Record<string, number>;
 };
 
 // ─── Team State ──────────────────────────────────────────────────────────────
