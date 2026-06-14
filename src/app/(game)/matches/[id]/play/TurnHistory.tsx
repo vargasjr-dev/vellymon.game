@@ -17,6 +17,7 @@ type CommandResult = {
   targetKO?: boolean;
   targetUuid?: string;
   attackName?: string;
+  powerEnergyDeltas?: Partial<Record<1 | 2, number>>;
 };
 
 type BenchEntry = {
@@ -161,7 +162,14 @@ function formatResult(
       const dmg = r.damageDealt ? ` −${r.damageDealt} HP` : "";
       const ko = r.targetKO ? " [KO!]" : "";
       const move = r.attackName ? ` ${r.attackName}` : "";
-      return `${name} used${move}${dir}${victim}${dmg}${ko}`;
+      const powerDrain = r.powerEnergyDeltas
+        ? Object.entries(r.powerEnergyDeltas)
+            .map(([t, amt]) =>
+              amt < 0 ? ` T${t} −${Math.abs(amt)}⚡` : ` T${t} +${amt}⚡`,
+            )
+            .join("")
+        : "";
+      return `${name} used${move}${dir}${victim}${dmg}${ko}${powerDrain}`;
     }
     case "harvest": {
       const energy = r.energyDelta ? ` (+${r.energyDelta}⚡)` : "";

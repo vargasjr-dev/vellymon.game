@@ -30,7 +30,7 @@ registerPower({
     "Harvesting gives +2 bonus energy. Fluffy cheeks hold more than expected.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "harvest") return [];
 
       return [

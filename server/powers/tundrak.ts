@@ -30,7 +30,7 @@ registerPower({
     "Moving freezes the departed space for 2 turns. Reshapes the battlefield.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "move") return [];
       if (!ctx.self.position) return [];
 

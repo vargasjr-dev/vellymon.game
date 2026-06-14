@@ -30,7 +30,7 @@ registerPower({
     "Moving makes attacks 1 energy cheaper this turn. Speed becomes efficiency.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "move") return [];
 
       return [

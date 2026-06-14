@@ -127,6 +127,7 @@ type RawCommandResult = {
   targetKO?: boolean;
   targetUuid?: string;
   attackName?: string;
+  powerEnergyDeltas?: Partial<Record<1 | 2, number>>;
 };
 
 type RawBenchEntry = {
@@ -1075,6 +1076,14 @@ function TurnLogDrawer({
           const koStr = r.targetKO ? " 💀 KO!" : "";
           const energyStr =
             r.energyDelta && r.energyDelta > 0 ? ` +${r.energyDelta}⚡` : "";
+          // Power-triggered energy changes (e.g. Voidclaw −2⚡ to opponent)
+          const powerDrainStr = r.powerEnergyDeltas
+            ? Object.entries(r.powerEnergyDeltas)
+                .map(([t, amt]) =>
+                  amt < 0 ? `T${t} −${Math.abs(amt)}⚡` : `T${t} +${amt}⚡`,
+                )
+                .join(" ")
+            : "";
           const failStr = !r.success ? ` ✗ ${r.reason ?? "failed"}` : "";
 
           return (
@@ -1096,6 +1105,9 @@ function TurnLogDrawer({
                   <span className="text-orange-400 font-mono">{dmgStr}</span>
                 )}
                 {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
+              {powerDrainStr && (
+                <span className="text-purple-400 font-mono text-xs">{powerDrainStr}</span>
+              )}
               {energyStr && (
                 <span className="text-yellow-400 font-mono">{energyStr}</span>
               )}

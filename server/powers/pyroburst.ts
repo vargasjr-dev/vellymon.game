@@ -31,7 +31,7 @@ registerPower({
     "Attacks cost 1 less energy but deal 2 self-damage. Efficient explosions.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "attack") return [];
 
       return [

@@ -29,7 +29,7 @@ registerPower({
     "Moving deals 3 damage to the first active enemy. Lightning on the wing.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "move") return [];
 
       const enemyTeam = ctx.team === 1 ? 2 : 1;
