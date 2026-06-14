@@ -34,7 +34,13 @@ import {
 } from "./commands";
 import { checkWinConditions, updateOccupationCounters } from "./winConditions";
 import { processAllBenchEntries, type BenchEntry } from "./bench";
-import { runHook, applyEffects, type EnergyEffect } from "./specialPowers";
+import {
+  runHook,
+  runTeamHooks,
+  applyEffects,
+  getPower,
+  type EnergyEffect,
+} from "./specialPowers";
 import {
   createTurnTimer,
   getFinalCommands,
@@ -141,8 +147,24 @@ function createVellymonState(setup: VellymonSetup): VellymonState {
 
 // ─── Turn Loop ───────────────────────────────────────────────────────────────
 
+export type TurnStartEvent = {
+  /** The vellymon whose power fired */
+  casterUuid: string;
+  casterName: string;
+  team: 1 | 2;
+  /** Display name of the special power */
+  powerName: string;
+  /** UUID of the vellymon that received the effect */
+  targetUuid: string;
+  targetName: string;
+  /** Positive = healed */
+  healAmount: number;
+};
+
 export type TurnLog = {
   turn: number;
+  /** Passive power events that fired before any commands (e.g. Dewdrop heal) */
+  turnStartEvents: TurnStartEvent[];
   commandResults: CommandResult[];
   benchEntries: { team1: BenchEntry[]; team2: BenchEntry[] };
   winResult: WinResult | null;
@@ -262,6 +284,44 @@ export function resolveTurn(
       if (v.speed !== v.baseSpeed) {
         v.speed = v.baseSpeed;
       }
+    }
+  }
+
+  // ── onTurnStart: fire passive powers before any commands execute ──────────
+  // Collects heal events for display in the turn log and board animation.
+  const turnStartEvents: TurnStartEvent[] = [];
+  for (const team of state.teams) {
+    const effects = runTeamHooks("onTurnStart", team.active, team.id, state, state.turn);
+    if (effects.length > 0) {
+      // Snapshot positions before applying so we can record targetName
+      const preApply = new Map(
+        team.active.concat(
+          state.teams.find((t) => t.id !== team.id)?.active ?? []
+        ).map((v) => [v.uuid, v.name])
+      );
+      // Find caster name for each heal (match by scanning team mons)
+      // We collect (caster vellymon, effects) pairs per-vellymon instead
+      // by re-running hooks individually for event attribution.
+      for (const v of team.active) {
+        if (!v.isKO && v.specialPowerId) {
+          const ctx = { self: v, team: team.id as 1 | 2, state, turn: state.turn };
+          const vEffects = runHook("onTurnStart", v.specialPowerId, ctx);
+          for (const effect of vEffects) {
+            if (effect.type === "heal") {
+              turnStartEvents.push({
+                casterUuid: v.uuid,
+                casterName: v.name,
+                team: team.id,
+                powerName: getPower(v.specialPowerId)?.name ?? v.specialPowerId,
+                targetUuid: effect.targetId,
+                targetName: preApply.get(effect.targetId) ?? "?",
+                healAmount: effect.amount,
+              });
+            }
+          }
+        }
+      }
+      applyEffects(effects, state);
     }
   }
 
@@ -433,6 +493,7 @@ export function resolveTurn(
 
   return {
     turn: state.turn,
+    turnStartEvents,
     commandResults,
     benchEntries,
     winResult,
