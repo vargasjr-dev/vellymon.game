@@ -73,6 +73,10 @@ export function initializeGame(
     width: number;
     height: number;
   },
+  energyOverrides?: {
+    startingEnergy?: number;
+    winningEnergy?: number;
+  },
 ): GameState {
   const board = boardOverride?.board ?? generateDefaultBoard();
   const boardWidth = boardOverride?.width ?? GAME_CONFIG.board.width;
@@ -84,6 +88,12 @@ export function initializeGame(
   initializeEnergy(team1);
   initializeEnergy(team2);
 
+  // Apply starting energy override (after initializeEnergy sets the default)
+  if (energyOverrides?.startingEnergy !== undefined) {
+    team1.energy = energyOverrides.startingEnergy;
+    team2.energy = energyOverrides.startingEnergy;
+  }
+
   return {
     turn: 0,
     teams: [team1, team2],
@@ -93,6 +103,7 @@ export function initializeGame(
     result: null,
     matchUuid,
     phase: "playing",
+    winningEnergy: energyOverrides?.winningEnergy,
   };
 }
 

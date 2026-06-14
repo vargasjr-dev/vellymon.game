@@ -109,4 +109,9 @@ export type GameState = {
    * Intentionally omitted from match UI.
    */
   possessionArrow?: 1 | 2;
+  /**
+   * Override for the Accumulation win threshold (energy needed to win).
+   * When absent, falls back to GAME_CONFIG.energy.accumulationWinThreshold.
+   */
+  winningEnergy?: number;
 };

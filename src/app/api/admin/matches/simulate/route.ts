@@ -7,7 +7,9 @@
  * Body: {
  *   p1: { type: "profile", id: string } | { type: "random" }
  *   p2: { type: "profile", id: string } | { type: "random" }
- *   maxTurns: number  (1-50, default 15)
+ *   maxTurns: number      (1-50, default 15)
+ *   startingEnergy: number  (1-500, default 120)
+ *   winningEnergy: number   (1-2000, default 500)
  * }
  *
  * SSE events:
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  let body: { p1: ParticipantConfig; p2: ParticipantConfig; maxTurns?: number };
+  let body: { p1: ParticipantConfig; p2: ParticipantConfig; maxTurns?: number; startingEnergy?: number; winningEnergy?: number };
   try {
     body = await req.json();
   } catch {
@@ -71,11 +73,30 @@ export async function POST(req: Request) {
   }
 
   const maxTurns = Math.min(50, Math.max(1, body.maxTurns ?? 15));
+  const startingEnergy = body.startingEnergy !== undefined
+    ? Math.min(500, Math.max(1, body.startingEnergy))
+    : undefined;
+  const winningEnergy = body.winningEnergy !== undefined
+    ? Math.min(2000, Math.max(1, body.winningEnergy))
+    : undefined;
+
+  // ── Match rules context (surfaced in AI profile system prompts) ──────────
+  // Describes the custom match parameters so LLM-driven profiles know the rules.
+  function buildMatchRulesContext(): string {
+    const effectiveStarting = startingEnergy ?? 120;
+    const effectiveWinning = winningEnergy ?? 500;
+    return [
+      `Match rules:`,
+      `- Max turns: ${maxTurns}`,
+      `- Starting energy per team: ${effectiveStarting}`,
+      `- Accumulation win threshold: ${effectiveWinning} energy`,
+    ].join("\n");
+  }
 
   // ── Resolve participant teams ─────────────────────────────────────────────
   async function resolveTeamNames(
     config: ParticipantConfig,
-  ): Promise<{ name: string; teamNames: string[]; profileId?: string }> {
+  ): Promise<{ name: string; teamNames: string[]; profileId?: string; systemPrompt?: string }> {
     if (config.type === "random") {
       const picked = shuffle(VELLYMON_LIBRARY).slice(0, 8);
       return { name: "Random Team", teamNames: picked.map((v) => v.name) };
@@ -85,10 +106,14 @@ export async function POST(req: Request) {
       .from(aiProfile)
       .where(eq(aiProfile.id, config.id));
     if (!row) throw new Error(`Profile not found: ${config.id}`);
+    // Prepend match rules to the profile's system prompt so LLM-driven
+    // profiles know the current match parameters (energy thresholds, max turns).
+    const systemPrompt = [buildMatchRulesContext(), row.description].filter(Boolean).join("\n\n");
     return {
       name: row.name,
       teamNames: row.teamNames as string[],
       profileId: row.id,
+      systemPrompt,
     };
   }
 
@@ -134,7 +159,7 @@ export async function POST(req: Request) {
       }
 
       try {
-        const gs = initializeGame(matchId, setup1, setup2);
+        const gs = initializeGame(matchId, setup1, setup2, undefined, { startingEnergy, winningEnergy });
         const turnLogs: TurnLog[] = [];
         const turnSnapshots: GameState[] = [
           JSON.parse(JSON.stringify(gs)) as GameState,

@@ -143,6 +143,8 @@ export default function NewMatchClient({ profiles }: { profiles: Profile[] }) {
   const [p1, setP1] = useState<ParticipantConfig>({ type: "random" });
   const [p2, setP2] = useState<ParticipantConfig>({ type: "random" });
   const [maxTurns, setMaxTurns] = useState(15);
+  const [startingEnergy, setStartingEnergy] = useState(120);
+  const [winningEnergy, setWinningEnergy] = useState(500);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turns, setTurns] = useState<TurnEvent[]>([]);
@@ -174,7 +176,7 @@ export default function NewMatchClient({ profiles }: { profiles: Profile[] }) {
       const res = await fetch("/api/admin/matches/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ p1, p2, maxTurns }),
+        body: JSON.stringify({ p1, p2, maxTurns, startingEnergy, winningEnergy }),
         signal: abort.signal,
       });
 
@@ -284,6 +286,50 @@ export default function NewMatchClient({ profiles }: { profiles: Profile[] }) {
         <div className="flex justify-between text-xs text-gray-400 mt-0.5">
           <span>5</span>
           <span>50</span>
+        </div>
+      </div>
+
+      {/* Starting energy */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700">Starting energy</label>
+          <span className="text-sm font-mono text-gray-600">{startingEnergy}⚡</span>
+        </div>
+        <input
+          type="range"
+          min="10"
+          max="500"
+          step="10"
+          value={startingEnergy}
+          onChange={(e) => setStartingEnergy(parseInt(e.target.value))}
+          className="w-full accent-green-600"
+          disabled={running}
+        />
+        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+          <span>10</span>
+          <span>500</span>
+        </div>
+      </div>
+
+      {/* Winning energy */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700">Winning energy</label>
+          <span className="text-sm font-mono text-gray-600">{winningEnergy}⚡</span>
+        </div>
+        <input
+          type="range"
+          min="50"
+          max="2000"
+          step="50"
+          value={winningEnergy}
+          onChange={(e) => setWinningEnergy(parseInt(e.target.value))}
+          className="w-full accent-yellow-500"
+          disabled={running}
+        />
+        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+          <span>50</span>
+          <span>2000</span>
         </div>
       </div>
 
