@@ -95,7 +95,7 @@ export default function VaultGallery({
       )}
 
       <p className="text-sm text-gray-500">
-        Balance: {currentBalance.toLocaleString()} 💎
+        Balance: {currentBalance.toLocaleString()} 💰
       </p>
 
       {Object.entries(grouped).map(([seasonName, seasonItems]) => (
@@ -148,12 +148,12 @@ export default function VaultGallery({
                     >
                       {buying === key
                         ? "Purchasing…"
-                        : `Buy for ${item.creditCost} 💎`}
+                        : `Buy for ${item.creditCost} 💰`}
                     </button>
                   )}
                   {!isPurchased && !canAfford && (
                     <p className="text-[10px] text-red-400 mt-1">
-                      Need {item.creditCost - currentBalance} more 💎
+                      Need {item.creditCost - currentBalance} more 💰
                     </p>
                   )}
                 </div>

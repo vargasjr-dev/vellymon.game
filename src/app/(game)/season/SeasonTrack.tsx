@@ -7,7 +7,7 @@ import type { SeasonProgressSummary } from "../../../../lib/seasons";
 function rewardLabel(reward: unknown): string {
   if (!reward) return "—";
   const r = reward as Record<string, unknown>;
-  if (r.type === "credits") return `${r.amount} 💎`;
+  if (r.type === "credits") return `${r.amount} 💰`;
   if (r.type === "cosmetic") return `🎨 ${r.description ?? "Cosmetic"}`;
   if (r.type === "title") return `🏷️ ${r.description ?? "Title"}`;
   if (r.type === "vellymon") return `🐉 ${r.description ?? "New Vellymon"}`;

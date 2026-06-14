@@ -158,9 +158,9 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
             <Link
               href="/credits"
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition"
-            >
-              <span>💎</span>
-              <span>{creditBalance.toLocaleString()}</span>
+              >
+                <span>💰</span>
+                <span>{creditBalance.toLocaleString()}</span>
             </Link>
           )}
 
@@ -368,7 +368,7 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                 href="/credits"
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-yellow-500/20 text-yellow-300"
               >
-                <span>💎</span>
+                <span>💰</span>
                 <span>{creditBalance.toLocaleString()} credits</span>
               </Link>
             )}

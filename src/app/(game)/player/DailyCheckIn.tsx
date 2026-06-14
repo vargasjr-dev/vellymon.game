@@ -108,7 +108,7 @@ export function DailyCheckIn({ initialStreak, isSubscriber = false }: Props) {
             />
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Milestone bonus: +{nextMilestone.xpBonus} XP, +{nextMilestone.creditsBonus} 💎
+            Milestone bonus: +{nextMilestone.xpBonus} XP, +{nextMilestone.creditsBonus} 💰 credits
           </p>
         </div>
       )}
@@ -134,7 +134,7 @@ export function DailyCheckIn({ initialStreak, isSubscriber = false }: Props) {
               <p className="text-sm font-semibold text-green-700">Check-in claimed!</p>
             )}
             <p className={`text-xs ${result.usedFreeze ? "text-blue-600" : "text-green-600"}`}>
-              +{result.xpAwarded} XP &nbsp;·&nbsp; +{result.creditsAwarded} 💎
+              +{result.xpAwarded} XP &nbsp;·&nbsp; +{result.creditsAwarded} 💰 credits
             </p>
           </div>
         </div>
@@ -156,7 +156,7 @@ export function DailyCheckIn({ initialStreak, isSubscriber = false }: Props) {
       <div className="flex items-center justify-between gap-4">
         <div className="text-xs text-gray-500">
           <span className="font-semibold text-gray-700">Today&apos;s reward:</span>{" "}
-          +{BASE_DAILY_XP} XP &amp; +{BASE_DAILY_CREDITS} 💎
+          +{BASE_DAILY_XP} XP &amp; +{BASE_DAILY_CREDITS} 💰 credits
         </div>
 
         {claimed ? (

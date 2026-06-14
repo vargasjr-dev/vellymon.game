@@ -274,7 +274,7 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
                     </div>
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                       <span className="text-xs font-bold text-yellow-300">+{quest.xpReward} XP</span>
-                      <span className="text-xs font-bold text-orange-300">+{quest.creditsReward} 💎</span>
+                      <span className="text-xs font-bold text-orange-300">+{quest.creditsReward} 💰</span>
                     </div>
                   </div>
                 ))}
