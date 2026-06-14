@@ -65,6 +65,7 @@ export type VellymonPayload = {
   hp: number;
   maxHp: number;
   speed: number;
+  baseSpeed: number;
   attack: number;
   x: number;
   y: number;

@@ -249,8 +249,14 @@ export function applyEffects(
         summary.energyChanged = true;
         break;
       }
-      // cost_mod, speed_mod, space_effect, block are handled
-      // by the engine at hook call sites, not here
+      case "speed_mod": {
+        const target = findVellymon(state, effect.vellymonId);
+        if (target) {
+          target.speed = Math.max(1, target.speed + effect.amount);
+        }
+        break;
+      }
+      // cost_mod, space_effect, block are not handled here
       default:
         break;
     }
