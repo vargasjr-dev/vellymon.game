@@ -26,8 +26,19 @@ type BenchEntry = {
   status: "entered" | "blocked";
 };
 
+type TurnStartEvent = {
+  casterUuid: string;
+  casterName: string;
+  team: 1 | 2;
+  powerName: string;
+  targetUuid: string;
+  targetName: string;
+  healAmount: number;
+};
+
 type TurnLogData = {
   turn: number;
+  turnStartEvents?: TurnStartEvent[];
   commandResults: CommandResult[];
   benchEntries: { team1: BenchEntry[]; team2: BenchEntry[] };
   winResult: { winner: 1 | 2; condition: string } | null;
@@ -262,6 +273,16 @@ export default function TurnHistory({ history, isOpen, onToggle, isPortrait = fa
                       <div className="text-xs text-gray-500 mb-1">
                         ⚡ T1: {snap.teamsBefore[0]?.energy ?? "?"} | T2: {snap.teamsBefore[1]?.energy ?? "?"}
                       </div>
+
+                      {/* Turn-start passive power events (e.g. Dewdrop heal) */}
+                      {(snap.log.turnStartEvents ?? []).map((e, i) => (
+                        <div key={`ts-${i}`} className="flex items-start gap-1.5 text-xs">
+                          <span className="shrink-0">💧</span>
+                          <span className="text-emerald-400">
+                            {e.casterName}: {e.powerName} healed {e.targetName} +{e.healAmount} HP
+                          </span>
+                        </div>
+                      ))}
 
                       {/* Command results sorted by execution order */}
                       {snap.log.commandResults.map((r, i) => {

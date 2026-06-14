@@ -18,6 +18,7 @@ import VictoryModal from "./VictoryModal";
 import { useSoundEffects } from "./useSoundEffects";
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
+import type { Overlays } from "./BattleCanvas";
 import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
 import VellymonDrawer from "./VellymonDrawer";
 
@@ -198,6 +199,9 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
+  /** Brief heal-label overlays shown on the board after each turn resolve */
+  const [healOverlays, setHealOverlays] = useState<Overlays>({});
+  const healOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [teams, setTeams] = useState<[TeamDisplay, TeamDisplay] | null>(null);
   const [boardWidth, setBoardWidth] = useState(8);
   const [boardHeight, setBoardHeight] = useState(5);
@@ -329,6 +333,46 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       const t1 = mapTeam(gs.teams[0]);
       const t2 = gs.teams[1] ? mapTeam(gs.teams[1]) : t1;
       setTeams([t1, t2]);
+
+      // ── Heal overlays: flash +N 💧 labels on board for turn-start heals ─
+      if (data.turnHistory && data.turnHistory.length > 0) {
+        const latest = data.turnHistory[data.turnHistory.length - 1] as TurnSnapshot;
+        type HealEvent = { targetUuid: string; healAmount: number };
+        const healEvents: HealEvent[] = (
+          (latest?.log as { turnStartEvents?: HealEvent[] })?.turnStartEvents ?? []
+        );
+        if (healEvents.length > 0) {
+          // Build position map from raw gs.teams
+          const posMap = new Map<string, { x: number; y: number }>();
+          for (const t of gs.teams) {
+            for (const v of t.active) {
+              if (v.position) posMap.set(v.uuid, v.position);
+            }
+          }
+          const labels = healEvents
+            .map((e) => {
+              const pos = posMap.get(e.targetUuid);
+              if (!pos) return null;
+              return {
+                x: pos.x,
+                y: pos.y - 0.5,
+                text: `+${e.healAmount} 💧`,
+                color: 0x4ade80, // green-400
+                alpha: 1,
+              };
+            })
+            .filter((l): l is NonNullable<typeof l> => l !== null);
+
+          if (labels.length > 0) {
+            if (healOverlayTimerRef.current) clearTimeout(healOverlayTimerRef.current);
+            setHealOverlays({ labels });
+            healOverlayTimerRef.current = setTimeout(
+              () => setHealOverlays({}),
+              2000,
+            );
+          }
+        }
+      }
 
       // KO detection — play KO sound if either team gained a new KO
       const newT1Knocked = gs.teams[0]?.knocked?.length ?? 0;
@@ -666,6 +710,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               selectedVellymon={selectedVellymon}
               onSelectVellymon={setSelectedVellymon}
               commandedUuids={commandedUuids}
+              overlays={healOverlays}
             />
 
             {/* Vellymon drawer — overlays the board when a vellymon is selected */}
