@@ -126,6 +126,7 @@ type RawCommandResult = {
   damageDealt?: number;
   targetKO?: boolean;
   targetUuid?: string;
+  attackName?: string;
 };
 
 type RawBenchEntry = {
@@ -1083,7 +1084,9 @@ function TurnLogDrawer({
               </span>
               <span className="text-gray-500">{icon}</span>
               <span className="text-gray-300">
-                  {r.command.type}
+                  {r.command.type === "attack" && r.attackName
+                    ? `used ${r.attackName}`
+                    : r.command.type}
                   {dirStr}
                 </span>
                 {victimStr && (

@@ -62,6 +62,8 @@ export type CommandResult = {
   targetKO?: boolean;
   /** UUID of the vellymon that was hit (attack only, absent on whiff) */
   targetUuid?: string;
+  /** Name of the attack used (attack only, e.g. "Snipe", "Strike") */
+  attackName?: string;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -413,6 +415,7 @@ export function resolveAttack(
       success: true,
       energyDelta: -attack.energyCost,
       damageDealt: 0,
+      attackName: attack.name,
     };
   }
 
@@ -433,6 +436,7 @@ export function resolveAttack(
     damageDealt: damage,
     targetKO: ko,
     targetUuid: hit.target.uuid,
+    attackName: attack.name,
   };
 }
 
