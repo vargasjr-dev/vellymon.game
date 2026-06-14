@@ -4,81 +4,52 @@ import Link from "next/link";
 import { getMatchHistoryWithStats } from "~/data/getMatchHistoryWithStats.server";
 import type { EnrichedMatchRow } from "~/data/getMatchHistoryWithStats.server";
 
-// ─── Result badge ─────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const RESULT_STYLE = {
-  win: "bg-green-100 text-green-700 border-green-200",
-  loss: "bg-red-100 text-red-700 border-red-200",
-  draw: "bg-gray-100 text-gray-600 border-gray-200",
-};
+function opponentDisplay(match: EnrichedMatchRow): string {
+  if (match.isSparring) {
+    if (match.aiDifficulty)
+      return `${match.aiDifficulty.charAt(0).toUpperCase() + match.aiDifficulty.slice(1)} AI`;
+    return "AI";
+  }
+  return match.opponentName ?? "Unknown Trainer";
+}
 
-const RESULT_LABEL = { win: "WIN", loss: "LOSS", draw: "DRAW" };
+function matchHeadline(match: EnrichedMatchRow): string {
+  const me = match.myName ?? "You";
+  const opp = opponentDisplay(match);
+  if (match.result === "win") return `${me} defeats ${opp}`;
+  if (match.result === "loss") return `${opp} defeats ${me}`;
+  return `${me} ties ${opp}`;
+}
 
-const WIN_CONDITION_LABEL: Record<string, string> = {
-  elimination: "Elimination",
-  occupation: "Occupation",
-  accumulation: "Accumulation",
-  concession: "Concession",
-};
+// ─── Row ─────────────────────────────────────────────────────────────────────
 
 function MatchRow({ match }: { match: EnrichedMatchRow }) {
   const date = match.completedAt.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
-  const time = match.completedAt.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  const opponentDisplay = match.isSparring
-    ? match.aiDifficulty
-      ? `🤖 ${match.aiDifficulty.charAt(0).toUpperCase() + match.aiDifficulty.slice(1)} AI`
-      : "🤖 AI"
-    : (match.opponentName ?? "Unknown Trainer");
-
-  const wc = match.winCondition
-    ? WIN_CONDITION_LABEL[match.winCondition] ?? match.winCondition
-    : null;
 
   return (
-    <Link
-      href={`/matches/${match.uuid}`}
-      className="flex items-center gap-3 sm:gap-4 bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-blue-200 transition group"
-    >
-      {/* Result badge */}
-      <div
-        className={`w-14 shrink-0 text-center text-xs font-bold py-1.5 rounded-lg border ${RESULT_STYLE[match.result]}`}
-      >
-        {RESULT_LABEL[match.result]}
-      </div>
-
-      {/* Match info */}
+    <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+      {/* Headline + date */}
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-gray-900 truncate text-sm">
-          vs {opponentDisplay}
+        <p className="font-semibold text-gray-900 truncate text-sm">
+          {matchHeadline(match)}
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {date} · {time}
-          {wc && ` · ${wc}`}
-          {match.turns > 0 && ` · ${match.turns} turns`}
-        </p>
+        <p className="text-xs text-gray-400 mt-0.5">{date}</p>
       </div>
 
-      {/* KO stats */}
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-semibold text-gray-900">
-          {match.enemyKOs}
-          <span className="text-gray-400 font-normal"> / {match.ownKOs}</span>
-        </p>
-        <p className="text-xs text-gray-400">KO for/against</p>
-      </div>
-
-      {/* Arrow */}
-      <span className="text-gray-300 group-hover:text-blue-400 transition text-sm shrink-0">
-        →
-      </span>
-    </Link>
+      {/* Spectate */}
+      <Link
+        href={`/matches/${match.uuid}/spectate`}
+        className="shrink-0 bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+      >
+        Spectate →
+      </Link>
+    </div>
   );
 }
 
@@ -87,16 +58,14 @@ function MatchRow({ match }: { match: EnrichedMatchRow }) {
 export default async function MatchHistoryPage() {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
-  const { rows, summary } = await getMatchHistoryWithStats(session.user.id);
+  const myName = session.user.name ?? null;
+  const { rows, summary } = await getMatchHistoryWithStats(session.user.id, myName);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       {/* Back link */}
       <div className="mb-6">
-        <Link
-          href="/matches"
-          className="text-sm text-blue-600 hover:underline"
-        >
+        <Link href="/matches" className="text-sm text-blue-600 hover:underline">
           ← Back to Matches
         </Link>
       </div>

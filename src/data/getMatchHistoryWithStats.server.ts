@@ -18,6 +18,8 @@ export type EnrichedMatchRow = {
   isSparring: boolean;
   aiDifficulty: string | null;
   completedAt: Date;
+  /** Current user's display name */
+  myName: string | null;
   /** null for sparring / if opponent not found */
   opponentName: string | null;
 };
@@ -38,6 +40,7 @@ export type MatchHistoryWithStats = {
 
 export async function getMatchHistoryWithStats(
   userId: string,
+  myName: string | null = null,
   limit = 50,
 ): Promise<MatchHistoryWithStats> {
   // Fetch matchStats rows for this user, newest first
@@ -107,6 +110,7 @@ export async function getMatchHistoryWithStats(
     isSparring: s.isSparring ?? false,
     aiDifficulty: s.aiDifficulty,
     completedAt: s.completedAt,
+    myName,
     opponentName: opponentBySession.get(s.gameSessionUuid) ?? null,
   }));
 
