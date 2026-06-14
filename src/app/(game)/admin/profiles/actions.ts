@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { auth } from "~/lib/auth.server";
 import { isAdmin } from "~/lib/admin";
-import { createAiProfile, deleteAiProfile } from "~/data/aiProfiles.server";
+import { createAiProfile, archiveAiProfile } from "~/data/aiProfiles.server";
 import { VELLYMON_LIBRARY } from "../../../../../server/vellymonLibrary";
 
 function assertAdmin(session: Awaited<ReturnType<typeof auth.api.getSession>>) {
@@ -175,10 +175,10 @@ export async function createProfileAction(formData: FormData) {
   revalidatePath("/admin/profiles");
 }
 
-export async function deleteProfileAction(profileId: string) {
+export async function archiveProfileAction(profileId: string) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
   assertAdmin(session);
-  await deleteAiProfile(profileId);
+  await archiveAiProfile(profileId);
   revalidatePath("/admin/profiles");
 }

@@ -10,7 +10,7 @@ import {
   getHeadToHead,
   type ProfileMatch,
 } from "~/data/aiProfiles.server";
-import ProfileDeleteButton from "../ProfileDeleteButton";
+import ProfileArchiveButton from "../ProfileArchiveButton";
 
 export default async function ProfileDetailPage({
   params,
@@ -68,7 +68,7 @@ export default async function ProfileDetailPage({
             {profile.id}
           </span>
         </div>
-        <ProfileDeleteButton profileId={profile.id} profileName={profile.name} />
+        <ProfileArchiveButton profileId={profile.id} profileName={profile.name} />
       </div>
 
       {/* Profile details card */}
