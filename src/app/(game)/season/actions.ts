@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { auth } from "~/lib/auth.server";
 import {
-  getActiveSeason,
+  getOrCreateActiveSeason,
   getSeasonTrack,
   getProgressSummary,
   claimFreeReward,
@@ -31,7 +31,7 @@ export async function getSeasonPageData(): Promise<SeasonPageData> {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const activeSeason = await getActiveSeason();
+  const activeSeason = await getOrCreateActiveSeason();
   if (!activeSeason) {
     return {
       active: false,
