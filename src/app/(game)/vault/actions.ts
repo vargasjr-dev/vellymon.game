@@ -149,6 +149,6 @@ export async function purchaseVaultItemAction(
 
   return {
     success: true,
-    message: `Purchased "${reward.description}" for ${cost} 💎`,
+    message: `Purchased "${reward.description}" for ${cost} 💰`,
   };
 }

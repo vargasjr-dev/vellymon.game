@@ -130,7 +130,7 @@ export default function PromptBuilder({
             >
               {t.label}
               <span className="block text-xs opacity-70">
-                {GENERATION_COSTS[t.value]} 💎
+                {GENERATION_COSTS[t.value]} 💰
               </span>
             </button>
           ))}
@@ -241,10 +241,10 @@ export default function PromptBuilder({
         >
           {generating
             ? "Generating…"
-            : `🎨 Generate (${cost} 💎)`}
+            : `🎨 Generate (${cost} 💰)`}
         </button>
         <span className="text-sm text-gray-500">
-          Balance: {balance.toLocaleString()} 💎
+          Balance: {balance.toLocaleString()} 💰
           {!canAfford && (
             <span className="text-red-500 ml-2">
               (need {cost - balance} more)
@@ -263,7 +263,7 @@ export default function PromptBuilder({
           ) : (
             <div className="text-center">
               <p className="text-green-600 font-bold mb-3">
-                ✅ Cosmetic created! ({cost} 💎 deducted)
+                ✅ Cosmetic created! ({cost} 💰 deducted)
               </p>
               {result.imageUrl && (
                 <img

@@ -152,7 +152,7 @@ export default function RankedDashboard({
                 </div>
                 <p className="text-xs text-gray-600">{m.rewards.description}</p>
                 <p className="text-xs text-yellow-600 mt-0.5">
-                  +{m.rewards.credits} 💎
+                  +{m.rewards.credits} 💰
                 </p>
               </div>
             ))}
