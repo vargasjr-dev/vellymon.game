@@ -26,6 +26,22 @@ export default async function AdminPage() {
         </p>
       </div>
 
+      {/* Matchmaking Lobby */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          🎮 Matchmaking Lobby
+        </h2>
+        <p className="text-gray-600 mb-4">
+          Monitor players currently waiting for an opponent.
+        </p>
+        <Link
+          href="/admin/matchmaking"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+        >
+          View Lobby →
+        </Link>
+      </div>
+
       {/* New Match */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-bold text-gray-900 mb-2">⚔️ New Match</h2>

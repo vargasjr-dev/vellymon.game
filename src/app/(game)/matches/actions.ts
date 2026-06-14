@@ -147,6 +147,26 @@ export async function createRematchAction(
   return { success: true, matchUuid: result.matchUuid! };
 }
 
+export async function queueForMatchAction(
+  teamUuid: string,
+): Promise<
+  | { success: false; message: string }
+  | { success: true; matchUuid: string; matched: boolean }
+> {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+
+  const queueForMatch = (await import("~/data/queueForMatch.server")).default;
+  const result = await queueForMatch({ userId: session.user.id, teamUuid });
+
+  if (result.success) {
+    revalidatePath("/matches");
+    revalidatePath("/player");
+  }
+
+  return result;
+}
+
 export async function joinMatchAction(matchUuid: string, teamUuid: string) {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
