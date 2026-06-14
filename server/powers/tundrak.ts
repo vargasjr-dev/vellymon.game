@@ -27,7 +27,7 @@ registerPower({
   id: "permafrost",
   name: "Permafrost",
   description:
-    "Moving freezes the departed space for 2 turns. Reshapes the battlefield.",
+    "Moving freezes the departed space for 2 turns.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

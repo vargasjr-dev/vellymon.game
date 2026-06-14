@@ -25,7 +25,7 @@ registerPower({
   id: "tidal_splash",
   name: "Tidal Splash",
   description:
-    "Each turn end, splashes all allies for 2 HP healing. Harmlessly restorative.",
+    "Each turn end, splashes all allies for 2 HP healing.",
   hooks: {
     onTurnEnd: (ctx: HookContext): PowerEffect[] => {
       const teamState = ctx.state.teams[ctx.team - 1];

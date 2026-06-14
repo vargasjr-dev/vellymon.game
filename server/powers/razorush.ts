@@ -27,7 +27,7 @@ registerPower({
   id: "razor_slipstream",
   name: "Razor Slipstream",
   description:
-    "Moving makes attacks 1 energy cheaper this turn. Speed becomes efficiency.",
+    "Moving makes attacks 1 energy cheaper this turn.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

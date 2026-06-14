@@ -29,7 +29,7 @@ registerPower({
   id: "grudge",
   name: "Grudge",
   description:
-    "Taking damage adds +2 to next attack (max +6). The grumpier, the harder.",
+    "Taking damage adds +2 to next attack (max +6).",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

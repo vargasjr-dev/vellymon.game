@@ -18,7 +18,7 @@ registerPower({
   id: "rust-aura",
   name: "Rust Aura",
   description:
-    "When hit, the attacker loses 1 SPD. Iron rusts everything it touches.",
+    "When hit, the attacker loses 1 SPD.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.damage <= 0 || !ctx.attacker) return [];

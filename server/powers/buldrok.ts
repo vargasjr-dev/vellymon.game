@@ -18,7 +18,7 @@ registerPower({
   id: "stone-skin",
   name: "Stone Skin",
   description:
-    "Heals 2 HP whenever hit. Ancient stone armor absorbs impact.",
+    "Heals 2 HP whenever hit.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.damage <= 0) return [];

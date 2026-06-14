@@ -28,7 +28,7 @@ registerPower({
   id: "toxic_residue",
   name: "Toxic Residue",
   description:
-    "Attacking leaves poison on your space for 3 turns. Contaminates the battlefield.",
+    "Attacking leaves poison on your space for 3 turns.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

@@ -27,7 +27,7 @@ registerPower({
   id: "wrecking_ball",
   name: "Wrecking Ball",
   description:
-    "Attacking creates a block on your space. Pure wrecking force.",
+    "Attacking creates a block on your space.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

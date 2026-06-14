@@ -18,7 +18,7 @@ registerPower({
   id: "photosynthesis",
   name: "Photosynthesis",
   description:
-    "Harvests grant +2 bonus energy. Sunlight supercharges collection.",
+    "Harvests grant +2 bonus energy.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "harvest") return [];

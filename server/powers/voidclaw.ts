@@ -27,7 +27,7 @@ registerPower({
   id: "void_rend",
   name: "Void Rend",
   description:
-    "Attacks drain 2 energy from the opponent. Tears through dimensions.",
+    "Attacks drain 2 energy from the opponent.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

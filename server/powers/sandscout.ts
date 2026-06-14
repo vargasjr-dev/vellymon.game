@@ -26,7 +26,7 @@ registerPower({
   id: "desert_sight",
   name: "Desert Sight",
   description:
-    "Scout's vision reduces energy costs by 1 each turn. Sees the best paths.",
+    "Scout's vision reduces energy costs by 1 each turn.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

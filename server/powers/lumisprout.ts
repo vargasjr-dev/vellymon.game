@@ -26,7 +26,7 @@ registerPower({
   id: "bioluminescence",
   name: "Bioluminescence",
   description:
-    "At turn start, heals all active allies for 1 HP. Gentle sustain glow.",
+    "At turn start, heals all active allies for 1 HP.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       const myTeam = ctx.state.teams[ctx.team === 1 ? 0 : 1];

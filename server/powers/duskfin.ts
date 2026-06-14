@@ -18,7 +18,7 @@ registerPower({
   id: "twilight-veil",
   name: "Twilight Veil",
   description:
-    "After turn 5, gains +2 SPD each turn. Dusk sharpens the fin.",
+    "After turn 5, gains +2 SPD each turn.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       if (ctx.turn < 5) return [];

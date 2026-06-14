@@ -16,7 +16,7 @@ import {
 registerPower({
   id: "reef-armor",
   name: "Reef Armor",
-  description: "Heals 2 HP at the end of each turn. Coral slowly regenerates.",
+  description: "Heals 2 HP at the end of each turn.",
   hooks: {
     onTurnEnd: (ctx: HookContext): PowerEffect[] => {
       return [{ type: "heal", targetId: ctx.self.uuid, amount: 2 }];

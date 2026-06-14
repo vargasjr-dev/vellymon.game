@@ -26,7 +26,7 @@ registerPower({
   id: "breeze-trail",
   name: "Breeze Trail",
   description:
-    "After moving, leaves a breeze on the departed space (2 turns). Slows enemies.",
+    "After moving, leaves a breeze on the departed space (2 turns).",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "move") return [];

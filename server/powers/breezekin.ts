@@ -18,7 +18,7 @@ registerPower({
   id: "tailwind",
   name: "Tailwind",
   description:
-    "After moving, gains +2 SPD. Wind at your back.",
+    "After moving, gains +2 SPD.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "move") return [];

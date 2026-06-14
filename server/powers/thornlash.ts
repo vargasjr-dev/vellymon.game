@@ -28,7 +28,7 @@ registerPower({
   id: "thorn_reach",
   name: "Thorn Reach",
   description:
-    "Attacking creates a block on Thornlash's position. Strikes then fortifies.",
+    "Attacking creates a block on Thornlash's position.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

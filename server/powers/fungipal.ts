@@ -18,7 +18,7 @@ registerPower({
   id: "spore-harvest",
   name: "Spore Harvest",
   description:
-    "On turn start, generates +1 bonus energy for the team. A living economy engine.",
+    "On turn start, generates +1 bonus energy for the team.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0 || !ctx.self.position) return [];

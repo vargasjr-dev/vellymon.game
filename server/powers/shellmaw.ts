@@ -27,7 +27,7 @@ registerPower({
   id: "iron_shell",
   name: "Iron Shell",
   description:
-    "Takes 2 less damage from every hit. The shell absorbs punishment.",
+    "Takes 2 less damage from every hit.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       return [

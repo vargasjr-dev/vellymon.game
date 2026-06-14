@@ -26,7 +26,7 @@ registerPower({
   id: "calming_purr",
   name: "Calming Purr",
   description:
-    "Each turn, reduces one ally's next action cost by 1. Team efficiency buffer.",
+    "Each turn, reduces one ally's next action cost by 1.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       const allies = ctx.state.teams[ctx.team - 1].active.filter(

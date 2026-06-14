@@ -18,7 +18,7 @@ registerPower({
   id: "thorns",
   name: "Thorns",
   description:
-    "Attackers take 3 damage when they hit Cragthorn. Touch at your peril.",
+    "Attackers take 3 damage when they hit Cragthorn.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.damage <= 0 || !ctx.attacker) return [];

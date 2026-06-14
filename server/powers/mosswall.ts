@@ -26,7 +26,7 @@ registerPower({
   id: "regrowth",
   name: "Regrowth",
   description:
-    "Regenerates 3 HP at end of turn. The moss always grows back.",
+    "Regenerates 3 HP at end of turn.",
   hooks: {
     onTurnEnd: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

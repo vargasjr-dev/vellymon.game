@@ -24,7 +24,7 @@ registerPower({
   id: "shockwave-surfer",
   name: "Shockwave Surfer",
   description:
-    "After attacking, drains 1 energy from the opposing team. Speed creates pressure.",
+    "After attacking, drains 1 energy from the opposing team.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       // Only trigger on attacks (not moves or harvests)

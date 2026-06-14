@@ -18,7 +18,7 @@ registerPower({
   id: "warp-strike",
   name: "Warp Strike",
   description:
-    "Before attacking, gains +3 SPD. Cosmic teleportation strikes from unexpected angles.",
+    "Before attacking, gains +3 SPD.",
   hooks: {
     onBeforeCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];

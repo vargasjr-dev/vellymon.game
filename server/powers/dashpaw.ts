@@ -18,7 +18,7 @@ registerPower({
   id: "phantom-sprint",
   name: "Phantom Sprint",
   description:
-    "After attacking, gains +3 SPD. Hit and run.",
+    "After attacking, gains +3 SPD.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];

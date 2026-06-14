@@ -28,7 +28,7 @@ registerPower({
   id: "bedrock_stance",
   name: "Bedrock Stance",
   description:
-    "Taking damage: -1 SPD but +2 ATK. Digs in deeper with every hit.",
+    "Taking damage: -1 SPD but +2 ATK.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       return [

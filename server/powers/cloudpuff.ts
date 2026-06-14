@@ -18,7 +18,7 @@ registerPower({
   id: "rain-dance",
   name: "Rain Dance",
   description:
-    "At the start of each turn, all allies heal 1 HP. Gentle rain from a tiny cloud.",
+    "At the start of each turn, all allies heal 1 HP.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       const allies = ctx.state.teams[ctx.team - 1].active.filter(

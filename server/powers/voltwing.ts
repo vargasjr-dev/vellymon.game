@@ -26,7 +26,7 @@ registerPower({
   id: "thunderclap",
   name: "Thunderclap",
   description:
-    "Moving deals 3 damage to the first active enemy. Lightning on the wing.",
+    "Moving deals 3 damage to the first active enemy.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
