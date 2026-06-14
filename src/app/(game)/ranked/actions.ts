@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { auth } from "~/lib/auth.server";
-import { getActiveSeason } from "../../../../lib/seasons";
+import { getOrCreateActiveSeason } from "../../../../lib/seasons";
 import { getLeaderboard, type Rank } from "../../../../lib/ranked";
 import { getRankSummary, type RankSummary } from "../../../../lib/rank-rewards";
 import { isSubscriber } from "../../../../lib/subscription";
@@ -33,7 +33,7 @@ export async function getRankedPageData(): Promise<RankedPageData> {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const activeSeason = await getActiveSeason();
+  const activeSeason = await getOrCreateActiveSeason();
   if (!activeSeason) {
     return {
       hasActiveSeason: false,

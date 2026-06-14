@@ -44,13 +44,54 @@ export function cumulativeXpForTier(tier: number): number {
 
 /** Get the currently active season, if any */
 export async function getActiveSeason() {
-  const now = new Date();
   const [active] = await db
     .select()
     .from(season)
     .where(eq(season.status, "active"))
     .limit(1);
   return active ?? null;
+}
+
+/**
+ * Get the active season, auto-creating a perpetual "Season 1" if none exists.
+ *
+ * This ensures Ranked and Season pages always have content — admins can
+ * still replace/archive it via the Season admin panel at any time.
+ */
+export async function getOrCreateActiveSeason() {
+  const existing = await getActiveSeason();
+  if (existing) return existing;
+
+  // No active season — create a permanent default and activate it.
+  // Start date = today, end date = 10 years from now so it's effectively perpetual.
+  const now = new Date();
+  const farFuture = new Date(now);
+  farFuture.setFullYear(farFuture.getFullYear() + 10);
+
+  const [created] = await db
+    .insert(season)
+    .values({
+      name: "Season 1",
+      startDate: now,
+      endDate: farFuture,
+      status: "active",
+    })
+    .returning();
+
+  // Build a simple 25-tier default track (credits on every tier)
+  const tiers = Array.from({ length: MAX_TIER }, (_, i) => ({
+    seasonId: created.id,
+    tier: i + 1,
+    freeReward: { type: "credits", description: `Tier ${i + 1} reward`, amount: (i + 1) * 10 },
+    premiumReward: {
+      type: "credits",
+      description: `Tier ${i + 1} premium reward`,
+      amount: (i + 1) * 20,
+    },
+  }));
+  await db.insert(seasonTrack).values(tiers);
+
+  return created;
 }
 
 /** Get a season by ID */
