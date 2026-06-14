@@ -6,6 +6,14 @@ import BuyButton from "./BuyButton";
 
 type FilterKey = "all" | "available" | "owned";
 
+interface AttackInfo {
+  key: string;
+  name: string;
+  damage: number;
+  energyCost: number;
+  range: number;
+}
+
 interface MarketVellymon {
   uuid: string;
   name: string;
@@ -18,6 +26,31 @@ interface MarketVellymon {
   isOwned: boolean;
   powerName?: string;
   powerDescription?: string;
+  attacks?: AttackInfo[];
+}
+
+function AttackList({ attacks }: { attacks?: AttackInfo[] }) {
+  if (!attacks || attacks.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-bold text-gray-700 mb-1.5">⚔️ Attacks</p>
+      <div className="space-y-1.5">
+        {attacks.map((atk) => (
+          <div
+            key={atk.key}
+            className="flex items-center justify-between bg-gray-50 rounded px-2 py-1"
+          >
+            <span className="text-xs font-medium text-gray-800">{atk.name}</span>
+            <div className="flex items-center gap-2 text-[10px] text-gray-500">
+              <span title="Damage">💥 {atk.damage}</span>
+              <span title="Energy cost">⚡ {atk.energyCost}</span>
+              <span title="Range">🎯 {atk.range}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const filters: { key: FilterKey; label: string }[] = [
@@ -162,6 +195,9 @@ export default function MarketGrid({
                   <StatBar label="SPD" value={selected.speed} max={10} color="blue" />
                 </div>
 
+                {/* Attacks */}
+                <AttackList attacks={selected.attacks} />
+
                 {/* Special Power */}
                 {selected.powerName ? (
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
@@ -239,6 +275,7 @@ export default function MarketGrid({
                 <StatBar label="ATK" value={selected.attack} max={20} color="red" />
                 <StatBar label="SPD" value={selected.speed} max={10} color="blue" />
               </div>
+              <AttackList attacks={selected.attacks} />
               {selected.powerName && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
                   <p className="text-xs font-bold text-purple-900 mb-1">
