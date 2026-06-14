@@ -478,6 +478,8 @@ export const aiProfile = pgTable("aiProfile", {
    */
   description: text("description").notNull().default(""),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
+  /** Soft-delete: non-null means archived. Archived profiles are hidden from all views. */
+  archivedAt: timestamp("archivedAt"),
 });
 
 export const matchSnapshot = pgTable("matchSnapshot", {

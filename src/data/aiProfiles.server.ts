@@ -3,13 +3,17 @@
  */
 import { db } from "../../data/db";
 import { aiProfile, matchSnapshot } from "../../data/schema";
-import { eq, or, desc, and, isNotNull } from "drizzle-orm";
+import { eq, or, desc, and, isNotNull, isNull } from "drizzle-orm";
 
 export type AiProfile = typeof aiProfile.$inferSelect;
 
-/** All profiles, newest first. */
+/** All active (non-archived) profiles, newest first. */
 export async function listAiProfiles(): Promise<AiProfile[]> {
-  return db.select().from(aiProfile).orderBy(desc(aiProfile.createdAt));
+  return db
+    .select()
+    .from(aiProfile)
+    .where(isNull(aiProfile.archivedAt))
+    .orderBy(desc(aiProfile.createdAt));
 }
 
 /** One profile by ID, or null. */
@@ -33,9 +37,16 @@ export async function createAiProfile(data: {
   return row;
 }
 
-/** Delete a profile. Cascades: matchSnapshot rows get p1/p2 set to null. */
-export async function deleteAiProfile(id: string): Promise<void> {
-  await db.delete(aiProfile).where(eq(aiProfile.id, id));
+/**
+ * Soft-delete a profile by setting archivedAt.
+ * The row is retained so match history references remain intact.
+ * Archived profiles are hidden from all list/picker views.
+ */
+export async function archiveAiProfile(id: string): Promise<void> {
+  await db
+    .update(aiProfile)
+    .set({ archivedAt: new Date() })
+    .where(eq(aiProfile.id, id));
 }
 
 export type ProfileMatch = {
