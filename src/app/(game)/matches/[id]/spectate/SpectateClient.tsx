@@ -973,11 +973,6 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
         </div>
       </div>
 
-      {/* ── Turn log drawer (replay mode) ── */}
-      {isReplay && logOpen && currentLog && (
-        <TurnLogDrawer log={currentLog} lookup={vellymonLookup} />
-      )}
-
       {/* ── Game over banner — fixed overlay so it doesn't shift the board ── */}
       {gameOver &&
         (isReplay
@@ -997,6 +992,12 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
 
       {/* ── Board canvas ── */}
       <div className="flex-1 relative min-h-0">
+        {/* Turn log drawer (replay mode) — absolute overlay so it doesn't push the canvas */}
+        {isReplay && logOpen && currentLog && (
+          <div className="absolute top-0 left-0 right-0 z-10">
+            <TurnLogDrawer log={currentLog} lookup={vellymonLookup} />
+          </div>
+        )}
         {/* Compact team HUDs overlaid on board corners.
             yourTeamId=1 → Team 1 renders at bottom, Team 2 at top. */}
         {t1 && <CompactTeamHUD team={t1} color="blue" position="bottom-left" />}
@@ -1050,7 +1051,7 @@ function TurnLogDrawer({
   const allBench = [...bench1, ...bench2];
 
   return (
-    <div className="shrink-0 border-b border-gray-800 bg-[#0d1520] px-3 py-2 max-h-52 overflow-y-auto">
+    <div className="border-b border-gray-800 bg-[#0d1520]/95 backdrop-blur-sm px-3 py-2 max-h-52 overflow-y-auto">
       <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5 font-semibold">
         Turn {log.turn} — Actions
       </p>
