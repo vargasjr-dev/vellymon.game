@@ -25,7 +25,7 @@ registerPower({
   id: "adaptive-flow",
   name: "Adaptive Flow",
   description:
-    "When harvesting energy, also heals 3 HP. Water nourishes.",
+    "When harvesting energy, also heals 3 HP.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       // Only trigger on harvest commands

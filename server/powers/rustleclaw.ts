@@ -26,7 +26,7 @@ registerPower({
   id: "ambush_claws",
   name: "Ambush Claws",
   description:
-    "Gains +1 SPD at the start of each turn. Builds speed toward the pounce.",
+    "Gains +1 SPD at the start of each turn.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

@@ -18,7 +18,7 @@ registerPower({
   id: "crystal-barrage",
   name: "Crystal Barrage",
   description:
-    "After attacking, deals 4 splash damage to another enemy. Orbiting shards lash out.",
+    "After attacking, deals 4 splash damage to another enemy.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];

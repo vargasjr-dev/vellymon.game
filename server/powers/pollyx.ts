@@ -26,7 +26,7 @@ registerPower({
   id: "pollen_cloud",
   name: "Pollen Cloud",
   description:
-    "At turn end, all active enemies lose 1 SPD. Pollen gets everywhere.",
+    "At turn end, all active enemies lose 1 SPD.",
   hooks: {
     onTurnEnd: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

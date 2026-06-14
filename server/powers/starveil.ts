@@ -28,7 +28,7 @@ registerPower({
   id: "starlight_veil",
   name: "Starlight Veil",
   description:
-    "Each turn, Starveil's next action costs 1 less energy. Unpredictably efficient.",
+    "Each turn, Starveil's next action costs 1 less energy.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       return [

@@ -25,7 +25,7 @@ registerPower({
   id: "flash-strike",
   name: "Flash Strike",
   description:
-    "Every 3rd attack deals +4 bonus damage. Charge up and unleash.",
+    "Every 3rd attack deals +4 bonus damage.",
   hooks: {
     onBeforeCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];

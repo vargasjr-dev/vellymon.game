@@ -26,7 +26,7 @@ registerPower({
   id: "stone_blink",
   name: "Stone Blink",
   description:
-    "When damaged, gains +2 SPD this turn. Harder to catch the more you hit it.",
+    "When damaged, gains +2 SPD this turn.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       return [

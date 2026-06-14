@@ -18,7 +18,7 @@ registerPower({
   id: "phase-shift",
   name: "Phase Shift",
   description:
-    "After attacking, gains +5 SPD next turn. Blink in, strike, blink out.",
+    "After attacking, gains +5 SPD next turn.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];

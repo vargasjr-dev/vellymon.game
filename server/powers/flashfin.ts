@@ -23,7 +23,7 @@ registerPower({
   id: "blinding-dash",
   name: "Blinding Dash",
   description:
-    "After attacking, the target loses 2 SPD next turn. Dazzling speed.",
+    "After attacking, the target loses 2 SPD next turn.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       // Only triggers on Flashfin's own attacks

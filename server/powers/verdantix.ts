@@ -27,7 +27,7 @@ registerPower({
   id: "crystal_growth",
   name: "Crystal Growth",
   description:
-    "Each turn, Verdantix grows +1 ATK. Becomes more dangerous over time.",
+    "Each turn, Verdantix grows +1 ATK.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       return [

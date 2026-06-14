@@ -27,7 +27,7 @@ registerPower({
   id: "titanium_bones",
   name: "Titanium Bones",
   description:
-    "Taking damage reduces next action cost by 1. Absorbs hits into efficiency.",
+    "Taking damage reduces next action cost by 1.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       return [

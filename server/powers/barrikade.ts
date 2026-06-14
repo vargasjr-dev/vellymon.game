@@ -18,7 +18,7 @@ registerPower({
   id: "iron-curtain",
   name: "Iron Curtain",
   description:
-    "When attacked, the attacker loses 2 SPD next turn. Hit the wall, slow down.",
+    "When attacked, the attacker loses 2 SPD next turn.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.damage <= 0 || !ctx.attacker) return [];

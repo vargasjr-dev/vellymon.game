@@ -26,7 +26,7 @@ registerPower({
   id: "sweet_nectar",
   name: "Sweet Nectar",
   description:
-    "Passively generates +1 energy per turn. Nectar converts to pure energy.",
+    "Passively generates +1 energy per turn.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

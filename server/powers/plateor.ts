@@ -25,7 +25,7 @@ registerPower({
   id: "tectonic_charge",
   name: "Tectonic Charge",
   description:
-    "Moving reduces attack cost by 1 energy. Momentum builds with each step.",
+    "Moving reduces attack cost by 1 energy.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

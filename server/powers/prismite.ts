@@ -27,7 +27,7 @@ registerPower({
   id: "prismatic_shield",
   name: "Prismatic Shield",
   description:
-    "When damaged, heals self for 2 HP. Light refracts into healing energy.",
+    "When damaged, heals self for 2 HP.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       return [

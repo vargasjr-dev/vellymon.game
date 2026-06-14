@@ -18,7 +18,7 @@ registerPower({
   id: "evasive-flick",
   name: "Evasive Flick",
   description:
-    "After moving, blocks the next attack targeting this space. Keep moving, stay alive.",
+    "After moving, blocks the next attack targeting this space.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "move") return [];

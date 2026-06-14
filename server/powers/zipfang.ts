@@ -30,7 +30,7 @@ registerPower({
   id: "first_strike",
   name: "First Strike",
   description:
-    "Each turn, Zipfang gains +2 ATK. So fast it bites before you see it move.",
+    "Each turn, Zipfang gains +2 ATK.",
   hooks: {
     onTurnStart: (ctx: HookContext): PowerEffect[] => {
       return [

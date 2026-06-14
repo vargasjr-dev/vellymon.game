@@ -17,7 +17,7 @@ registerPower({
   id: "frost-grace",
   name: "Frost Grace",
   description:
-    "At end of turn, heals 4 HP. Grace over aggression.",
+    "At end of turn, heals 4 HP.",
   hooks: {
     onTurnEnd: (ctx: HookContext): PowerEffect[] => {
       if (ctx.self.hp >= ctx.self.maxHp) return [];

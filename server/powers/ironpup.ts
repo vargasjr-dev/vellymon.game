@@ -27,7 +27,7 @@ registerPower({
   id: "loyal-guard",
   name: "Loyal Guard",
   description:
-    "When hit, bites back for 2 damage and heals 1 HP. Scrappy and loyal.",
+    "When hit, bites back for 2 damage and heals 1 HP.",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
       if (ctx.self.hp <= 0) return [];

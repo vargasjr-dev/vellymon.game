@@ -27,7 +27,7 @@ registerPower({
   id: "cheek_pouch",
   name: "Cheek Pouch",
   description:
-    "Harvesting gives +2 bonus energy. Fluffy cheeks hold more than expected.",
+    "Harvesting gives +2 bonus energy.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

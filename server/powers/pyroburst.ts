@@ -28,7 +28,7 @@ registerPower({
   id: "volatile_core",
   name: "Volatile Core",
   description:
-    "Attacks cost 1 less energy but deal 2 self-damage. Efficient explosions.",
+    "Attacks cost 1 less energy but deal 2 self-damage.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

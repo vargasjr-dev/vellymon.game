@@ -28,7 +28,7 @@ registerPower({
   id: "static-charge",
   name: "Static Charge",
   description:
-    "Moving builds static. After 2 moves, next attack deals +5 bonus damage.",
+    "After 2 moves, next attack deals +5 bonus damage.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

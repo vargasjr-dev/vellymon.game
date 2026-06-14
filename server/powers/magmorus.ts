@@ -27,7 +27,7 @@ registerPower({
   id: "meltdown",
   name: "Meltdown",
   description:
-    "Attacking deals 3 self-damage. The molten core destabilizes with every strike.",
+    "Attacking deals 3 self-damage.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];

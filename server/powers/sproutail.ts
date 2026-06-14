@@ -27,7 +27,7 @@ registerPower({
   id: "regrowth_tail",
   name: "Regrowth Tail",
   description:
-    "Harvesting heals Sproutail for 3 HP. Economy play keeps it alive.",
+    "Harvesting heals Sproutail for 3 HP.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

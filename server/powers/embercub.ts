@@ -23,7 +23,7 @@ registerPower({
   id: "inner-fire",
   name: "Inner Fire",
   description:
-    "Below 50% HP, Embercub's attacks deal +3 bonus damage. Grit unleashed.",
+    "Below 50% HP, Embercub's attacks deal +3 bonus damage.",
   hooks: {
     onBeforeCommand: (ctx): PowerEffect[] => {
       // Only triggers on Embercub's own attacks

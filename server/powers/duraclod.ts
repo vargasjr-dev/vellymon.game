@@ -18,7 +18,7 @@ registerPower({
   id: "fortify",
   name: "Fortify",
   description:
-    "At end of turn, heals 4 HP. Standing ground hardens the clod.",
+    "At end of turn, heals 4 HP.",
   hooks: {
     onTurnEnd: (ctx: HookContext): PowerEffect[] => {
       return [{ type: "heal", targetId: ctx.self.uuid, amount: 4 }];

@@ -26,7 +26,7 @@ registerPower({
   id: "reality_shred",
   name: "Reality Shred",
   description:
-    "Attacks drain 1 energy from the opponent. Shreds health and economy.",
+    "Attacks drain 1 energy from the opponent.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];

@@ -18,7 +18,7 @@ registerPower({
   id: "supernova-burst",
   name: "Supernova Burst",
   description:
-    "First turn's attack deals +5 bonus damage. Bright, hot, short-lived.",
+    "First turn's attack deals +5 bonus damage.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack" || ctx.turn !== 1) return [];

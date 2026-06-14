@@ -18,7 +18,7 @@ registerPower({
   id: "bloom-burst",
   name: "Bloom Burst",
   description:
-    "When below 50% HP, attacks deal +8 bonus damage. Desperate bloom.",
+    "When below 50% HP, attacks deal +8 bonus damage.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
       if (ctx.command.type !== "attack") return [];
