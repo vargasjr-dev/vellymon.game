@@ -478,17 +478,15 @@ export function resolveHarvest(
     };
   }
 
-  // Check for enemy blocking the harvest tile
+  // A space occupied by any vellymon (ally or enemy) cannot be harvested —
+  // only uninhabited harvestable spaces yield energy.
   const blocker = getVellymonAtPosition(state, targetPos);
   if (blocker) {
-    const isOwnTeam = team.active.some((v) => v.uuid === blocker.uuid);
-    if (!isOwnTeam) {
-      return {
-        command,
-        success: false,
-        reason: "Harvest blocked by enemy",
-      };
-    }
+    return {
+      command,
+      success: false,
+      reason: "Harvest blocked — space is occupied",
+    };
   }
 
   const gained = harvestEnergy(team, space);
