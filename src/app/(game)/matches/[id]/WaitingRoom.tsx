@@ -314,6 +314,15 @@ export default function WaitingRoom({
           </Link>
         )}
 
+        {match.status === "completed" && (
+          <Link
+            href={`/matches/${match.uuid}/spectate`}
+            className="block w-full text-center bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+          >
+            📺 Watch Replay
+          </Link>
+        )}
+
         {match.status === "waiting" && isCreator && (
           <button
             onClick={handleCancel}
