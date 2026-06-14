@@ -341,18 +341,25 @@ function buildUnifiedSteps(
   // Track HP separately so damage can be applied at the moment of impact
   // (when the lunge peaks) rather than only at the final reconciliation step.
   const workingHp = new Map<string, number>();
+  // Track KO'd mons so they are removed from subsequent animation frames.
+  // Without this, a mon KO'd mid-sequence keeps appearing in snapshot() calls
+  // for later steps, producing ghost animations from already-defeated mons.
+  const workingKo = new Set<string>();
   const baseVms = snapshotToVellymons(fromSnap);
   baseVms.forEach((v) => {
     workingPos.set(v.uuid, { x: v.x, y: v.y });
     workingHp.set(v.uuid, v.hp);
+    if (v.isKO) workingKo.add(v.uuid);
   });
 
   function snapshot(): CanvasVellymon[] {
-    return baseVms.map((v) => {
-      const pos = workingPos.get(v.uuid);
-      const hp = workingHp.get(v.uuid) ?? v.hp;
-      return pos ? { ...v, x: pos.x, y: pos.y, hp } : { ...v, hp };
-    });
+    return baseVms
+      .filter((v) => !workingKo.has(v.uuid))
+      .map((v) => {
+        const pos = workingPos.get(v.uuid);
+        const hp = workingHp.get(v.uuid) ?? v.hp;
+        return pos ? { ...v, x: pos.x, y: pos.y, hp } : { ...v, hp };
+      });
   }
 
   let stepIdx = 0;
@@ -423,6 +430,11 @@ function buildUnifiedSteps(
               hit.uuid,
               Math.max(0, (workingHp.get(hit.uuid) ?? hit.hp) - cmd.damageDealt),
             );
+            // Mark the target KO'd immediately so it disappears from all
+            // subsequent animation frames — prevents ghost animations.
+            if (cmd.targetKO) {
+              workingKo.add(hit.uuid);
+            }
             break;
           }
         }
