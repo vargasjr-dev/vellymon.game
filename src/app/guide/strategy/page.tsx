@@ -115,7 +115,7 @@ export default function StrategyPage() {
           <div className="space-y-3">
             <Principle
               title="Don't blow your load early"
-              desc="Using Nuke (8⚡) every turn will drain your team fast. Mix cheap attacks (Poke 2⚡, Chip 2⚡) with expensive ones."
+              desc="Even with lower costs (1–3⚡), firing attacks every turn still drains your pool. Mix cheap attacks (Poke 1⚡, Chip 1⚡) with heavy ones (Slam 3⚡, Nuke 3⚡)."
             />
             <Principle
               title="Harvest with purpose"

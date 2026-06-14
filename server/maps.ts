@@ -7,6 +7,7 @@
  *   . = Harvestable (yield 1 — small fern)
  *   f = Fertile (yield 2 — medium fern)
  *   r = Rich (yield 3 — large fern)
+ *   h = Lush (yield 4 — glowing tree)
  *   O = Occupation point
  *   V = Void (impassable)
  *
@@ -39,7 +40,7 @@ export type MapConfig = {
  * ```
  * 1 . . . . . . . 2     y=0
  * 1 . O . f . . . 2     y=1
- * . . f . r . f . .     y=2  ← center row: rich middle, fertile flanks
+ * . . f . h . f . .     y=2  ← center row: lush middle (+4), fertile flanks
  * 1 . . . f . O . 2     y=3
  * 1 . . . . . . . 2     y=4
  * ```
@@ -53,7 +54,7 @@ const STANDARD: MapConfig = {
   layout: [
     "1 . . . . . . . 2",
     "1 . O . f . . . 2",
-    ". . f . r . f . .",
+    ". . f . h . f . .",
     "1 . . . f . O . 2",
     "1 . . . . . . . 2",
   ],
@@ -68,9 +69,9 @@ const STANDARD: MapConfig = {
  * ```
  * 1 . . . V . . . 2     y=0  ← behind void
  * . . . . V . . . .     y=1
- * 1 . O . f . . . 2     y=2  ← open row, fertile near gap
- * . . f . r . f . .     y=3  ← center, rich middle
- * 1 . . . f . O . 2     y=4  ← open row, fertile near gap
+ * 1 . O . r . . . 2     y=2  ← open row, rich near gap
+ * . . f . h . f . .     y=3  ← center, lush middle (+4)
+ * 1 . . . r . O . 2     y=4  ← open row, rich near gap
  * . . . . V . . . .     y=5
  * 1 . . . V . . . 2     y=6  ← behind void
  * ```
@@ -84,9 +85,9 @@ const THE_CHOKE: MapConfig = {
   layout: [
     "1 . . . V . . . 2",
     ". . . . V . . . .",
-    "1 . O . f . . . 2",
-    ". . f . r . f . .",
-    "1 . . . f . O . 2",
+    "1 . O . r . . . 2",
+    ". . f . h . f . .",
+    "1 . . . r . O . 2",
     ". . . . V . . . .",
     "1 . . . V . . . 2",
   ],
@@ -117,6 +118,7 @@ const CELL_MAP: Record<string, CellDef> = {
   ".": { type: "harvestable", harvestYield: 1 },
   f: { type: "harvestable", harvestYield: 2 },
   r: { type: "harvestable", harvestYield: 3 },
+  h: { type: "harvestable", harvestYield: 4 },
   O: { type: "occupation" },
   V: { type: "void" },
 };
