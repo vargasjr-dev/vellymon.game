@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
 import getTeams from "~/data/getTeams.server";
-import getUserMatches from "~/data/getUserMatches.server";
 import { getSubscriptionInfo } from "../../../../lib/subscription";
 import { getActiveRank, STARS_PER_RANK, type Rank } from "../../../../lib/ranked";
 import { getBalance } from "../../../../lib/currency";
@@ -62,18 +61,14 @@ export default async function PlayerHubPage() {
   const session = await auth.api.getSession({ headers: headersList });
   if (!session) redirect("/login");
 
-  const [roster, teams, matches, subInfo, activeRank, creditBalance, loginStreak] = await Promise.all([
+  const [roster, teams, subInfo, activeRank, creditBalance, loginStreak] = await Promise.all([
     getVellymonRoster(session.user.id),
     getTeams(session.user.id),
-    getUserMatches(session.user.id),
     getSubscriptionInfo(session.user.id),
     getActiveRank(session.user.id),
     getBalance(session.user.id),
     getLoginStreak(session.user.id),
   ]);
-  const activeMatchCount = matches.filter(
-    (m) => m.status === "waiting" || m.status === "ready" || m.status === "playing",
-  ).length;
   const rank = (activeRank?.rank ?? "bronze") as Rank;
   const stars = activeRank?.stars ?? 0;
   const maxStars = STARS_PER_RANK[rank];
@@ -131,7 +126,7 @@ export default async function PlayerHubPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {/* Roster Card */}
         <Link
           href="/roster"
@@ -170,26 +165,6 @@ export default async function PlayerHubPage() {
           </p>
         </Link>
 
-        {/* Matches Card */}
-        <Link
-          href="/matches"
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">🏆</span>
-            <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">
-              Matches
-            </h2>
-          </div>
-          <p className="text-3xl font-bold text-blue-600">
-            {activeMatchCount}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            {activeMatchCount === 0
-              ? "Start or join a match"
-              : `active match${activeMatchCount !== 1 ? "es" : ""}`}
-          </p>
-        </Link>
       </div>
 
       {/* Daily Check-In */}
