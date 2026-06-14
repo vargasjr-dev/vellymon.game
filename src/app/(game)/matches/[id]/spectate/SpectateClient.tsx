@@ -365,6 +365,35 @@ function buildUnifiedSteps(
   let stepIdx = 0;
 
   for (const cmd of sortedCmds) {
+      // Failed attacks (e.g. not enough energy) still get a preview + fizzle label.
+      if (!cmd.success && cmd.command.type === "attack") {
+        const uuid = cmd.command.vellymonUuid;
+        const cur = workingPos.get(uuid);
+        const dir = cmd.command.direction as Dir | undefined;
+        const offset = dir ? DIR_OFFSETS[dir] : null;
+        if (cur && offset) {
+          const tx = cur.x + offset.dx;
+          const ty = cur.y + offset.dy;
+          const previewOverlay: Overlays = {
+            arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0xff6b6b, alpha: 0.4 }],
+          };
+          const from = snapshot();
+          steps.push({
+            key: String(stepIdx++),
+            previewOverlay,
+            previewMs: 300,
+            tweenFrom: from,
+            tweenTo: from,
+            tweenMs: 40,
+            impactOverlay: {
+              labels: [{ x: tx, y: ty, text: "✗ No energy", color: 0x6b7280, alpha: 1 }],
+            },
+            impactMs: 350,
+          });
+        }
+        continue;
+      }
+
       // Failed harvests still get a preview + blocked label — handle before the
       // general success gate below.
       if (!cmd.success && cmd.command.type === "harvest") {
