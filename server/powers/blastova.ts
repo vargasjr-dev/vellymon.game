@@ -1,11 +1,14 @@
 /**
  * Blastova — "Supernova Burst"
  *
- * On the first turn, Blastova's attack deals +5 bonus damage.
- * A living supernova — bright, hot, and short-lived.
+ * Every 5th turn (5, 10, 15…), Blastova's attack deals +5 bonus damage.
+ * A living supernova — erupts on a cycle, bright and devastating each time.
  *
- * Hook: onAfterCommand (attack)
- * Effect: +5 bonus_damage on turn 1
+ * Turn 1 was the original trigger but mons start far apart so it almost
+ * never connected. Every-5th-turn keeps the power relevant throughout the match.
+ *
+ * Hook: onAfterCommand (attack, self only, turn % 5 === 0, successful hit)
+ * Effect: bonus_damage +5 on the actual attack target
  */
 
 import {
@@ -17,16 +20,16 @@ import {
 registerPower({
   id: "supernova-burst",
   name: "Supernova Burst",
-  description:
-    "First turn's attack deals +5 bonus damage.",
+  description: "Every 5th turn, your attack deals +5 bonus damage.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.type !== "attack" || ctx.turn !== 1) return [];
-      // Find the first enemy to apply bonus damage
-      const enemyTeam = ctx.state.teams[ctx.team === 1 ? 1 : 0];
-      const target = enemyTeam.active.find((v) => !v.isKO);
-      if (!target) return [];
-      return [{ type: "bonus_damage", targetId: target.uuid, amount: 5 }];
+      if (ctx.command.type !== "attack") return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
+      if (ctx.turn % 5 !== 0) return [];
+      if (!ctx.commandResult?.success || !ctx.commandResult.targetUuid) return [];
+      return [
+        { type: "bonus_damage", targetId: ctx.commandResult.targetUuid, amount: 5 },
+      ];
     },
   },
 });
