@@ -365,16 +365,46 @@ function buildUnifiedSteps(
   let stepIdx = 0;
 
   for (const cmd of sortedCmds) {
-    if (!cmd.success) continue;
-    const uuid = cmd.command.vellymonUuid;
-    const info = lookup.get(uuid);
-    const teamId = info?.teamId ?? 1;
-    const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
-    const cur = workingPos.get(uuid);
-    if (!cur) continue;
+      // Failed harvests still get a preview + blocked label — handle before the
+      // general success gate below.
+      if (!cmd.success && cmd.command.type === "harvest") {
+        const uuid = cmd.command.vellymonUuid;
+        const cur = workingPos.get(uuid);
+        const dir = cmd.command.direction as Dir | undefined;
+        const offset = dir ? DIR_OFFSETS[dir] : null;
+        if (cur && offset) {
+          const tx = cur.x + offset.dx;
+          const ty = cur.y + offset.dy;
+          const previewOverlay: Overlays = {
+            arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.6 }],
+          };
+          const from = snapshot();
+          steps.push({
+            key: String(stepIdx++),
+            previewOverlay,
+            previewMs: 300,
+            tweenFrom: from,
+            tweenTo: from,
+            tweenMs: 40,
+            impactOverlay: {
+              labels: [{ x: tx, y: ty, text: "✗", color: 0x6b7280, alpha: 1 }],
+            },
+            impactMs: 300,
+          });
+        }
+        continue;
+      }
 
-    const dir = cmd.command.direction as Dir | undefined;
-    const offset = dir ? DIR_OFFSETS[dir] : null;
+      if (!cmd.success) continue;
+      const uuid = cmd.command.vellymonUuid;
+      const info = lookup.get(uuid);
+      const teamId = info?.teamId ?? 1;
+      const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
+      const cur = workingPos.get(uuid);
+      if (!cur) continue;
+
+      const dir = cmd.command.direction as Dir | undefined;
+      const offset = dir ? DIR_OFFSETS[dir] : null;
 
     if (cmd.command.type === "move" && offset) {
       // Preview: ghost at destination + arrow
@@ -472,11 +502,16 @@ function buildUnifiedSteps(
         impactMs: 400,
       });
     } else if (cmd.command.type === "harvest" && offset) {
-      // Harvest: just show a green arrow, no position change
+      // Harvest success: green arrow preview then +N⚡ pop at the target tile
+      const tx = cur.x + offset.dx;
+      const ty = cur.y + offset.dy;
       const previewOverlay: Overlays = {
-        arrows: [{ fromX: cur.x, fromY: cur.y, toX: cur.x + offset.dx, toY: cur.y + offset.dy, color: 0x4ade80, alpha: 0.8 }],
+        arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.8 }],
       };
       const from = snapshot();
+      const energyLabel = cmd.energyDelta && cmd.energyDelta > 0
+        ? `+${cmd.energyDelta}⚡`
+        : "+⚡";
       steps.push({
         key: String(stepIdx++),
         previewOverlay,
@@ -484,8 +519,10 @@ function buildUnifiedSteps(
         tweenFrom: from,
         tweenTo: from,
         tweenMs: 60,
-        impactOverlay: null,
-        impactMs: 0,
+        impactOverlay: {
+          labels: [{ x: tx, y: ty, text: energyLabel, color: 0x4ade80, alpha: 1 }],
+        },
+        impactMs: 400,
       });
     }
   }
