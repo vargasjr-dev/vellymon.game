@@ -81,6 +81,14 @@ export type BlockEffect = {
   position: Position;
 };
 
+/** Persist a numeric value to a vellymon's powerState record */
+export type SetPowerStateEffect = {
+  type: "set_power_state";
+  vellymonId: string;
+  key: string;
+  value: number;
+};
+
 export type PowerEffect =
   | HealEffect
   | BonusDamageEffect
@@ -88,7 +96,8 @@ export type PowerEffect =
   | CostModEffect
   | SpeedModEffect
   | SpaceEffect
-  | BlockEffect;
+  | BlockEffect
+  | SetPowerStateEffect;
 
 // ─── Hook Context ────────────────────────────────────────────────────────────
 
@@ -253,6 +262,14 @@ export function applyEffects(
         const target = findVellymon(state, effect.vellymonId);
         if (target) {
           target.speed = Math.max(1, target.speed + effect.amount);
+        }
+        break;
+      }
+      case "set_power_state": {
+        const target = findVellymon(state, effect.vellymonId);
+        if (target) {
+          if (!target.powerState) target.powerState = {};
+          target.powerState[effect.key] = effect.value;
         }
         break;
       }
