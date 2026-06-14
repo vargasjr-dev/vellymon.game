@@ -20,6 +20,7 @@ export async function createTeamAction(name: string, slots: SlotInput[]) {
 
   if (result.success) {
     revalidatePath("/teams");
+    revalidatePath("/roster");
     revalidatePath("/player");
   }
 
@@ -43,6 +44,7 @@ export async function updateTeamAction(
 
   if (result.success) {
     revalidatePath("/teams");
+    revalidatePath("/roster");
     revalidatePath("/player");
   }
 
@@ -60,6 +62,7 @@ export async function deleteTeamAction(teamUuid: string) {
 
   if (result.success) {
     revalidatePath("/teams");
+    revalidatePath("/roster");
     revalidatePath("/player");
   }
 

@@ -152,8 +152,8 @@ export default async function PlayerHubPage() {
         </Link>
 
         {/* Teams Card */}
-        <Link
-          href="/teams"
+          <Link
+            href="/roster"
           className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
         >
           <div className="flex items-center gap-3 mb-2">
