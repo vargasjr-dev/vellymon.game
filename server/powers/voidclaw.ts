@@ -8,13 +8,11 @@
  * Hook: onAfterCommand (attack)
  * Effect: energy -2 to enemy team
  *
- * Design: Voidclaw is a glass cannon (HP 45, ATK 19, SPD 5).
- * THE LOWEST HP in the entire game (45) combined with
- * TIED HIGHEST ATK (19, same as Magmorus). The ultimate
- * glass cannon. Void Rend drains 2 energy per attack —
- * double Shrednova's drain. A single Voidclaw attack is
- * devastating: 19 damage + 2 energy loss. But at 45 HP,
- * a stiff breeze knocks it out. High risk, highest reward.
+ * Design: Voidclaw is a glass cannon (HP 37, ATK 17, SPD 5).
+ * Among the lowest HP in the game combined with very high ATK.
+ * Void Rend drains 2 energy per attack — double Shrednova's drain.
+ * A single Voidclaw attack is devastating: 17 damage + 2 energy loss.
+ * But at 37 HP, one good hit ends it. High risk, high reward.
  */
 
 import {
