@@ -31,7 +31,7 @@ registerPower({
     "Attacking leaves poison on your space for 3 turns. Contaminates the battlefield.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "attack") return [];
       if (!ctx.self.position) return [];
 

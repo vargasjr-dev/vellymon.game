@@ -29,7 +29,7 @@ registerPower({
     "Attacks drain 1 energy from the opponent. Shreds health and economy.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "attack") return [];
 
       const enemyTeam = ctx.team === 1 ? 2 : 1;

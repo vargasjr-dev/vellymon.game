@@ -25,7 +25,8 @@ import type { VellymonState, Position, GameState } from "./types";
 /** Minimal command reference for hooks */
 export type CommandRef = {
   type: "move" | "attack" | "harvest";
-  vellymonId: string;
+  /** UUID of the vellymon executing this command (matches Command.vellymonUuid) */
+  vellymonUuid: string;
   direction?: number;
 };
 

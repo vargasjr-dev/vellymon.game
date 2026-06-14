@@ -64,6 +64,12 @@ export type CommandResult = {
   targetUuid?: string;
   /** Name of the attack used (attack only, e.g. "Snipe", "Strike") */
   attackName?: string;
+  /**
+   * Energy changes caused by special power effects on this command.
+   * Keyed by team ID (1 or 2). Negative = drained, positive = gained.
+   * e.g. { 2: -2 } means team 2 lost 2 energy (Voidclaw drain).
+   */
+  powerEnergyDeltas?: Partial<Record<1 | 2, number>>;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

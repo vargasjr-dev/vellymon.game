@@ -28,7 +28,7 @@ registerPower({
     "Moving reduces attack cost by 1 energy. Momentum builds with each step.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "move") return [];
 
       return [

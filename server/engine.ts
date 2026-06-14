@@ -34,6 +34,7 @@ import {
 } from "./commands";
 import { checkWinConditions, updateOccupationCounters } from "./winConditions";
 import { processAllBenchEntries, type BenchEntry } from "./bench";
+import { runHook, applyEffects, type EnergyEffect } from "./specialPowers";
 import {
   createTurnTimer,
   getFinalCommands,
@@ -58,6 +59,7 @@ export type VellymonSetup = {
   attacks: { key: string; name: string; damage: number; energyCost: number; range: number }[];
   spawnPosition: Position;
   imageUrl?: string;
+  specialPowerId?: string;
 };
 
 /**
@@ -132,6 +134,7 @@ function createVellymonState(setup: VellymonSetup): VellymonState {
     isKO: false,
     spawnPosition: { ...setup.spawnPosition },
     imageUrl: setup.imageUrl,
+    specialPowerId: setup.specialPowerId,
   };
 }
 
@@ -323,10 +326,47 @@ export function resolveTurn(
         success: false,
         reason: validationError,
       });
-    } else {
-      const result = resolveCommand(command, team, state, positionSnapshot);
-      commandResults.push(result);
+      continue;
     }
+
+    const result = resolveCommand(command, team, state, positionSnapshot);
+
+    // ── Special power: onAfterCommand ────────────────────────────────────────
+    // Fire after any successful command. Handles attack-triggered powers
+    // (e.g. Voidclaw energy drain, Shrednova energy drain).
+    if (result.success) {
+      const attacker = team.active.find((v) => v.uuid === command.vellymonUuid);
+      if (attacker?.specialPowerId) {
+        const ctx = {
+          self: attacker,
+          team: team.id,
+          state,
+          turn: state.turn,
+          command: {
+            type: command.type,
+            vellymonUuid: command.vellymonUuid,
+            direction: command.direction,
+          },
+        };
+        const effects = runHook("onAfterCommand", attacker.specialPowerId, ctx);
+        if (effects.length > 0) {
+          applyEffects(effects, state);
+          // Collect energy deltas for display in the action log
+          const energyDeltas: Partial<Record<1 | 2, number>> = {};
+          for (const effect of effects) {
+            if (effect.type === "energy") {
+              const e = effect as EnergyEffect;
+              energyDeltas[e.team] = (energyDeltas[e.team] ?? 0) + e.amount;
+            }
+          }
+          if (Object.keys(energyDeltas).length > 0) {
+            result.powerEnergyDeltas = energyDeltas;
+          }
+        }
+      }
+    }
+
+    commandResults.push(result);
   }
 
   // Process bench entries for KO'd vellymons

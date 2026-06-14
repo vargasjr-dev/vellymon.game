@@ -30,7 +30,7 @@ registerPower({
     "Harvesting heals Sproutail for 3 HP. Economy play keeps it alive.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      if (ctx.command.vellymonId !== ctx.self.uuid) return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
       if (ctx.command.type !== "harvest") return [];
 
       return [
