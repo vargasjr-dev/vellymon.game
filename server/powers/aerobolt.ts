@@ -1,17 +1,19 @@
 /**
- * Aerobolt — "Shockwave Surfer"
+ * Aerobolt — "Shockwave Trail"
  *
- * After Aerobolt lands an attack, it generates a shockwave that
- * drains 1 energy from the opponent's team. Speed creates pressure.
+ * After Aerobolt moves, the shockwave it leaves behind deals 2 chip
+ * damage to every enemy standing on an adjacent tile. Zip through
+ * enemy formations and they pay for standing in your wake.
  *
- * Hook: onAfterCommand (attack only)
- * Effect: -1 energy to opposing team
+ * Hook: onAfterCommand (move only, self only)
+ * Effect: bonus_damage +2 on each adjacent enemy (up to 4 directions)
  *
- * Design rationale: Aerobolt is a speedster (spd 8) that attacks early
- * in resolution order. This power makes fast, aggressive play pay off
- * by taxing the opponent's energy economy every time Aerobolt connects.
- * At 1 energy per hit, it's a steady drain — not a burst. Synergizes
- * with the Accumulation win condition (race to 120 energy).
+ * Design: Aerobolt is a speedster (SPD 8) — it moves often and
+ * repositions aggressively. Shockwave Trail turns every move into
+ * passive area denial. Stack multiple moves across turns to whittle
+ * tightly-grouped opponents without spending energy on attacks.
+ * Synergizes with Snipe (range 2) — reposition for a safe angle,
+ * deal trail damage in the process, then fire from distance.
  */
 
 import {
@@ -22,23 +24,42 @@ import {
 
 registerPower({
   id: "shockwave-surfer",
-  name: "Shockwave Surfer",
+  name: "Shockwave Trail",
   description:
-    "After attacking, drains 1 energy from the opposing team.",
+    "After moving, deals 2 damage to each enemy on an adjacent tile.",
   hooks: {
     onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
-      // Only trigger on attacks (not moves or harvests)
-      if (ctx.command.type !== "attack") return [];
+      if (ctx.command.vellymonUuid !== ctx.self.uuid) return [];
+      if (ctx.command.type !== "move") return [];
+      if (!ctx.commandResult?.success) return [];
 
-      // Drain 1 energy from the opposing team
-      const opponentTeam = ctx.team === 1 ? 2 : 1;
-      return [
-        {
-          type: "energy",
-          team: opponentTeam,
-          amount: -1,
-        },
+      const pos = ctx.self.position;
+      if (!pos) return [];
+
+      const enemyTeamId = ctx.team === 1 ? 2 : 1;
+      const enemyTeam = ctx.state.teams.find((t) => t.id === enemyTeamId);
+      if (!enemyTeam) return [];
+
+      const adjacentOffsets = [
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: 0 },
+        { dx: 1, dy: 0 },
       ];
+
+      const effects: PowerEffect[] = [];
+      for (const { dx, dy } of adjacentOffsets) {
+        const nx = pos.x + dx;
+        const ny = pos.y + dy;
+        const hit = enemyTeam.active.find(
+          (v) => !v.isKO && v.position?.x === nx && v.position?.y === ny,
+        );
+        if (hit) {
+          effects.push({ type: "bonus_damage", targetId: hit.uuid, amount: 2 });
+        }
+      }
+
+      return effects;
     },
   },
 });
