@@ -54,11 +54,13 @@ export function checkOccupation(
 
 /**
  * Check if a team has reached the energy accumulation threshold.
+ * @param threshold Override threshold; falls back to GAME_CONFIG default.
  */
 export function checkAccumulation(
   team: TeamState,
+  threshold = GAME_CONFIG.energy.accumulationWinThreshold,
 ): boolean {
-  return team.energy >= GAME_CONFIG.energy.accumulationWinThreshold;
+  return team.energy >= threshold;
 }
 
 // ─── Combined Check ──────────────────────────────────────────────────────────
@@ -104,8 +106,9 @@ export function checkWinConditions(state: GameState): WinResult | null {
   // Both controlling all points simultaneously is impossible by definition
 
   // Check Accumulation (lowest priority)
-  const team1Accumulates = checkAccumulation(team1);
-  const team2Accumulates = checkAccumulation(team2);
+  const accThreshold = state.winningEnergy ?? GAME_CONFIG.energy.accumulationWinThreshold;
+  const team1Accumulates = checkAccumulation(team1, accThreshold);
+  const team2Accumulates = checkAccumulation(team2, accThreshold);
 
   if (team1Accumulates && !team2Accumulates) {
     return { winner: 1, condition: "accumulation" };

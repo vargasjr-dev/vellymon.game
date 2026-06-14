@@ -8,6 +8,10 @@ export type MatchSettings = {
   timerSeconds: 0 | 30 | 90;
   mapId: string;
   mode: MatchMode;
+  /** Energy each team starts with. Defaults to GAME_CONFIG.energy.starting (120). */
+  startingEnergy?: number;
+  /** Energy threshold to win via Accumulation. Defaults to GAME_CONFIG.energy.accumulationWinThreshold (500). */
+  winningEnergy?: number;
 };
 
 export const TIMER_OPTIONS = [
