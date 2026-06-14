@@ -53,6 +53,71 @@ function StatBar({
   );
 }
 
+function MonDetailPanel({
+  mon,
+  isInTeam,
+  onPick,
+  onClose,
+  onBack,
+}: {
+  mon: VellymonData;
+  isInTeam: boolean;
+  onPick: (name: string) => void;
+  onClose: () => void;
+  onBack?: () => void;
+}) {
+  return (
+    <div className="p-4">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-xs text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1"
+        >
+          ← Back
+        </button>
+      )}
+      {mon.imageUrl && (
+        <div className="relative w-full aspect-square bg-gray-50 rounded-xl overflow-hidden mb-4">
+          <Image
+            src={mon.imageUrl}
+            alt={mon.name}
+            fill
+            className="object-contain"
+            sizes="300px"
+          />
+        </div>
+      )}
+      <p className="font-bold text-base text-gray-900 mb-0.5">{mon.name}</p>
+      {mon.flavor && (
+        <p className="text-xs text-gray-400 italic mb-4 leading-snug">{mon.flavor}</p>
+      )}
+      <div className="space-y-2 mb-4">
+        <StatBar label="HP" value={mon.hp} max={120} color="green" />
+        <StatBar label="ATK" value={mon.attack} max={20} color="red" />
+        <StatBar label="SPD" value={mon.speed} max={10} color="blue" />
+      </div>
+      {mon.powerName && (
+        <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 mb-4">
+          <p className="text-xs font-bold text-purple-900 mb-0.5">✨ {mon.powerName}</p>
+          <p className="text-xs text-purple-700 leading-snug">{mon.powerDescription}</p>
+        </div>
+      )}
+      {isInTeam ? (
+        <p className="text-xs text-gray-400 text-center py-2">Already on team</p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => { onPick(mon.name); onClose(); }}
+          className="w-full bg-blue-600 text-white text-sm font-semibold px-4 py-3 rounded-xl hover:bg-blue-700 transition"
+        >
+          Add to team
+        </button>
+      )}
+    </div>
+  );
+}
+
 function MonPickerModal({
   vellymons,
   selectedNames,
@@ -66,6 +131,8 @@ function MonPickerModal({
 }) {
   const [search, setSearch] = useState("");
   const [focused, setFocused] = useState<VellymonData | null>(null);
+  // Mobile: tracks which mon is showing the detail bottom-sheet
+  const [mobileFocused, setMobileFocused] = useState<VellymonData | null>(null);
 
   const filtered = vellymons.filter(
     (v) => !search || v.name.toLowerCase().includes(search.toLowerCase()),
@@ -74,145 +141,132 @@ function MonPickerModal({
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          if (mobileFocused) setMobileFocused(null);
+          else onClose();
+        }
+      }}
     >
       <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-          <h3 className="font-semibold text-gray-900">Pick a Vellymon</h3>
+          <h3 className="font-semibold text-gray-900">
+            {mobileFocused ? mobileFocused.name : "Pick a Vellymon"}
+          </h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => mobileFocused ? setMobileFocused(null) : onClose()}
             className="text-gray-400 hover:text-gray-600 text-xl leading-none"
           >
-            ×
+            {mobileFocused ? "←" : "×"}
           </button>
         </div>
 
-        {/* Search */}
-        <div className="px-4 py-2 border-b border-gray-100 shrink-0">
-          <input
-            type="text"
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search vellymons…"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </div>
-
-        {/* Grid + Detail */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Grid */}
-          <div className="flex-1 overflow-y-auto p-3">
-            <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
-              {filtered.map((v) => {
-                const isInTeam = selectedNames.includes(v.name);
-                return (
-                  <button
-                    key={v.name}
-                    type="button"
-                    onClick={() => {
-                      if (!isInTeam) {
-                        onPick(v.name);
-                        onClose();
-                      }
-                    }}
-                    onMouseEnter={() => setFocused(v)}
-                    className={`group relative rounded-xl overflow-hidden transition aspect-square ${
-                      isInTeam
-                        ? "opacity-40 cursor-not-allowed ring-2 ring-gray-300"
-                        : focused?.name === v.name
-                          ? "ring-2 ring-blue-500 shadow-md"
-                          : "hover:ring-2 hover:ring-blue-300 hover:shadow-sm"
-                    }`}
-                  >
-                    {v.imageUrl ? (
-                      <Image
-                        src={v.imageUrl}
-                        alt={v.name}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                        {v.name[0]}
-                      </div>
-                    )}
-                    {isInTeam && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <span className="text-white text-xs font-bold">✓</span>
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/50 py-0.5">
-                      <p className="text-[9px] text-white truncate text-center font-medium px-0.5">
-                        {v.name}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+        {/* Mobile detail view — replaces grid when a mon is tapped */}
+        {mobileFocused ? (
+          <div className="flex-1 overflow-y-auto sm:hidden">
+            <MonDetailPanel
+              mon={mobileFocused}
+              isInTeam={selectedNames.includes(mobileFocused.name)}
+              onPick={onPick}
+              onClose={onClose}
+              onBack={() => setMobileFocused(null)}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div className="px-4 py-2 border-b border-gray-100 shrink-0">
+              <input
+                type="text"
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search vellymons…"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
             </div>
-            {filtered.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-8">No results</p>
-            )}
-          </div>
 
-          {/* Detail panel — hidden on mobile */}
-          <div className="hidden sm:block w-52 shrink-0 border-l border-gray-100 overflow-y-auto">
-            {focused ? (
-              <div className="p-3">
-                {focused.imageUrl && (
-                  <div className="relative w-full aspect-square bg-gray-50 rounded-lg overflow-hidden mb-3">
-                    <Image
-                      src={focused.imageUrl}
-                      alt={focused.name}
-                      fill
-                      className="object-contain"
-                      sizes="192px"
-                    />
-                  </div>
-                )}
-                <p className="font-bold text-sm text-gray-900 mb-0.5">{focused.name}</p>
-                {focused.flavor && (
-                  <p className="text-[11px] text-gray-400 italic mb-3 line-clamp-3">
-                    {focused.flavor}
-                  </p>
-                )}
-                <div className="space-y-1.5 mb-3">
-                  <StatBar label="HP" value={focused.hp} max={120} color="green" />
-                  <StatBar label="ATK" value={focused.attack} max={20} color="red" />
-                  <StatBar label="SPD" value={focused.speed} max={10} color="blue" />
+            {/* Grid + Desktop Detail */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Grid */}
+              <div className="flex-1 overflow-y-auto p-3">
+                <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
+                  {filtered.map((v) => {
+                    const isInTeam = selectedNames.includes(v.name);
+                    return (
+                      <button
+                        key={v.name}
+                        type="button"
+                        onClick={() => {
+                          if (!isInTeam) {
+                            // Mobile: show detail sheet; Desktop: hover handles focus,
+                            // tap still shows detail (not immediate add)
+                            setMobileFocused(v);
+                            setFocused(v);
+                          }
+                        }}
+                        onMouseEnter={() => setFocused(v)}
+                        className={`group relative rounded-xl overflow-hidden transition aspect-square ${
+                          isInTeam
+                            ? "opacity-40 cursor-not-allowed ring-2 ring-gray-300"
+                            : focused?.name === v.name
+                              ? "ring-2 ring-blue-500 shadow-md"
+                              : "hover:ring-2 hover:ring-blue-300 hover:shadow-sm"
+                        }`}
+                      >
+                        {v.imageUrl ? (
+                          <Image
+                            src={v.imageUrl}
+                            alt={v.name}
+                            fill
+                            className="object-cover"
+                            sizes="80px"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                            {v.name[0]}
+                          </div>
+                        )}
+                        {isInTeam && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <span className="text-white text-xs font-bold">✓</span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 bg-black/50 py-0.5">
+                          <p className="text-[9px] text-white truncate text-center font-medium px-0.5">
+                            {v.name}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                {focused.powerName && (
-                  <div className="bg-purple-50 border border-purple-100 rounded-lg p-2">
-                    <p className="text-[10px] font-bold text-purple-900 mb-0.5">
-                      ✨ {focused.powerName}
-                    </p>
-                    <p className="text-[10px] text-purple-700 leading-tight">
-                      {focused.powerDescription}
-                    </p>
+                {filtered.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-8">No results</p>
+                )}
+              </div>
+
+              {/* Desktop detail panel — hidden on mobile, hover-driven */}
+              <div className="hidden sm:block w-52 shrink-0 border-l border-gray-100 overflow-y-auto">
+                {focused ? (
+                  <MonDetailPanel
+                    mon={focused}
+                    isInTeam={selectedNames.includes(focused.name)}
+                    onPick={onPick}
+                    onClose={onClose}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                    <p className="text-3xl mb-2">👆</p>
+                    <p className="text-xs text-gray-400">Hover a vellymon to preview</p>
                   </div>
                 )}
-                {!selectedNames.includes(focused.name) && (
-                  <button
-                    type="button"
-                    onClick={() => { onPick(focused.name); onClose(); }}
-                    className="mt-3 w-full bg-blue-600 text-white text-xs px-3 py-2 rounded-lg font-medium hover:bg-blue-700"
-                  >
-                    Add to team
-                  </button>
-                )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-                <p className="text-3xl mb-2">👆</p>
-                <p className="text-xs text-gray-400">Hover a vellymon to preview</p>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
