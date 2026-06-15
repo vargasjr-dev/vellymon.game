@@ -20,39 +20,44 @@ export type MatchDetail = {
   }[];
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const getMatch = async (matchUuid: string): Promise<MatchDetail | null> => {
   try {
     // ── 1. Try gameSession (live / human matches) ─────────────────────────
-    const [match] = await db
-      .select({
-        uuid: gameSession.uuid,
-        status: gameSession.status,
-        createdAt: gameSession.createdAt,
-        createdBy: gameSession.createdBy,
-        creatorName: user.name,
-        currentPlayers: gameSession.currentPlayers,
-        maxPlayers: gameSession.maxPlayers,
-      })
-      .from(gameSession)
-      .leftJoin(user, eq(gameSession.createdBy, user.id))
-      .where(eq(gameSession.uuid, matchUuid));
-
-    if (match) {
-      const players = await db
+    // Guard: Postgres uuid column throws on non-UUID strings — skip if not UUID-shaped
+    if (UUID_RE.test(matchUuid)) {
+      const [match] = await db
         .select({
-          uuid: gamePlayer.uuid,
-          userId: gamePlayer.userId,
-          userName: user.name,
-          teamUuid: gamePlayer.teamUuid,
-          teamName: team.name,
-          joinedAt: gamePlayer.joinedAt,
+          uuid: gameSession.uuid,
+          status: gameSession.status,
+          createdAt: gameSession.createdAt,
+          createdBy: gameSession.createdBy,
+          creatorName: user.name,
+          currentPlayers: gameSession.currentPlayers,
+          maxPlayers: gameSession.maxPlayers,
         })
-        .from(gamePlayer)
-        .leftJoin(user, eq(gamePlayer.userId, user.id))
-        .leftJoin(team, eq(gamePlayer.teamUuid, team.uuid))
-        .where(eq(gamePlayer.gameSessionUuid, matchUuid));
+        .from(gameSession)
+        .leftJoin(user, eq(gameSession.createdBy, user.id))
+        .where(eq(gameSession.uuid, matchUuid));
 
-      return { ...match, players };
+      if (match) {
+        const players = await db
+          .select({
+            uuid: gamePlayer.uuid,
+            userId: gamePlayer.userId,
+            userName: user.name,
+            teamUuid: gamePlayer.teamUuid,
+            teamName: team.name,
+            joinedAt: gamePlayer.joinedAt,
+          })
+          .from(gamePlayer)
+          .leftJoin(user, eq(gamePlayer.userId, user.id))
+          .leftJoin(team, eq(gamePlayer.teamUuid, team.uuid))
+          .where(eq(gamePlayer.gameSessionUuid, matchUuid));
+
+        return { ...match, players };
+      }
     }
 
     // ── 2. Fallback: matchSnapshot (admin-simulated / CLI-uploaded matches) ─
