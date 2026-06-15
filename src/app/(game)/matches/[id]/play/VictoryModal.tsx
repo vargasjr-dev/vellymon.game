@@ -194,13 +194,13 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
             {/* XP / Credits / Rank / Sparring badges */}
             <div className="flex justify-center gap-3 flex-wrap">
               {/* XP */}
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-lg">⭐</span>
-                <div className="text-left">
-                  <p className="text-xs text-gray-400 leading-none">XP</p>
-                  <p className="text-sm font-bold text-yellow-300">+{rewards.xpAwarded}</p>
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                  <span className="text-lg">⚡️</span>
+                  <div className="text-left">
+                    <p className="text-xs text-gray-400 leading-none">⚡️</p>
+                    <p className="text-sm font-bold text-yellow-300">+{rewards.xpAwarded}</p>
+                  </div>
                 </div>
-              </div>
               {/* Credits */}
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
                 <span className="text-lg">💰</span>
@@ -273,7 +273,7 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                      <span className="text-xs font-bold text-yellow-300">+{quest.xpReward} XP</span>
+                      <span className="text-xs font-bold text-yellow-300">+{quest.xpReward} ⚡️</span>
                       <span className="text-xs font-bold text-orange-300">+{quest.creditsReward} 💰</span>
                     </div>
                   </div>

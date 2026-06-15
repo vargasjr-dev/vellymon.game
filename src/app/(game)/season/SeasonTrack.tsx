@@ -64,7 +64,7 @@ export default function SeasonTrack({
             Tier {progress.currentTier} / {progress.maxTier}
           </span>
           <span className="text-sm text-gray-500">
-            {progress.xp.toLocaleString()} XP
+            {progress.xp.toLocaleString()} ⚡️
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-3">

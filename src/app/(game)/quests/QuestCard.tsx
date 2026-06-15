@@ -59,7 +59,7 @@ export function QuestCard({ quest }: Props) {
         </div>
         <div className="flex flex-col gap-1 shrink-0 items-end">
           <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
-            ⭐ +{quest.xpReward} XP
+            ⚡️ +{quest.xpReward}
           </span>
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
             💰 +{quest.creditsReward}
@@ -99,7 +99,7 @@ export function QuestCard({ quest }: Props) {
       {/* Success feedback after claim */}
       {claimResult && (
         <p className="mt-3 text-center text-sm text-green-600 font-semibold">
-          🎉 +{claimResult.xpAwarded} XP · +{claimResult.creditsAwarded} credits
+          🎉 +{claimResult.xpAwarded} ⚡️ · +{claimResult.creditsAwarded} 💰
         </p>
       )}
 

@@ -155,7 +155,7 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
                 <StatPill label="KOs Taken" value={row.ownKOs} />
                 {isMe && (
                   <>
-                    <StatPill label="⭐ XP" value={`+${row.xpAwarded}`} />
+                    <StatPill label="⚡️" value={`+${row.xpAwarded}`} />
                     <StatPill label="💰 Credits" value={`+${row.creditsAwarded}`} />
                   </>
                 )}
