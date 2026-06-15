@@ -59,7 +59,7 @@ export default async function SeasonHistoryPage() {
         <span className="text-3xl">🗂️</span>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Season History</h1>
-          <p className="text-sm text-gray-500">Your rank and XP across all seasons</p>
+          <p className="text-sm text-gray-500">Your rank and ⚡️ across all seasons</p>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export default async function SeasonHistoryPage() {
                       <p className="font-bold text-gray-900">{winRate ?? "—"}%</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">XP</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">⚡️</p>
                       <p className="font-bold text-gray-900">
                         {entry.xpEarned != null ? entry.xpEarned.toLocaleString() : "—"}
                       </p>
