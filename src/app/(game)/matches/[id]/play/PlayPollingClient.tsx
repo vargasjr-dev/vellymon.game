@@ -337,11 +337,11 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       // ── Heal overlays: flash +N 💧 labels on board for turn-start heals ─
       if (data.turnHistory && data.turnHistory.length > 0) {
         const latest = data.turnHistory[data.turnHistory.length - 1] as TurnSnapshot;
-        type HealEvent = { targetUuid: string; healAmount: number };
-        const healEvents: HealEvent[] = (
-          (latest?.log as { turnStartEvents?: HealEvent[] })?.turnStartEvents ?? []
+        type TurnStartEvt = { targetUuid: string; healAmount?: number; damageAmount?: number };
+        const turnStartEvts: TurnStartEvt[] = (
+          (latest?.log as { turnStartEvents?: TurnStartEvt[] })?.turnStartEvents ?? []
         );
-        if (healEvents.length > 0) {
+        if (turnStartEvts.length > 0) {
           // Build position map from raw gs.teams
           const posMap = new Map<string, { x: number; y: number }>();
           for (const t of gs.teams) {
@@ -349,17 +349,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               if (v.position) posMap.set(v.uuid, v.position);
             }
           }
-          const labels = healEvents
+          const labels = turnStartEvts
             .map((e) => {
               const pos = posMap.get(e.targetUuid);
               if (!pos) return null;
-              return {
-                x: pos.x,
-                y: pos.y - 0.5,
-                text: `+${e.healAmount} 💧`,
-                color: 0x4ade80, // green-400
-                alpha: 1,
-              };
+              if (e.damageAmount) {
+                return { x: pos.x, y: pos.y - 0.5, text: `-${e.damageAmount} 🔥`, color: 0xf97316, alpha: 1 };
+              }
+              if (e.healAmount) {
+                return { x: pos.x, y: pos.y - 0.5, text: `+${e.healAmount} 💧`, color: 0x4ade80, alpha: 1 };
+              }
+              return null;
             })
             .filter((l): l is NonNullable<typeof l> => l !== null);
 

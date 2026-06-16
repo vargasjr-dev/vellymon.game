@@ -157,8 +157,10 @@ export type TurnStartEvent = {
   /** UUID of the vellymon that received the effect */
   targetUuid: string;
   targetName: string;
-  /** Positive = healed */
-  healAmount: number;
+  /** Positive = healed. Set for heal effects. */
+  healAmount?: number;
+  /** Positive = HP lost. Set for bonus_damage effects at turn start (e.g. burn). */
+  damageAmount?: number;
 };
 
 export type TurnLog = {
@@ -316,6 +318,16 @@ export function resolveTurn(
                 targetUuid: effect.targetId,
                 targetName: preApply.get(effect.targetId) ?? "?",
                 healAmount: effect.amount,
+              });
+            } else if (effect.type === "bonus_damage") {
+              turnStartEvents.push({
+                casterUuid: v.uuid,
+                casterName: v.name,
+                team: team.id,
+                powerName: getPower(v.specialPowerId)?.name ?? v.specialPowerId,
+                targetUuid: effect.targetId,
+                targetName: preApply.get(effect.targetId) ?? "?",
+                damageAmount: effect.amount,
               });
             }
           }
