@@ -13,6 +13,18 @@ const WIN_CONDITION_LABEL: Record<string, string> = {
   concession: "Conceded",
 };
 
+function StarDots({ controlled, total }: { controlled: number; total: number }) {
+  return (
+    <div className="flex gap-1 justify-center">
+      {Array.from({ length: total }).map((_, i) => (
+        <span key={i} className={`text-base ${i < controlled ? "opacity-100" : "opacity-20"}`}>
+          ⭐
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function StatPill({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col items-center bg-white/60 rounded-lg px-3 py-2 min-w-[64px]">
@@ -53,7 +65,7 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
     }
   };
 
-  const { stats } = summary;
+  const { stats, teamSummaries, turns: matchTurns, totalStarSpaces } = summary;
 
   if (stats.length === 0) {
     // Match completed but stats not yet written (rare race condition)
@@ -73,7 +85,6 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
   const isSparring = stats[0]?.isSparring ?? false;
   const winCondition = stats[0]?.winCondition ?? "";
   const conditionLabel = WIN_CONDITION_LABEL[winCondition] ?? winCondition;
-  const turns = stats[0]?.turns ?? 0;
 
   const resultEmoji = myStats?.result === "win" ? "🏆" : myStats?.result === "loss" ? "💔" : "⚔️";
   const resultLabel = myStats?.result === "win" ? "Victory" : myStats?.result === "loss" ? "Defeat" : "Completed";
@@ -96,8 +107,69 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
             🤖 Practice Match
           </span>
         )}
-        <p className="text-xs text-gray-400 mt-2">{turns} turns played</p>
+        <p className="text-xs text-gray-400 mt-2">{matchTurns} turns played</p>
       </div>
+
+      {/* Battle Breakdown */}
+      {teamSummaries.length === 2 && (
+        <div className="rounded-2xl border border-gray-200 bg-white/80 overflow-hidden">
+          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Battle Breakdown</h2>
+            <span className="text-xs text-gray-400">{matchTurns} turns</span>
+          </div>
+
+          {/* Team columns */}
+          <div className="grid grid-cols-2 divide-x divide-gray-200">
+            {teamSummaries.map((team) => (
+              <div
+                key={team.teamId}
+                className={`p-4 space-y-3 ${team.isWinner ? "bg-amber-50" : "bg-white"}`}
+              >
+                {/* Team name + winner crown */}
+                <div className="text-center">
+                  <p className="font-bold text-gray-900 text-sm truncate">
+                    {team.isWinner && <span className="mr-1">🏆</span>}
+                    {team.teamName}
+                  </p>
+                </div>
+
+                {/* Energy */}
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 mb-0.5">Energy</p>
+                  <p className="font-semibold text-gray-800">⚡ {team.energy}</p>
+                </div>
+
+                {/* Star spaces */}
+                {totalStarSpaces > 0 && (
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400 mb-0.5">Stars</p>
+                    <StarDots controlled={team.starSpacesControlled} total={totalStarSpaces} />
+                  </div>
+                )}
+
+                {/* KO'd mons */}
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 mb-1">KO&apos;d</p>
+                  {team.knockedMons.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">None</p>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      {team.knockedMons.map((name) => (
+                        <span
+                          key={name}
+                          className="text-xs bg-red-50 text-red-600 rounded px-1.5 py-0.5 font-medium"
+                        >
+                          💀 {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Player Stats Cards */}
       <div className="space-y-3">

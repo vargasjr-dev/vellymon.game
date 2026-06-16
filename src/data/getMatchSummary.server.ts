@@ -1,6 +1,7 @@
 import { db } from "../../data/db";
 import { matchStats, gameSession, gamePlayer, user, team, userRank } from "../../data/schema";
 import { eq } from "drizzle-orm";
+import type { GameState, TeamState } from "../../server/types";
 
 export type MatchStatRow = {
   userId: string;
@@ -23,11 +24,26 @@ export type MatchStatRow = {
   mmr: number | null;
 };
 
+export type TeamSummary = {
+  teamId: 1 | 2;
+  teamName: string;
+  isWinner: boolean;
+  energy: number;
+  knockedMons: string[];
+  starSpacesControlled: number;
+};
+
 export type MatchSummaryData = {
   matchUuid: string;
   status: string;
   createdAt: Date;
   stats: MatchStatRow[];
+  /** Per-team breakdown extracted from final game state */
+  teamSummaries: TeamSummary[];
+  /** Total turns played (mirrors matchStats.turns) */
+  turns: number;
+  /** Total occupation spaces on the board (usually 3) */
+  totalStarSpaces: number;
 };
 
 const getMatchSummary = async (
@@ -35,7 +51,7 @@ const getMatchSummary = async (
 ): Promise<MatchSummaryData | null> => {
   try {
     const [match] = await db
-      .select({ uuid: gameSession.uuid, status: gameSession.status, createdAt: gameSession.createdAt })
+      .select({ uuid: gameSession.uuid, status: gameSession.status, createdAt: gameSession.createdAt, metadata: gameSession.metadata })
       .from(gameSession)
       .where(eq(gameSession.uuid, matchUuid))
       .limit(1);
@@ -120,7 +136,36 @@ const getMatchSummary = async (
       };
     });
 
-    return { matchUuid: match.uuid, status: match.status, createdAt: match.createdAt, stats };
+    // ── Extract per-team breakdown from final game state ──────────────────
+    const meta = match.metadata as { gameState?: GameState } | null;
+    const gameState = meta?.gameState ?? null;
+    const turns = stats[0]?.turns ?? gameState?.turn ?? 0;
+
+    const occupationSpaces = gameState
+      ? gameState.board.filter((s) => s.type === "occupation")
+      : [];
+    const totalStarSpaces = occupationSpaces.length;
+
+    const teamSummaries: TeamSummary[] = gameState
+      ? gameState.teams.map((t: TeamState) => {
+          const starSpacesControlled = occupationSpaces.filter(
+            (s) =>
+              (t.id === 1 && (s.occupationCounter ?? 0) < 0) ||
+              (t.id === 2 && (s.occupationCounter ?? 0) > 0),
+          ).length;
+
+          return {
+            teamId: t.id,
+            teamName: t.name,
+            isWinner: gameState.result?.winner === t.id,
+            energy: t.energy,
+            knockedMons: t.knocked.map((v) => v.name),
+            starSpacesControlled,
+          };
+        })
+      : [];
+
+    return { matchUuid: match.uuid, status: match.status, createdAt: match.createdAt, stats, teamSummaries, turns, totalStarSpaces };
   } catch (error) {
     console.error("Failed to get match summary:", error);
     return null;
