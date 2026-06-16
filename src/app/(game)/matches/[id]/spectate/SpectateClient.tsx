@@ -201,21 +201,25 @@ function parseGameState(gs: RawGameState) {
 
 type Dir = "up" | "down" | "left" | "right";
 
-/** Convert game-space direction to a screen-space label for display in logs. */
+/** Convert game-space direction to a screen-space label for display in logs.
+ *
+ * Spectate always renders with yourTeamId=1, so the portrait transform is
+ * uniform for all mons: col=gy, row=bw-1-gx.
+ *
+ * Derivation:
+ *   right (dx+1) → row decreases → screen up
+ *   left  (dx-1) → row increases → screen down
+ *   up    (dy-1) → col decreases → screen left
+ *   down  (dy+1) → col increases → screen right
+ */
 function gameDirToScreenLabel(
   gameDir: string | undefined,
   isPortrait: boolean,
-  teamId: 1 | 2,
 ): string {
   if (!gameDir) return "";
   if (!isPortrait) return ` ${gameDir}`;
-  if (teamId === 1) {
-    const map: Record<Dir, string> = { right: " down", left: " up", up: " left", down: " right" };
-    return map[gameDir as Dir] ?? ` ${gameDir}`;
-  } else {
-    const map: Record<Dir, string> = { right: " up", left: " down", up: " right", down: " left" };
-    return map[gameDir as Dir] ?? ` ${gameDir}`;
-  }
+  const map: Record<Dir, string> = { right: " up", left: " down", up: " left", down: " right" };
+  return map[gameDir as Dir] ?? ` ${gameDir}`;
 }
 
 // ─── Animation helpers ────────────────────────────────────────────────────────
@@ -1145,10 +1149,8 @@ function TurnLogDrawer({
               : r.command.type === "harvest"
                 ? "🌿"
                 : "👟";
-          // Spectate is always portrait with yourTeamId=1; use the attacker's
-          // own team perspective so directions read correctly on screen.
-          const monTeamId = info?.teamId ?? 1;
-          const dirStr = gameDirToScreenLabel(r.command.direction, true, monTeamId);
+          // Spectate always renders with yourTeamId=1 — one unified portrait map.
+          const dirStr = gameDirToScreenLabel(r.command.direction, true);
           const targetInfo = r.targetUuid ? lookup.get(r.targetUuid) : null;
           const victimStr = targetInfo ? ` → ${targetInfo.name}` : "";
           const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";
