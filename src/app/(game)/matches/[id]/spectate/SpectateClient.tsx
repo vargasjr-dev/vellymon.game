@@ -136,8 +136,20 @@ type RawBenchEntry = {
   status: "entered" | "blocked";
 };
 
+type RawTurnStartEvent = {
+  casterUuid: string;
+  casterName: string;
+  team: 1 | 2;
+  powerName: string;
+  targetUuid: string;
+  targetName: string;
+  healAmount?: number;
+  damageAmount?: number;
+};
+
 type RawTurnLog = {
   turn: number;
+  turnStartEvents?: RawTurnStartEvent[];
   commandResults: RawCommandResult[];
   benchEntries: { team1: RawBenchEntry[]; team2: RawBenchEntry[] };
   winResult: { winner: 1 | 2; condition: string } | null;
@@ -338,6 +350,7 @@ function buildUnifiedSteps(
   fromSnap: RawGameState,
   toSnap: RawGameState,
   lookup: Map<string, { name: string; teamId: 1 | 2 }>,
+  turnStartEvents: RawTurnStartEvent[] = [],
 ): UnifiedStep[] {
   const steps: UnifiedStep[] = [];
 
@@ -367,6 +380,45 @@ function buildUnifiedSteps(
   }
 
   let stepIdx = 0;
+
+  // ── Turn-start passive events (heals & burn damage) ───────────────────────
+  // Group all events into one step so they flash simultaneously.
+  if (turnStartEvents.length > 0) {
+    const preSnap = snapshot();
+    const labels: { x: number; y: number; text: string; color: number; alpha: number }[] = [];
+    for (const e of turnStartEvents) {
+      const pos = (() => {
+        for (const t of fromSnap.teams) {
+          const v = t.active.find((av) => av.uuid === e.targetUuid);
+          if (v?.position) return v.position as { x: number; y: number };
+        }
+        return null;
+      })();
+      if (pos) {
+        if (e.damageAmount) {
+          workingHp.set(e.targetUuid, Math.max(0, (workingHp.get(e.targetUuid) ?? 0) - e.damageAmount));
+          labels.push({ x: pos.x, y: pos.y - 0.5, text: `-${e.damageAmount} 🔥`, color: 0xf97316, alpha: 1 });
+        } else if (e.healAmount) {
+          workingHp.set(e.targetUuid, Math.min(
+            fromSnap.teams.flatMap((t) => t.active).find((v) => v.uuid === e.targetUuid)?.maxHp ?? Infinity,
+            (workingHp.get(e.targetUuid) ?? 0) + e.healAmount,
+          ));
+          labels.push({ x: pos.x, y: pos.y - 0.5, text: `+${e.healAmount} 💧`, color: 0x4ade80, alpha: 1 });
+        }
+      }
+    }
+    const afterSnap = snapshot();
+    steps.push({
+      key: `ts-${stepIdx++}`,
+      previewOverlay: {},
+      previewMs: 0,
+      tweenFrom: preSnap,
+      tweenTo: afterSnap,
+      tweenMs: 350,
+      impactOverlay: labels.length > 0 ? { labels } : null,
+      impactMs: 600,
+    });
+  }
 
   for (const cmd of sortedCmds) {
       // Failed attacks (e.g. not enough energy) still get a preview + fizzle label.
@@ -884,7 +936,8 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
     a.log = log;
     a.lookup = lookup;
     // Build unified steps: each command gets its own preview+animate cycle
-    a.unifiedSteps = buildUnifiedSteps(sortedCmds, fromSnap, toSnap, lookup);
+    const turnStartEvts = log?.turnStartEvents ?? [];
+    a.unifiedSteps = buildUnifiedSteps(sortedCmds, fromSnap, toSnap, lookup, turnStartEvts);
     a.stepIdx = 0;
 
     setAnimPhase("animating");
@@ -1138,6 +1191,34 @@ function TurnLogDrawer({
         Turn {log.turn} — Actions
       </p>
       <div className="space-y-1">
+        {/* Passive turn-start events (burns, heals) */}
+        {(log.turnStartEvents ?? []).map((e, i) => {
+          const teamColor = e.team === 1 ? "text-blue-400" : "text-red-400";
+          if (e.damageAmount) {
+            return (
+              <div key={`ts-${i}`} className="flex items-center gap-1.5 text-xs">
+                <span className={`font-semibold w-20 truncate ${teamColor}`}>{e.casterName}</span>
+                <span className="text-gray-500">🔥</span>
+                <span className="text-gray-300">{e.powerName}</span>
+                <span className="text-orange-400 font-mono">−{e.damageAmount} HP</span>
+                <span className="text-gray-400">→ {e.targetName}</span>
+              </div>
+            );
+          }
+          if (e.healAmount) {
+            return (
+              <div key={`ts-${i}`} className="flex items-center gap-1.5 text-xs">
+                <span className={`font-semibold w-20 truncate ${teamColor}`}>{e.casterName}</span>
+                <span className="text-gray-500">💧</span>
+                <span className="text-gray-300">{e.powerName}</span>
+                <span className="text-emerald-400 font-mono">+{e.healAmount} HP</span>
+                <span className="text-gray-400">→ {e.targetName}</span>
+              </div>
+            );
+          }
+          return null;
+        })}
+
         {log.commandResults.map((r, i) => {
           const info = lookup.get(r.command.vellymonUuid);
           const name = info?.name ?? r.command.vellymonUuid;

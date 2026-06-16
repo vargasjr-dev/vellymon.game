@@ -33,7 +33,8 @@ type TurnStartEvent = {
   powerName: string;
   targetUuid: string;
   targetName: string;
-  healAmount: number;
+  healAmount?: number;
+  damageAmount?: number;
 };
 
 type TurnLogData = {
@@ -274,13 +275,24 @@ export default function TurnHistory({ history, isOpen, onToggle, isPortrait = fa
                         ⚡ T1: {snap.teamsBefore[0]?.energy ?? "?"} | T2: {snap.teamsBefore[1]?.energy ?? "?"}
                       </div>
 
-                      {/* Turn-start passive power events (e.g. Dewdrop heal) */}
+                      {/* Turn-start passive power events (heals, burns) */}
                       {(snap.log.turnStartEvents ?? []).map((e, i) => (
                         <div key={`ts-${i}`} className="flex items-start gap-1.5 text-xs">
-                          <span className="shrink-0">💧</span>
-                          <span className="text-emerald-400">
-                            {e.casterName}: {e.powerName} healed {e.targetName} +{e.healAmount} HP
-                          </span>
+                          {e.damageAmount ? (
+                            <>
+                              <span className="shrink-0">🔥</span>
+                              <span className="text-orange-400">
+                                {e.casterName}: {e.powerName} burned {e.targetName} −{e.damageAmount} HP
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="shrink-0">💧</span>
+                              <span className="text-emerald-400">
+                                {e.casterName}: {e.powerName} healed {e.targetName} +{e.healAmount} HP
+                              </span>
+                            </>
+                          )}
                         </div>
                       ))}
 
