@@ -84,7 +84,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Stripe Configuration */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           💳 Stripe Configuration
         </h2>
@@ -97,6 +97,21 @@ export default async function AdminPage() {
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
         >
           Open Stripe Setup →
+        </Link>
+      </div>
+
+      {/* API Keys */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">🔑 API Keys</h2>
+        <p className="text-gray-600 mb-4">
+          Create named bearer tokens for programmatic access — roster updates,
+          match uploads, and more. Keys are shown once at creation.
+        </p>
+        <Link
+          href="/admin/api-keys"
+          className="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 text-sm font-medium"
+        >
+          Manage API Keys →
         </Link>
       </div>
     </div>

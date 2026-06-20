@@ -669,3 +669,40 @@ export const userLoginStreakRelations = relations(userLoginStreak, ({ one }) => 
     references: [user.id],
   }),
 }));
+
+/**
+ * Admin API keys — named bearer tokens for programmatic access.
+ *
+ * The actual key (format: vjk_<base64url>) is shown exactly once at creation
+ * and never stored. Only the SHA-256 hash is persisted for verification.
+ * The keyPrefix (first 12 chars) is stored for display/identification.
+ */
+export const adminApiKey = pgTable(
+  "adminApiKey",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Human-readable label, e.g. "VargasJR" */
+    name: varchar("name", { length: 64 }).notNull(),
+    /** SHA-256(rawKey) — used to verify incoming bearer tokens */
+    keyHash: text("keyHash").notNull().unique(),
+    /** First 12 chars of the raw key, e.g. "vjk_a1b2c3d4" — for UI display */
+    keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+    /** Admin user who created this key */
+    createdBy: text("createdBy")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    /** Stamp updated on each successful API call (nullable — null = never used) */
+    lastUsedAt: timestamp("lastUsedAt"),
+    /** Set when the key is revoked. Null = active. */
+    revokedAt: timestamp("revokedAt"),
+  },
+  (table) => [index("adminApiKey_keyHash_idx").on(table.keyHash)],
+);
+
+export const adminApiKeyRelations = relations(adminApiKey, ({ one }) => ({
+  creator: one(user, {
+    fields: [adminApiKey.createdBy],
+    references: [user.id],
+  }),
+}));
