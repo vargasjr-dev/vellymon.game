@@ -9,7 +9,7 @@ const navLinks = [
   { href: "/ranked", label: "🏆 Ranked" },
   { href: "/roster", label: "🐾 Roster" },
   { href: "/market", label: "🛒 Market" },
-  { href: "/matches", label: "🎮 Matches" },
+
   { href: "/practice", label: "🤖 Practice", premium: true },
   { href: "/achievements", label: "🏅 Badges" },
   { href: "/quests", label: "📋 Quests" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -44,7 +44,6 @@ const RANK_COLOR: Record<Rank, string> = {
 type VellymonSlot = {
   uuid: string;
   slotIndex: number;
-  isActive: boolean;
   vellymon: {
     name: string;
     health: number;
@@ -58,7 +57,6 @@ type Team = {
   uuid: string;
   name: string;
   slots: VellymonSlot[];
-  activeCount: number;
 };
 
 type Props = {
@@ -69,9 +67,45 @@ type Props = {
   starsPerRank: Record<Rank, number>;
 };
 
-const PAGE_SIZE = 6; // 2 rows × 3 cols
+// ─── VellymonAvatar ──────────────────────────────────────────────────────────
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+function VellymonAvatar({
+  slot,
+  size = "sm",
+}: {
+  slot: VellymonSlot;
+  size?: "sm" | "md" | "lg";
+}) {
+  const sizeClass =
+    size === "lg" ? "w-14 h-14" : size === "md" ? "w-12 h-12" : "w-7 h-7";
+  const textClass =
+    size === "lg" ? "text-[9px]" : size === "md" ? "text-[8px]" : "text-[6px]";
+
+  return (
+    <div
+      className={`${sizeClass} rounded-md overflow-hidden bg-gray-100 border border-gray-200 relative flex-shrink-0`}
+      title={slot.vellymon?.name ?? "?"}
+    >
+      {slot.vellymon?.imageUrl ? (
+        <Image
+          src={slot.vellymon.imageUrl}
+          alt={slot.vellymon.name}
+          fill
+          sizes="56px"
+          className="object-cover"
+        />
+      ) : (
+        <div
+          className={`w-full h-full flex items-center justify-center text-gray-500 font-bold ${textClass}`}
+        >
+          {slot.vellymon?.name?.slice(0, 3) ?? "?"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── StarRow ─────────────────────────────────────────────────────────────────
 
 function StarRow({ stars, max }: { stars: number; max: number }) {
   return (
@@ -88,38 +122,79 @@ function StarRow({ stars, max }: { stars: number; max: number }) {
   );
 }
 
-function VellymonAvatar({
-  slot,
-  size = "md",
-}: {
-  slot: VellymonSlot;
-  size?: "sm" | "md" | "lg";
-}) {
-  const sizeClass =
-    size === "lg" ? "w-16 h-16" : size === "md" ? "w-10 h-10" : "w-7 h-7";
-  const textClass =
-    size === "lg" ? "text-xs" : size === "md" ? "text-[9px]" : "text-[7px]";
+// ─── LeaderboardPanel (renders inside right panel) ───────────────────────────
 
+function LeaderboardPanel({
+  leaderboard,
+  seasonName,
+  onClose,
+}: {
+  leaderboard: LeaderboardRow[];
+  seasonName: string;
+  onClose: () => void;
+}) {
   return (
-    <div
-      className={`${sizeClass} rounded-lg overflow-hidden bg-gray-100 border border-gray-200 relative flex-shrink-0`}
-      title={slot.vellymon?.name ?? "?"}
-    >
-      {slot.vellymon?.imageUrl ? (
-        <Image
-          src={slot.vellymon.imageUrl}
-          alt={slot.vellymon.name}
-          fill
-          sizes="64px"
-          className="object-cover"
-        />
-      ) : (
-        <div
-          className={`w-full h-full flex items-center justify-center text-gray-500 font-bold ${textClass}`}
-        >
-          {slot.vellymon?.name?.slice(0, 3) ?? "?"}
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
+            {seasonName}
+          </p>
+          <h2 className="text-lg font-bold text-gray-900">🏆 Leaderboard</h2>
         </div>
-      )}
+        <button
+          onClick={onClose}
+          className="text-xs text-gray-400 hover:text-gray-700 transition px-2 py-1 rounded hover:bg-gray-100"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-white border-b border-gray-100">
+            <tr>
+              <th className="py-2 px-1 text-left font-semibold text-gray-500 text-xs">
+                #
+              </th>
+              <th className="py-2 px-2 text-left font-semibold text-gray-500 text-xs">
+                Player
+              </th>
+              <th className="py-2 px-2 text-center font-semibold text-gray-500 text-xs">
+                Rank
+              </th>
+              <th className="py-2 px-2 text-center font-semibold text-gray-500 text-xs">
+                W/L
+              </th>
+              <th className="py-2 px-1 text-right font-semibold text-gray-500 text-xs">
+                MMR
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {leaderboard.map((entry, i) => (
+              <tr key={entry.userId} className="hover:bg-gray-50 transition">
+                <td className="py-2 px-1 text-gray-400 font-mono text-xs">
+                  {i + 1}
+                </td>
+                <td className="py-2 px-2 font-medium text-gray-900 text-xs truncate max-w-[80px]">
+                  {entry.username}
+                </td>
+                <td className="py-2 px-2 text-center text-xs">
+                  {RANK_EMOJI[entry.rank]}{" "}
+                  {entry.rank !== "legend" && "⭐".repeat(entry.stars)}
+                </td>
+                <td className="py-2 px-2 text-center text-gray-600 text-xs">
+                  {entry.wins}/{entry.losses}
+                </td>
+                <td className="py-2 px-1 text-right font-mono text-gray-900 text-xs">
+                  {entry.mmr}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -140,11 +215,25 @@ export default function RankedPlayPage({
     teams.length === 1 ? teams[0].uuid : null,
   );
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(6);
   const [searching, setSearching] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-  const totalPages = Math.ceil(teams.length / PAGE_SIZE);
-  const pagedTeams = teams.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // Responsive page size: 9 on desktop (lg+), 6 on mobile
+  useEffect(() => {
+    const update = () => setPageSize(window.innerWidth >= 1024 ? 9 : 6);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // Reset to page 0 when page size changes to avoid ghost pages
+  useEffect(() => {
+    setPage(0);
+  }, [pageSize]);
+
+  const totalPages = Math.ceil(teams.length / pageSize);
+  const pagedTeams = teams.slice(page * pageSize, (page + 1) * pageSize);
   const selectedTeam = teams.find((t) => t.uuid === selectedTeamUuid) ?? null;
 
   const rank = summary?.rank ?? "bronze";
@@ -201,95 +290,26 @@ export default function RankedPlayPage({
     );
   }
 
-  // ── Leaderboard modal ─────────────────────────────────────────────────────
-  if (showLeaderboard) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <button
-          onClick={() => setShowLeaderboard(false)}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-6 transition"
-        >
-          ← Back to Ranked
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          🏆 {seasonName} — Leaderboard
-        </h1>
-        <p className="text-sm text-gray-500 mb-6">Top 50 players this season</p>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="py-3 px-4 text-left font-semibold text-gray-600">
-                  #
-                </th>
-                <th className="py-3 px-4 text-left font-semibold text-gray-600">
-                  Player
-                </th>
-                <th className="py-3 px-4 text-center font-semibold text-gray-600">
-                  Rank
-                </th>
-                <th className="py-3 px-4 text-center font-semibold text-gray-600">
-                  W/L
-                </th>
-                <th className="py-3 px-4 text-right font-semibold text-gray-600">
-                  MMR
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {leaderboard.map((entry, i) => (
-                <tr key={entry.userId} className="hover:bg-gray-50 transition">
-                  <td className="py-2.5 px-4 text-gray-400 font-mono">
-                    {i + 1}
-                  </td>
-                  <td className="py-2.5 px-4 font-medium text-gray-900">
-                    {entry.username}
-                  </td>
-                  <td className="py-2.5 px-4 text-center">
-                    {RANK_EMOJI[entry.rank]}{" "}
-                    {entry.rank !== "legend" && "⭐".repeat(entry.stars)}
-                  </td>
-                  <td className="py-2.5 px-4 text-center text-gray-600">
-                    {entry.wins}/{entry.losses}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono text-gray-900">
-                    {entry.mmr}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
-
   // ── Main layout ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col lg:flex-row gap-0 min-h-[calc(100vh-56px)] bg-gray-50">
+    <div className="flex flex-col lg:flex-row bg-gray-50 lg:h-[calc(100dvh-56px)]">
       {/* ── LEFT: Team Picker ────────────────────────────────────────────── */}
-      <div className="flex flex-col lg:w-[58%] p-4 sm:p-6 gap-4">
+      <div className="flex flex-col lg:w-[58%] lg:h-full lg:overflow-y-auto p-4 sm:p-6 gap-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Choose Your Team</h1>
-          <Link
-            href="/matches"
-            className="text-xs text-gray-400 hover:text-gray-600 transition"
-          >
-            Match History →
-          </Link>
-        </div>
+        <h1 className="text-xl font-bold text-gray-900">Choose Your Team</h1>
 
-        {/* Team grid — 3 columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+        {/* Team grid — 3 columns always, 2 rows mobile (6) / 3 rows desktop (9) */}
+        <div className="grid grid-cols-3 gap-3">
           {pagedTeams.map((team) => {
             const isSelected = selectedTeamUuid === team.uuid;
-            const activeSlots = team.slots.filter((s) => s.isActive);
 
             return (
               <button
                 key={team.uuid}
-                onClick={() => setSelectedTeamUuid(team.uuid)}
+                onClick={() => {
+                  setSelectedTeamUuid(team.uuid);
+                  setShowLeaderboard(false);
+                }}
                 disabled={searching}
                 className={`relative flex flex-col gap-2 rounded-xl border-2 p-3 text-left transition-all ${
                   isSelected
@@ -298,31 +318,25 @@ export default function RankedPlayPage({
                 } disabled:opacity-50`}
               >
                 {/* Team name */}
-                <p className="font-semibold text-sm text-gray-900 truncate">
+                <p className="font-semibold text-xs text-gray-900 truncate">
                   {team.name}
                 </p>
 
-                {/* Vellymon avatar grid — 2×2 */}
-                <div className="grid grid-cols-2 gap-1.5">
-                  {activeSlots.slice(0, 4).map((slot) => (
-                    <VellymonAvatar key={slot.uuid} slot={slot} size="md" />
+                {/* All vellymons — 4 cols × up to 2 rows */}
+                <div className="grid grid-cols-4 gap-1">
+                  {team.slots.slice(0, 8).map((slot) => (
+                    <VellymonAvatar key={slot.uuid} slot={slot} size="sm" />
                   ))}
-                  {/* Empty placeholders */}
+                  {/* Placeholders for empty slots */}
                   {Array.from({
-                    length: Math.max(0, 4 - activeSlots.length),
+                    length: Math.max(0, 4 - team.slots.length),
                   }).map((_, i) => (
                     <div
                       key={`empty-${i}`}
-                      className="w-10 h-10 rounded-lg bg-gray-100 border border-dashed border-gray-200"
+                      className="w-7 h-7 rounded-md bg-gray-100 border border-dashed border-gray-200"
                     />
                   ))}
                 </div>
-
-                {/* Slot count */}
-                <p className="text-[10px] text-gray-400">
-                  {team.activeCount}/4 active ·{" "}
-                  {team.slots.filter((s) => !s.isActive).length} bench
-                </p>
 
                 {/* Selected indicator */}
                 {isSelected && (
@@ -333,16 +347,10 @@ export default function RankedPlayPage({
               </button>
             );
           })}
-
-          {/* Fill remaining grid slots so layout stays stable */}
-          {pagedTeams.length < PAGE_SIZE &&
-            Array.from({ length: PAGE_SIZE - pagedTeams.length }).map(
-              (_, i) => <div key={`filler-${i}`} className="hidden sm:block" />,
-            )}
         </div>
 
-        {/* Pagination + edit link */}
-        <div className="flex items-center justify-between pt-1">
+        {/* Pagination + nav links */}
+        <div className="flex items-center justify-between mt-auto pt-1">
           <Link
             href="/teams/new"
             className="text-xs text-blue-600 hover:text-blue-800 font-medium transition"
@@ -381,156 +389,150 @@ export default function RankedPlayPage({
         </div>
       </div>
 
-      {/* ── RIGHT: Rank + Preview + Play ────────────────────────────────── */}
-      <div className="flex flex-col lg:w-[42%] bg-white border-t lg:border-t-0 lg:border-l border-gray-200 p-4 sm:p-6 gap-5">
-        {/* Rank card — clickable → leaderboard */}
-        <button
-          onClick={() => setShowLeaderboard(true)}
-          className={`w-full text-left bg-gradient-to-br ${RANK_BG[rank]} border-2 rounded-xl p-4 transition hover:shadow-md group`}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl" aria-label={rank}>
-                {RANK_EMOJI[rank]}
-              </span>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
-                  {seasonName}
-                </p>
-                <p
-                  className={`text-xl font-bold capitalize ${RANK_COLOR[rank]}`}
-                >
-                  {rank}
-                </p>
-                {rank !== "legend" ? (
-                  <StarRow stars={stars} max={maxStars} />
-                ) : (
-                  <p className="text-xs text-purple-500 font-semibold mt-1">
-                    #{summary?.mmr ?? 1000} MMR
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">W/L</p>
-              <p className="text-sm font-bold text-gray-700">
-                {summary?.wins ?? 0}/{summary?.losses ?? 0}
-              </p>
-              <p className="text-xs text-gray-400 mt-1 group-hover:text-blue-500 transition">
-                Leaderboard →
-              </p>
-            </div>
-          </div>
-        </button>
-
-        {/* Selected team preview */}
-        <div className="flex-1 flex flex-col">
-          {selectedTeam ? (
-            <div className="flex flex-col gap-3 h-full">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-lg font-bold text-gray-900">
-                  {selectedTeam.name}
-                </h2>
-                <span className="text-xs text-gray-400">
-                  {selectedTeam.activeCount}/4 active
-                </span>
-              </div>
-
-              {/* Active vellymons — enlarged */}
-              <div className="grid grid-cols-2 gap-3 flex-1">
-                {selectedTeam.slots
-                  .filter((s) => s.isActive)
-                  .map((slot) => (
-                    <div
-                      key={slot.uuid}
-                      className="flex flex-col items-center gap-1.5 bg-gray-50 rounded-xl p-3 border border-gray-100"
-                    >
-                      <VellymonAvatar slot={slot} size="lg" />
-                      <p className="text-xs font-semibold text-gray-700 text-center leading-tight">
-                        {slot.vellymon?.name ?? "?"}
-                      </p>
-                      {slot.vellymon && (
-                        <div className="flex gap-2 text-[9px] text-gray-400">
-                          <span>❤️ {slot.vellymon.health}</span>
-                          <span>⚔️ {slot.vellymon.attack}</span>
-                          <span>⚡ {slot.vellymon.speed}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                {/* Empty active slots */}
-                {Array.from({
-                  length: Math.max(0, 4 - selectedTeam.activeCount),
-                }).map((_, i) => (
-                  <div
-                    key={`empty-active-${i}`}
-                    className="flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 min-h-[80px]"
-                  >
-                    <span className="text-gray-300 text-xs">Empty slot</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Bench preview */}
-              {selectedTeam.slots.filter((s) => !s.isActive).length > 0 && (
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[10px] text-gray-400 shrink-0">
-                    Bench:
+      {/* ── RIGHT: Rank card + Preview + Play ───────────────────────────── */}
+      <div className="flex flex-col lg:w-[42%] lg:h-full bg-white border-t lg:border-t-0 lg:border-l border-gray-200 p-4 sm:p-6 gap-4 overflow-hidden">
+        {showLeaderboard ? (
+          /* ── Leaderboard overlay ──────────────────────────────────────── */
+          <LeaderboardPanel
+            leaderboard={leaderboard}
+            seasonName={seasonName}
+            onClose={() => setShowLeaderboard(false)}
+          />
+        ) : (
+          /* ── Normal view ──────────────────────────────────────────────── */
+          <>
+            {/* Rank card — click → leaderboard */}
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`w-full text-left bg-gradient-to-br ${RANK_BG[rank]} border-2 rounded-xl p-4 transition hover:shadow-md group flex-shrink-0`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl" aria-label={rank}>
+                    {RANK_EMOJI[rank]}
                   </span>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {selectedTeam.slots
-                      .filter((s) => !s.isActive)
-                      .map((slot) => (
-                        <VellymonAvatar key={slot.uuid} slot={slot} size="sm" />
-                      ))}
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">
+                      {seasonName}
+                    </p>
+                    <p
+                      className={`text-lg font-bold capitalize ${RANK_COLOR[rank]}`}
+                    >
+                      {rank}
+                    </p>
+                    {rank !== "legend" ? (
+                      <StarRow stars={stars} max={maxStars} />
+                    ) : (
+                      <p className="text-xs text-purple-500 font-semibold mt-1">
+                        #{summary?.mmr ?? 1000} MMR
+                      </p>
+                    )}
                   </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">W/L</p>
+                  <p className="text-sm font-bold text-gray-700">
+                    {summary?.wins ?? 0}/{summary?.losses ?? 0}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-1 group-hover:text-blue-500 transition">
+                    Leaderboard →
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Selected team preview — fills remaining space */}
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+              {selectedTeam ? (
+                <div className="flex flex-col gap-3 h-full">
+                  <h2 className="text-base font-bold text-gray-900 flex-shrink-0">
+                    {selectedTeam.name}
+                  </h2>
+
+                  {/* All vellymons — 4 col grid, 2 rows of 4 */}
+                  <div className="grid grid-cols-4 gap-2 flex-1 content-start">
+                    {selectedTeam.slots.map((slot) => (
+                      <div
+                        key={slot.uuid}
+                        className="flex flex-col items-center gap-1 bg-gray-50 rounded-lg p-2 border border-gray-100"
+                      >
+                        <VellymonAvatar slot={slot} size="md" />
+                        <p className="text-[9px] font-semibold text-gray-700 text-center leading-tight truncate w-full">
+                          {slot.vellymon?.name ?? "?"}
+                        </p>
+                        {slot.vellymon && (
+                          <div className="flex flex-col gap-0.5 text-[8px] text-gray-400 text-center">
+                            <span>❤️ {slot.vellymon.health}</span>
+                            <span>⚔️ {slot.vellymon.attack}</span>
+                            <span>⚡ {slot.vellymon.speed}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Empty slot placeholders up to 8 */}
+                    {Array.from({
+                      length: Math.max(0, 4 - selectedTeam.slots.length),
+                    }).map((_, i) => (
+                      <div
+                        key={`empty-${i}`}
+                        className="flex items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-200 min-h-[80px]"
+                      >
+                        <span className="text-gray-300 text-[9px]">Empty</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-gray-400 text-sm text-center">
+                    ← Select a team to preview
+                  </p>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-400 text-sm text-center">
-                ← Select a team to preview
-              </p>
-            </div>
-          )}
-        </div>
 
-        {/* Play button */}
-        <div className="flex flex-col items-center gap-3 pt-2">
-          <button
-            onClick={handleQueue}
-            disabled={searching || !selectedTeamUuid}
-            className={`relative w-36 h-36 rounded-full font-black text-xl text-white shadow-xl transition-all
-              ${
-                selectedTeamUuid && !searching
-                  ? "bg-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95 cursor-pointer"
-                  : "bg-gray-300 cursor-not-allowed"
-              }
-              ${selectedTeamUuid && !searching ? "animate-pulse" : ""}
-            `}
-          >
-            {/* Outer ring when active */}
-            {selectedTeamUuid && !searching && (
-              <span className="absolute inset-0 rounded-full bg-blue-400 opacity-30 animate-ping" />
-            )}
-            <span className="relative">
-              {searching ? (
-                <span className="flex flex-col items-center gap-1 text-sm font-bold">
-                  <span className="animate-spin text-2xl">⚙️</span>
-                  Searching
+            {/* Play button + match history link */}
+            <div className="flex-shrink-0 flex flex-col items-center gap-3 pt-1">
+              <button
+                onClick={handleQueue}
+                disabled={searching || !selectedTeamUuid}
+                className={`relative w-32 h-32 rounded-full font-black text-lg text-white shadow-xl transition-all
+                  ${
+                    selectedTeamUuid && !searching
+                      ? "bg-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95 cursor-pointer"
+                      : "bg-gray-300 cursor-not-allowed"
+                  }
+                `}
+              >
+                {selectedTeamUuid && !searching && (
+                  <span className="absolute inset-0 rounded-full bg-blue-400 opacity-30 animate-ping" />
+                )}
+                <span className="relative">
+                  {searching ? (
+                    <span className="flex flex-col items-center gap-1 text-sm font-bold">
+                      <span className="animate-spin text-2xl">⚙️</span>
+                      Searching
+                    </span>
+                  ) : (
+                    "▶ Play"
+                  )}
                 </span>
-              ) : (
-                "▶ Play"
-              )}
-            </span>
-          </button>
+              </button>
 
-          {!selectedTeamUuid && (
-            <p className="text-xs text-gray-400">Select a team to play</p>
-          )}
-        </div>
+              {!selectedTeamUuid && (
+                <p className="text-xs text-gray-400">Select a team to play</p>
+              )}
+
+              <Link
+                href="/ranked/history"
+                className="text-xs text-gray-400 hover:text-gray-600 transition self-end"
+              >
+                Match History →
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -14,15 +14,14 @@ export default async function RankedPage() {
     getTeams(session.user.id),
   ]);
 
-  // Map teams to the shape RankedPlayPage expects (only fields it needs)
+  // Strip to only what RankedPlayPage needs — no isActive (designation
+  // moves to the initial match flow, not team construction)
   const teamProps = teams.map((t) => ({
     uuid: t.uuid,
     name: t.name,
-    activeCount: t.activeCount,
     slots: t.slots.map((s) => ({
       uuid: s.uuid,
       slotIndex: s.slotIndex,
-      isActive: s.isActive,
       vellymon: s.vellymon
         ? {
             name: s.vellymon.name,
