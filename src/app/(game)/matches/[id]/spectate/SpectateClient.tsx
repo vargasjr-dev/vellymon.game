@@ -45,6 +45,7 @@ const BattleCanvas = dynamic(() => import("../play/BattleCanvas"), {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AttackDisplay = {
+  key: string;
   name: string;
   damage: number;
   energyCost: number;
@@ -230,7 +231,12 @@ function gameDirToScreenLabel(
 ): string {
   if (!gameDir) return "";
   if (!isPortrait) return ` ${gameDir}`;
-  const map: Record<Dir, string> = { right: " up", left: " down", up: " left", down: " right" };
+  const map: Record<Dir, string> = {
+    right: " up",
+    left: " down",
+    up: " left",
+    down: " right",
+  };
   return map[gameDir as Dir] ?? ` ${gameDir}`;
 }
 
@@ -308,8 +314,7 @@ function findAttackTargetTile(
     for (const t of fromSnap.teams) {
       if (t.id === attackerTeamId) continue;
       const hit = t.active.find(
-        (v) =>
-          !v.isKO && v.position?.x === pos.x && v.position?.y === pos.y,
+        (v) => !v.isKO && v.position?.x === pos.x && v.position?.y === pos.y,
       );
       if (hit) return pos;
     }
@@ -385,7 +390,13 @@ function buildUnifiedSteps(
   // Group all events into one step so they flash simultaneously.
   if (turnStartEvents.length > 0) {
     const preSnap = snapshot();
-    const labels: { x: number; y: number; text: string; color: number; alpha: number }[] = [];
+    const labels: {
+      x: number;
+      y: number;
+      text: string;
+      color: number;
+      alpha: number;
+    }[] = [];
     for (const e of turnStartEvents) {
       const pos = (() => {
         for (const t of fromSnap.teams) {
@@ -396,14 +407,34 @@ function buildUnifiedSteps(
       })();
       if (pos) {
         if (e.damageAmount) {
-          workingHp.set(e.targetUuid, Math.max(0, (workingHp.get(e.targetUuid) ?? 0) - e.damageAmount));
-          labels.push({ x: pos.x, y: pos.y - 0.5, text: `-${e.damageAmount} 🔥`, color: 0xf97316, alpha: 1 });
+          workingHp.set(
+            e.targetUuid,
+            Math.max(0, (workingHp.get(e.targetUuid) ?? 0) - e.damageAmount),
+          );
+          labels.push({
+            x: pos.x,
+            y: pos.y - 0.5,
+            text: `-${e.damageAmount} 🔥`,
+            color: 0xf97316,
+            alpha: 1,
+          });
         } else if (e.healAmount) {
-          workingHp.set(e.targetUuid, Math.min(
-            fromSnap.teams.flatMap((t) => t.active).find((v) => v.uuid === e.targetUuid)?.maxHp ?? Infinity,
-            (workingHp.get(e.targetUuid) ?? 0) + e.healAmount,
-          ));
-          labels.push({ x: pos.x, y: pos.y - 0.5, text: `+${e.healAmount} 💧`, color: 0x4ade80, alpha: 1 });
+          workingHp.set(
+            e.targetUuid,
+            Math.min(
+              fromSnap.teams
+                .flatMap((t) => t.active)
+                .find((v) => v.uuid === e.targetUuid)?.maxHp ?? Infinity,
+              (workingHp.get(e.targetUuid) ?? 0) + e.healAmount,
+            ),
+          );
+          labels.push({
+            x: pos.x,
+            y: pos.y - 0.5,
+            text: `+${e.healAmount} 💧`,
+            color: 0x4ade80,
+            alpha: 1,
+          });
         }
       }
     }
@@ -421,81 +452,112 @@ function buildUnifiedSteps(
   }
 
   for (const cmd of sortedCmds) {
-      // Failed attacks (e.g. not enough energy) still get a preview + fizzle label.
-      if (!cmd.success && cmd.command.type === "attack") {
-        const uuid = cmd.command.vellymonUuid;
-        const cur = workingPos.get(uuid);
-        const dir = cmd.command.direction as Dir | undefined;
-        const offset = dir ? DIR_OFFSETS[dir] : null;
-        if (cur && offset) {
-          const tx = cur.x + offset.dx;
-          const ty = cur.y + offset.dy;
-          const previewOverlay: Overlays = {
-            arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0xff6b6b, alpha: 0.4 }],
-          };
-          const from = snapshot();
-          steps.push({
-            key: String(stepIdx++),
-            previewOverlay,
-            previewMs: 300,
-            tweenFrom: from,
-            tweenTo: from,
-            tweenMs: 40,
-            impactOverlay: {
-              labels: [{ x: tx, y: ty, text: "✗ No energy", color: 0x6b7280, alpha: 1 }],
-            },
-            impactMs: 350,
-          });
-        }
-        continue;
-      }
-
-      // Failed harvests still get a preview + blocked label — handle before the
-      // general success gate below.
-      if (!cmd.success && cmd.command.type === "harvest") {
-        const uuid = cmd.command.vellymonUuid;
-        const cur = workingPos.get(uuid);
-        const dir = cmd.command.direction as Dir | undefined;
-        const offset = dir ? DIR_OFFSETS[dir] : null;
-        if (cur && offset) {
-          const tx = cur.x + offset.dx;
-          const ty = cur.y + offset.dy;
-          const previewOverlay: Overlays = {
-            arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.6 }],
-          };
-          const from = snapshot();
-          steps.push({
-            key: String(stepIdx++),
-            previewOverlay,
-            previewMs: 300,
-            tweenFrom: from,
-            tweenTo: from,
-            tweenMs: 40,
-            impactOverlay: {
-              labels: [{ x: tx, y: ty, text: "✗", color: 0x6b7280, alpha: 1 }],
-            },
-            impactMs: 300,
-          });
-        }
-        continue;
-      }
-
-      if (!cmd.success) continue;
+    // Failed attacks (e.g. not enough energy) still get a preview + fizzle label.
+    if (!cmd.success && cmd.command.type === "attack") {
       const uuid = cmd.command.vellymonUuid;
-      const info = lookup.get(uuid);
-      const teamId = info?.teamId ?? 1;
-      const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
       const cur = workingPos.get(uuid);
-      if (!cur) continue;
-
       const dir = cmd.command.direction as Dir | undefined;
       const offset = dir ? DIR_OFFSETS[dir] : null;
+      if (cur && offset) {
+        const tx = cur.x + offset.dx;
+        const ty = cur.y + offset.dy;
+        const previewOverlay: Overlays = {
+          arrows: [
+            {
+              fromX: cur.x,
+              fromY: cur.y,
+              toX: tx,
+              toY: ty,
+              color: 0xff6b6b,
+              alpha: 0.4,
+            },
+          ],
+        };
+        const from = snapshot();
+        steps.push({
+          key: String(stepIdx++),
+          previewOverlay,
+          previewMs: 300,
+          tweenFrom: from,
+          tweenTo: from,
+          tweenMs: 40,
+          impactOverlay: {
+            labels: [
+              { x: tx, y: ty, text: "✗ No energy", color: 0x6b7280, alpha: 1 },
+            ],
+          },
+          impactMs: 350,
+        });
+      }
+      continue;
+    }
+
+    // Failed harvests still get a preview + blocked label — handle before the
+    // general success gate below.
+    if (!cmd.success && cmd.command.type === "harvest") {
+      const uuid = cmd.command.vellymonUuid;
+      const cur = workingPos.get(uuid);
+      const dir = cmd.command.direction as Dir | undefined;
+      const offset = dir ? DIR_OFFSETS[dir] : null;
+      if (cur && offset) {
+        const tx = cur.x + offset.dx;
+        const ty = cur.y + offset.dy;
+        const previewOverlay: Overlays = {
+          arrows: [
+            {
+              fromX: cur.x,
+              fromY: cur.y,
+              toX: tx,
+              toY: ty,
+              color: 0x4ade80,
+              alpha: 0.6,
+            },
+          ],
+        };
+        const from = snapshot();
+        steps.push({
+          key: String(stepIdx++),
+          previewOverlay,
+          previewMs: 300,
+          tweenFrom: from,
+          tweenTo: from,
+          tweenMs: 40,
+          impactOverlay: {
+            labels: [{ x: tx, y: ty, text: "✗", color: 0x6b7280, alpha: 1 }],
+          },
+          impactMs: 300,
+        });
+      }
+      continue;
+    }
+
+    if (!cmd.success) continue;
+    const uuid = cmd.command.vellymonUuid;
+    const info = lookup.get(uuid);
+    const teamId = info?.teamId ?? 1;
+    const teamColor = teamId === 1 ? 0x3b82f6 : 0xef4444;
+    const cur = workingPos.get(uuid);
+    if (!cur) continue;
+
+    const dir = cmd.command.direction as Dir | undefined;
+    const offset = dir ? DIR_OFFSETS[dir] : null;
 
     if (cmd.command.type === "move" && offset) {
       // Preview: ghost at destination + arrow
       const previewOverlay: Overlays = {
-        ghosts: [{ x: cur.x + offset.dx, y: cur.y + offset.dy, teamId, alpha: 1 }],
-        arrows: [{ fromX: cur.x, fromY: cur.y, toX: cur.x + offset.dx, toY: cur.y + offset.dy, color: teamColor, alpha: 0.85 }],
+        ghosts: [
+          { x: cur.x + offset.dx, y: cur.y + offset.dy, teamId, alpha: 1 },
+        ],
+        arrows: [
+          {
+            fromX: cur.x,
+            fromY: cur.y,
+            toX: cur.x + offset.dx,
+            toY: cur.y + offset.dy,
+            color: teamColor,
+            alpha: 0.85,
+          },
+        ],
       };
 
       const from = snapshot();
@@ -516,18 +578,62 @@ function buildUnifiedSteps(
       // Find real target tile by scanning the pre-snap
       const targetTile = findAttackTargetTile(cmd, cur, dir!, fromSnap);
 
-      // Preview: arrow extending to the actual hit tile
+      // Resolve the attack definition so we can vary animation by attack type
+      let attackKey = "strike"; // fallback
+      let attackName = cmd.attackName ?? "Attack";
+      for (const t of fromSnap.teams) {
+        const v = t.active.find((av) => av.uuid === uuid);
+        if (v) {
+          const atk = v.attacks?.[cmd.command.attackIndex ?? 0];
+          if (atk) {
+            attackKey = atk.key;
+            attackName = atk.name;
+          }
+          break;
+        }
+      }
+
+      // ── Per-attack animation config ──────────────────────────────────────
+      // ranged attacks (lob / snipe / chip): no lunge — projectile feel
+      // melee attacks (strike / slam / nuke / poke): lunge into the target
+      const isRanged = ["lob", "snipe", "chip"].includes(attackKey);
+      // Arrow colour is attack-themed
+      const arrowColor =
+        attackKey === "lob"
+          ? 0xa78bfa // purple arc
+          : attackKey === "snipe"
+            ? 0x38bdf8 // sky blue bolt
+            : attackKey === "chip"
+              ? 0x94a3b8 // slate pebble
+              : attackKey === "nuke"
+                ? 0xf97316 // orange blast
+                : attackKey === "slam"
+                  ? 0xef4444 // red crash
+                  : attackKey === "poke"
+                    ? 0xfbbf24 // yellow prod
+                    : 0xff6b6b; // default red (strike)
+
+      // Preview: arrow + attacker-side label showing the attack name
       const previewOverlay: Overlays = {
-        arrows: [{ fromX: cur.x, fromY: cur.y, toX: targetTile.x, toY: targetTile.y, color: 0xff6b6b, alpha: 0.9 }],
+        arrows: [
+          {
+            fromX: cur.x,
+            fromY: cur.y,
+            toX: targetTile.x,
+            toY: targetTile.y,
+            color: arrowColor,
+            alpha: 0.9,
+          },
+        ],
+        labels: [
+          { x: cur.x, y: cur.y, text: attackName, color: arrowColor, alpha: 1 },
+        ],
       };
 
-      // Lunge: attacker briefly moves 0.35 tiles toward target direction
       const from = snapshot();
 
       // Apply damage to target's workingHp NOW so the HP bar drops at the
-      // moment of impact (t=1 of the lunge tween = attacker reaches peak).
-      // lerpVellymons snaps hp at t=1, so "from" keeps old HP during the
-      // lunge and the new HP is visible the instant contact is made.
+      // moment of impact (t=1 of the tween = attacker reaches peak).
       if (cmd.damageDealt && cmd.damageDealt > 0) {
         const attackerTeamId = fromSnap.teams.find((t) =>
           t.active.some((v) => v.uuid === uuid),
@@ -543,7 +649,10 @@ function buildUnifiedSteps(
           if (hit) {
             workingHp.set(
               hit.uuid,
-              Math.max(0, (workingHp.get(hit.uuid) ?? hit.hp) - cmd.damageDealt),
+              Math.max(
+                0,
+                (workingHp.get(hit.uuid) ?? hit.hp) - cmd.damageDealt,
+              ),
             );
             // Mark the target KO'd immediately so it disappears from all
             // subsequent animation frames — prevents ghost animations.
@@ -555,34 +664,49 @@ function buildUnifiedSteps(
         }
       }
 
-      workingPos.set(uuid, { x: cur.x + offset.dx * 0.35, y: cur.y + offset.dy * 0.35 });
-      const lunged = snapshot(); // target HP already updated — bar drops at impact
-      workingPos.set(uuid, cur); // snap back
-      const back = snapshot();
+      // Ranged attacks: no lunge — attacker stays put, projectile implied by arrow
+      // Melee attacks: lunge 0.35 tiles, then recoil
+      let lunged = from;
+      let back = from;
+      let tweenMs = 60;
+      let recoilMs = 0;
+      if (!isRanged) {
+        workingPos.set(uuid, {
+          x: cur.x + offset.dx * 0.35,
+          y: cur.y + offset.dy * 0.35,
+        });
+        lunged = snapshot(); // target HP already updated — bar drops at impact
+        workingPos.set(uuid, cur); // snap back
+        back = snapshot();
+        tweenMs = 110;
+        recoilMs = 80;
+      }
 
       // Impact at actual hit tile
       let impactOverlay: Overlays | null = null;
       if ((cmd.damageDealt && cmd.damageDealt > 0) || cmd.targetKO) {
         impactOverlay = {
-          labels: [{
-            x: targetTile.x,
-            y: targetTile.y,
-            text: cmd.targetKO ? "💀 KO!" : `-${cmd.damageDealt}`,
-            color: cmd.targetKO ? 0xff4444 : 0xfbbf24,
-            alpha: 1,
-          }],
+          labels: [
+            {
+              x: targetTile.x,
+              y: targetTile.y,
+              text: cmd.targetKO ? "💀 KO!" : `-${cmd.damageDealt}`,
+              color: cmd.targetKO ? 0xff4444 : 0xfbbf24,
+              alpha: 1,
+            },
+          ],
         };
       }
 
       steps.push({
         key: String(stepIdx++),
         previewOverlay,
-        previewMs: 300,
+        previewMs: isRanged ? 400 : 300, // ranged holds preview a bit longer
         tweenFrom: from,
         tweenTo: lunged,
-        tweenMs: 110,
+        tweenMs,
         recoilTo: back,
-        recoilMs: 80,
+        recoilMs,
         impactOverlay,
         impactMs: 400,
       });
@@ -591,12 +715,22 @@ function buildUnifiedSteps(
       const tx = cur.x + offset.dx;
       const ty = cur.y + offset.dy;
       const previewOverlay: Overlays = {
-        arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0x4ade80, alpha: 0.8 }],
+        arrows: [
+          {
+            fromX: cur.x,
+            fromY: cur.y,
+            toX: tx,
+            toY: ty,
+            color: 0x4ade80,
+            alpha: 0.8,
+          },
+        ],
       };
       const from = snapshot();
-      const energyLabel = cmd.energyDelta && cmd.energyDelta > 0
-        ? `+${cmd.energyDelta}⚡`
-        : "+⚡";
+      const energyLabel =
+        cmd.energyDelta && cmd.energyDelta > 0
+          ? `+${cmd.energyDelta}⚡`
+          : "+⚡";
       steps.push({
         key: String(stepIdx++),
         previewOverlay,
@@ -605,7 +739,9 @@ function buildUnifiedSteps(
         tweenTo: from,
         tweenMs: 60,
         impactOverlay: {
-          labels: [{ x: tx, y: ty, text: energyLabel, color: 0x4ade80, alpha: 1 }],
+          labels: [
+            { x: tx, y: ty, text: energyLabel, color: 0x4ade80, alpha: 1 },
+          ],
         },
         impactMs: 400,
       });
@@ -721,13 +857,13 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
         const snapshots = data.turnSnapshots ?? [];
 
         if (snapshots.length > 0) {
-            setTurnSnapshots(snapshots);
-            setTurnLogs(data.turnLogs ?? []);
-            // Restore position from ?turn= query param, clamped to valid range
-            setReplayIndex(Math.min(initialTurn, snapshots.length - 1));
-            setLoading(false);
-            return;
-          }
+          setTurnSnapshots(snapshots);
+          setTurnLogs(data.turnLogs ?? []);
+          // Restore position from ?turn= query param, clamped to valid range
+          setReplayIndex(Math.min(initialTurn, snapshots.length - 1));
+          setLoading(false);
+          return;
+        }
 
         // Live mode
         setLiveState(parseGameState(data.gameState));
@@ -825,10 +961,19 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
     a.stepIdx += 1;
 
     // 1 — Accumulate preview arrow for this command
-    if (step.previewOverlay && (step.previewOverlay.arrows?.length || step.previewOverlay.ghosts?.length)) {
+    if (
+      step.previewOverlay &&
+      (step.previewOverlay.arrows?.length || step.previewOverlay.ghosts?.length)
+    ) {
       setOverlays((prev) => ({
-        ghosts: [...(prev?.ghosts ?? []), ...(step.previewOverlay.ghosts ?? [])],
-        arrows: [...(prev?.arrows ?? []), ...(step.previewOverlay.arrows ?? [])],
+        ghosts: [
+          ...(prev?.ghosts ?? []),
+          ...(step.previewOverlay.ghosts ?? []),
+        ],
+        arrows: [
+          ...(prev?.arrows ?? []),
+          ...(step.previewOverlay.arrows ?? []),
+        ],
         labels: prev?.labels ?? [],
       }));
     }
@@ -837,7 +982,7 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
     const fireTween = () => {
       // Ghost circles are only meaningful during the preview pause — clear them
       // the moment the tween starts so they don't linger during animation.
-      setOverlays((prev) => prev ? { ...prev, ghosts: [] } : prev);
+      setOverlays((prev) => (prev ? { ...prev, ghosts: [] } : prev));
       setActiveTween({
         key: `${a.pendingIndex}-${step.key}`,
         from: step.tweenFrom,
@@ -871,7 +1016,10 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
         setOverlays((prev) => ({
           ghosts: prev?.ghosts ?? [],
           arrows: prev?.arrows ?? [],
-          labels: [...(prev?.labels ?? []), ...(step.impactOverlay?.labels ?? [])],
+          labels: [
+            ...(prev?.labels ?? []),
+            ...(step.impactOverlay?.labels ?? []),
+          ],
         }));
         a.timeoutId = setTimeout(() => {
           // Clear impact label (keep arrows)
@@ -937,7 +1085,13 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
     a.lookup = lookup;
     // Build unified steps: each command gets its own preview+animate cycle
     const turnStartEvts = log?.turnStartEvents ?? [];
-    a.unifiedSteps = buildUnifiedSteps(sortedCmds, fromSnap, toSnap, lookup, turnStartEvts);
+    a.unifiedSteps = buildUnifiedSteps(
+      sortedCmds,
+      fromSnap,
+      toSnap,
+      lookup,
+      turnStartEvts,
+    );
     a.stepIdx = 0;
 
     setAnimPhase("animating");
@@ -1017,7 +1171,10 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
       <div className="fixed inset-0 bg-[#0a0f1a] flex items-center justify-center">
         <div className="text-center text-white max-w-md px-4">
           <p className="text-red-400 mb-4">{error}</p>
-          <Link href={`/matches/${matchId}`} className="text-blue-400 hover:underline">
+          <Link
+            href={`/matches/${matchId}`}
+            className="text-blue-400 hover:underline"
+          >
             ← Match summary
           </Link>
         </div>
@@ -1196,22 +1353,36 @@ function TurnLogDrawer({
           const teamColor = e.team === 1 ? "text-blue-400" : "text-red-400";
           if (e.damageAmount) {
             return (
-              <div key={`ts-${i}`} className="flex items-center gap-1.5 text-xs">
-                <span className={`font-semibold w-20 truncate ${teamColor}`}>{e.casterName}</span>
+              <div
+                key={`ts-${i}`}
+                className="flex items-center gap-1.5 text-xs"
+              >
+                <span className={`font-semibold w-20 truncate ${teamColor}`}>
+                  {e.casterName}
+                </span>
                 <span className="text-gray-500">🔥</span>
                 <span className="text-gray-300">{e.powerName}</span>
-                <span className="text-orange-400 font-mono">−{e.damageAmount} HP</span>
+                <span className="text-orange-400 font-mono">
+                  −{e.damageAmount} HP
+                </span>
                 <span className="text-gray-400">→ {e.targetName}</span>
               </div>
             );
           }
           if (e.healAmount) {
             return (
-              <div key={`ts-${i}`} className="flex items-center gap-1.5 text-xs">
-                <span className={`font-semibold w-20 truncate ${teamColor}`}>{e.casterName}</span>
+              <div
+                key={`ts-${i}`}
+                className="flex items-center gap-1.5 text-xs"
+              >
+                <span className={`font-semibold w-20 truncate ${teamColor}`}>
+                  {e.casterName}
+                </span>
                 <span className="text-gray-500">💧</span>
                 <span className="text-gray-300">{e.powerName}</span>
-                <span className="text-emerald-400 font-mono">+{e.healAmount} HP</span>
+                <span className="text-emerald-400 font-mono">
+                  +{e.healAmount} HP
+                </span>
                 <span className="text-gray-400">→ {e.targetName}</span>
               </div>
             );
@@ -1255,20 +1426,20 @@ function TurnLogDrawer({
               </span>
               <span className="text-gray-500">{icon}</span>
               <span className="text-gray-300">
-                  {r.command.type === "attack" && r.attackName
-                    ? `used ${r.attackName}`
-                    : r.command.type}
-                  {dirStr}
-                </span>
-                {victimStr && (
-                  <span className="text-gray-400">{victimStr}</span>
-                )}
-                {dmgStr && (
-                  <span className="text-orange-400 font-mono">{dmgStr}</span>
-                )}
-                {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
+                {r.command.type === "attack" && r.attackName
+                  ? `used ${r.attackName}`
+                  : r.command.type}
+                {dirStr}
+              </span>
+              {victimStr && <span className="text-gray-400">{victimStr}</span>}
+              {dmgStr && (
+                <span className="text-orange-400 font-mono">{dmgStr}</span>
+              )}
+              {koStr && <span className="text-red-400 font-bold">{koStr}</span>}
               {powerDrainStr && (
-                <span className="text-purple-400 font-mono text-xs">{powerDrainStr}</span>
+                <span className="text-purple-400 font-mono text-xs">
+                  {powerDrainStr}
+                </span>
               )}
               {energyStr && (
                 <span className="text-yellow-400 font-mono">{energyStr}</span>
@@ -1341,8 +1512,7 @@ function MonCardOverlay({
   const pct = vm.maxHp > 0 ? vm.hp / vm.maxHp : 0;
   const barColor =
     pct > 0.5 ? "bg-green-500" : pct > 0.25 ? "bg-yellow-500" : "bg-red-500";
-  const borderColor =
-    teamId === 1 ? "border-blue-500/60" : "border-red-500/60";
+  const borderColor = teamId === 1 ? "border-blue-500/60" : "border-red-500/60";
   const headerBg = teamId === 1 ? "bg-blue-900/70" : "bg-red-900/70";
 
   return (
@@ -1498,7 +1668,8 @@ function CompactTeamHUD({
   const totalAlive = aliveOnField + team.benchCount;
 
   // Strip trailing "(Mon1, Mon2, ...)" if the name was generated that way
-  const displayName = team.name.replace(/\s*\(.*\)\s*$/, "").trim() || team.name;
+  const displayName =
+    team.name.replace(/\s*\(.*\)\s*$/, "").trim() || team.name;
 
   return (
     <div
