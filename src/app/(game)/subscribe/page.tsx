@@ -80,9 +80,6 @@ export default async function SubscribePage() {
         {/* CTA */}
         <div className="px-5 pb-5 pt-3">
           <SubscribeButton />
-          <p className="mt-3 text-center text-xs text-gray-400">
-            Cancel anytime · Your cosmetics are never deleted
-          </p>
         </div>
       </div>
     </div>
