@@ -55,9 +55,12 @@ export async function createPortalSession(): Promise<{
 }
 
 function getBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-    "https://vellymon.game"
-  );
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  // VERCEL_PROJECT_PRODUCTION_URL is hostname-only (no scheme)
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  return "https://vellymon.game";
 }
