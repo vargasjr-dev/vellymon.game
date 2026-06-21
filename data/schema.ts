@@ -579,43 +579,6 @@ export const matchStatsRelations = relations(matchStats, ({ one }) => ({
   }),
 }));
 
-// ─── Achievements ─────────────────────────────────────────────────────────────
-
-/**
- * Tracks which achievements a user has unlocked and when.
- * The achievement catalog itself is defined in lib/achievements.ts (static).
- */
-export const userAchievement = pgTable(
-  "userAchievement",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    /** Matches AchievementId from lib/achievements.ts */
-    achievementId: text("achievementId").notNull(),
-    unlockedAt: timestamp("unlockedAt").defaultNow().notNull(),
-  },
-  (table) => [
-    index("userAchievement_userId_idx").on(table.userId),
-    // Prevent duplicates — each achievement can only be earned once
-    index("userAchievement_userId_achievementId_idx").on(
-      table.userId,
-      table.achievementId,
-    ),
-  ],
-);
-
-export const userAchievementRelations = relations(
-  userAchievement,
-  ({ one }) => ({
-    user: one(user, {
-      fields: [userAchievement.userId],
-      references: [user.id],
-    }),
-  }),
-);
-
 // ─── Daily Quests ─────────────────────────────────────────────────────────────
 
 /**
