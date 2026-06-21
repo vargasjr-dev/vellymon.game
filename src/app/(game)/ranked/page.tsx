@@ -1,21 +1,45 @@
 import { headers } from "next/headers";
 import { auth } from "~/lib/auth.server";
+import getTeams from "~/data/getTeams.server";
 import { getRankedPageData } from "./actions";
-import RankedDashboard from "./RankedDashboard";
+import { STARS_PER_RANK } from "../../../../lib/ranked";
+import RankedPlayPage from "./RankedPlayPage";
 
 export default async function RankedPage() {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  const data = await getRankedPageData();
+  const [data, teams] = await Promise.all([
+    getRankedPageData(),
+    getTeams(session.user.id),
+  ]);
+
+  // Map teams to the shape RankedPlayPage expects (only fields it needs)
+  const teamProps = teams.map((t) => ({
+    uuid: t.uuid,
+    name: t.name,
+    activeCount: t.activeCount,
+    slots: t.slots.map((s) => ({
+      uuid: s.uuid,
+      slotIndex: s.slotIndex,
+      isActive: s.isActive,
+      vellymon: s.vellymon
+        ? {
+            name: s.vellymon.name,
+            health: s.vellymon.health,
+            attack: s.vellymon.attack,
+            speed: s.vellymon.speed,
+            imageUrl: s.vellymon.imageUrl,
+          }
+        : null,
+    })),
+  }));
 
   if (!data.hasActiveSeason) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl text-center">
-        <div className="text-6xl mb-4">⚔️</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          No Active Season
-        </h1>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <div className="text-6xl">🏔️</div>
+        <h1 className="text-2xl font-bold text-gray-900">No Active Season</h1>
         <p className="text-gray-600">
           Ranked play begins when a season starts. Check back soon!
         </p>
@@ -24,21 +48,12 @@ export default async function RankedPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
-          ⚔️ Ranked — {data.seasonName}
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Climb the ladder. Earn rewards at every rank.
-        </p>
-      </div>
-
-      <RankedDashboard
-        summary={data.summary}
-        leaderboard={data.leaderboard}
-        subscribed={data.subscribed}
-      />
-    </div>
+    <RankedPlayPage
+      teams={teamProps}
+      summary={data.summary}
+      leaderboard={data.leaderboard}
+      seasonName={data.seasonName ?? "Season"}
+      starsPerRank={STARS_PER_RANK}
+    />
   );
 }
