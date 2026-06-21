@@ -510,7 +510,12 @@ export function resolveCommand(
     case "move":
       return resolveMove(command, team, state);
     case "attack":
-      return resolveAttack(command, team, state, positionSnapshot);
+      // Use live positions, not the start-of-turn snapshot.
+      // Commands resolve in speed order, so by the time a slower attacker fires,
+      // faster mons have already moved — their live positions correctly reflect
+      // where they are. Passing the snapshot here would make mons that moved
+      // out of range still get hit (the reported lob-through-dodge bug).
+      return resolveAttack(command, team, state);
     case "harvest":
       return resolveHarvest(command, team, state);
   }
