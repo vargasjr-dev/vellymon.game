@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "../lib/auth.server";
 import { headers } from "next/headers";
@@ -18,8 +19,6 @@ const FLOATING_MONS = [
 const MONS = [
   {
     name: "Voidclaw",
-    archetype: "Glass Cannon",
-    archetypeEmoji: "💀",
     power: "Void Rend",
     powerDesc: "Drains 2 energy from enemies after every attack",
     hp: 37, atk: 17, spd: 5,
@@ -29,30 +28,24 @@ const MONS = [
   },
   {
     name: "Aerobolt",
-    archetype: "Speedster",
-    archetypeEmoji: "⚡",
     power: "Shockwave Trail",
-    powerDesc: "Leaves a damaging shockwave on every move tile",
-    hp: 55, atk: 10, spd: 8,
+    powerDesc: "Leaves a damaging shockwave on every tile it moves through",
+    hp: 65, atk: 8, spd: 8,
     gradient: "from-yellow-900/60 to-slate-900/60",
     border: "border-yellow-500/40",
     accent: "text-yellow-400",
   },
   {
     name: "Barrikade",
-    archetype: "Tank",
-    archetypeEmoji: "🛡️",
     power: "Iron Curtain",
     powerDesc: "Attackers lose 2 SPD the turn after they strike",
-    hp: 105, atk: 9, spd: 2,
+    hp: 102, atk: 11, spd: 2,
     gradient: "from-sky-900/60 to-slate-900/60",
     border: "border-sky-500/40",
     accent: "text-sky-400",
   },
   {
     name: "Dewdrop",
-    archetype: "Support",
-    archetypeEmoji: "💚",
     power: "Cleansing Mist",
     powerDesc: "Heals the lowest-HP ally at the start of every turn",
     hp: 70, atk: 7, spd: 4,
@@ -62,12 +55,12 @@ const MONS = [
   },
 ];
 
-// 5-wide × 3-tall mini arena preview
-// null = empty, team "a" = orange, team "b" = blue
-const ARENA: (null | { team: "a" | "b"; emoji: string })[][] = [
-  [{ team: "a", emoji: "🛡️" }, { team: "a", emoji: "💀" }, null, null,              { team: "b", emoji: "⚡" }],
-  [null,                        { team: "a", emoji: "⚡" }, null, { team: "b", emoji: "🛡️" }, null             ],
-  [{ team: "a", emoji: "💚" }, null,                        null, null,              { team: "b", emoji: "💀" }],
+// 5-wide x 3-tall mini arena preview
+type ArenaCell = null | { team: "a" | "b"; sprite: string; name: string };
+const ARENA: ArenaCell[][] = [
+  [{ team: "a", sprite: "barrikade", name: "Barrikade" }, { team: "a", sprite: "voidclaw",  name: "Voidclaw"  }, null, null,                                         { team: "b", sprite: "aerobolt",  name: "Aerobolt"  }],
+  [null,                                                   { team: "a", sprite: "dewdrop",   name: "Dewdrop"   }, null, { team: "b", sprite: "barrikade", name: "Barrikade" }, null                                            ],
+  [{ team: "a", sprite: "aerobolt", name: "Aerobolt"  }, null,                                                   null, null,                                         { team: "b", sprite: "voidclaw",  name: "Voidclaw"  }],
 ];
 
 export default async function HomePage() {
@@ -81,17 +74,13 @@ export default async function HomePage() {
   return (
     <main className="bg-slate-950 text-white overflow-x-hidden">
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-arena-grid">
 
-        {/* Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950" />
-
-        {/* Radial glows */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-sky-600/5 blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-orange-500/6 blur-2xl pointer-events-none" />
 
-        {/* Floating mons */}
         {FLOATING_MONS.map((m, i) => (
           <span
             key={i}
@@ -102,10 +91,9 @@ export default async function HomePage() {
           </span>
         ))}
 
-        {/* Content */}
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           <div className="inline-block mb-8 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-sm font-semibold tracking-widest uppercase">
-            ⚡ Early Access — Join the Arena
+            ⚡ Early Access: Join the Arena
           </div>
 
           <h1 className="text-[clamp(4rem,15vw,9rem)] font-black leading-none tracking-tight mb-6">
@@ -118,12 +106,12 @@ export default async function HomePage() {
           </h1>
 
           <p className="text-xl sm:text-2xl text-slate-300 mb-3 font-light">
-            64 monsters. 1 arena.{" "}
-            <span className="text-white font-semibold">Zero turns wasted.</span>
+            KO all 8 opponents. Hold all 3 zones.{" "}
+            <span className="text-white font-semibold">Race to 120 energy.</span>
           </p>
           <p className="text-slate-400 mb-12 max-w-lg mx-auto leading-relaxed">
-            Build a squad, seize territory, and outthink every opponent — in a
-            simultaneous-action battle where hesitation costs you the match.
+            Build a squad and outthink every opponent in a simultaneous-action
+            battle where hesitation costs you the match.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -131,7 +119,7 @@ export default async function HomePage() {
               href="/signup"
               className="inline-flex items-center justify-center gap-2 px-10 py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 text-white font-bold text-lg shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all duration-200"
             >
-              🎮 Play Now — It&apos;s Free
+              🎮 Play Now, It&apos;s Free
             </a>
             <a
               href="/guide"
@@ -142,50 +130,52 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Bottom fade into next section */}
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
       </section>
 
-      {/* ── Three Pillars ─────────────────────────────────────────────────── */}
+      {/* Three Win Conditions */}
       <section className="py-24 px-4">
-        <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
-          {[
-            {
-              icon: "⚡",
-              title: "Simultaneous Action",
-              desc: "Every player acts at once. No waiting for your opponent's turn — pure real-time strategy with no downtime.",
-            },
-            {
-              icon: "🗺️",
-              title: "Territorial Control",
-              desc: "Capture zones, hold ground, and pressure your opponent. Positioning wins matches, not just raw power.",
-            },
-            {
-              icon: "🏆",
-              title: "Ranked Ladder",
-              desc: "Climb from Bronze to Legend. Every win and loss shapes your rank — build the squad that goes the distance.",
-            },
-          ].map((p) => (
-            <div
-              key={p.title}
-              className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 hover:border-sky-500/30 hover:bg-slate-900 transition-all duration-300 group"
-            >
-              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                {p.icon}
+        <div className="max-w-5xl mx-auto">
+          <p className="text-center text-slate-500 text-sm font-semibold tracking-widest uppercase mb-8">Three paths to victory</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: "💀",
+                title: "Elimination",
+                desc: "KO all 8 of your opponent's vellymons. Every mon you knock out is one fewer threat on the board.",
+              },
+              {
+                icon: "🏴",
+                title: "Occupation",
+                desc: "Stand on all 3 center zones simultaneously for 2 uncontested ticks. Control the board, control the match.",
+              },
+              {
+                icon: "⚡",
+                title: "Energy Accumulation",
+                desc: "Harvest your way to 120 team energy. Race the clock while your opponent burns their pool on attacks.",
+              },
+            ].map((p) => (
+              <div
+                key={p.title}
+                className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 hover:border-sky-500/30 hover:bg-slate-900 transition-all duration-300 group"
+              >
+                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                  {p.icon}
+                </div>
+                <h3 className="text-xl font-bold mb-2">{p.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{p.desc}</p>
               </div>
-              <h3 className="text-xl font-bold mb-2">{p.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{p.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Arena Preview ─────────────────────────────────────────────────── */}
+      {/* Arena Preview */}
       <section className="py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-black mb-3">The Arena Awaits</h2>
+          <h2 className="text-3xl sm:text-4xl font-black mb-3">The Arena</h2>
           <p className="text-slate-400 mb-14 max-w-xl mx-auto">
-            Deploy across a tactical grid. Move, attack, and hold zones — all in
+            Deploy across a tactical grid. Move, attack, and hold zones. All in
             the same heartbeat as your opponent.
           </p>
 
@@ -200,7 +190,7 @@ export default async function HomePage() {
                   {row.map((cell, ci) => (
                     <div
                       key={ci}
-                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-2xl border transition-all duration-300 ${
+                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center border transition-all duration-300 overflow-hidden ${
                         cell === null
                           ? "bg-slate-800/40 border-slate-700/40"
                           : cell.team === "a"
@@ -208,7 +198,13 @@ export default async function HomePage() {
                           : "bg-sky-500/20 border-sky-500/50 shadow-lg shadow-sky-500/10"
                       }`}
                     >
-                      {cell?.emoji ?? ""}
+                      {cell && (
+                        <img
+                          src={`/vellymon/${cell.sprite}.png`}
+                          alt={cell.name}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -221,7 +217,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Mon Showcase ──────────────────────────────────────────────────── */}
+      {/* Mon Showcase */}
       <section className="py-24 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
@@ -237,9 +233,14 @@ export default async function HomePage() {
                 key={mon.name}
                 className={`rounded-2xl bg-gradient-to-b ${mon.gradient} border ${mon.border} p-6 hover:scale-105 transition-transform duration-300`}
               >
-                <div className="text-3xl mb-3">{mon.archetypeEmoji}</div>
-                <div className={`text-xs font-bold uppercase tracking-widest mb-1 ${mon.accent}`}>
-                  {mon.archetype}
+                <div className="w-20 h-20 mx-auto mb-4 relative">
+                  <Image
+                    src={`/vellymon/${mon.name.toLowerCase()}.png`}
+                    alt={mon.name}
+                    fill
+                    className="object-contain"
+                    sizes="80px"
+                  />
                 </div>
                 <h3 className="text-xl font-black mb-1">{mon.name}</h3>
                 <div className="text-xs text-slate-300 font-semibold mb-1">✦ {mon.power}</div>
@@ -259,7 +260,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Final CTA ─────────────────────────────────────────────────────── */}
+      {/* Final CTA */}
       <section className="py-32 px-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-950/20 via-slate-950 to-blue-950/20 pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] rounded-full bg-orange-500/5 blur-3xl pointer-events-none" />
@@ -275,7 +276,7 @@ export default async function HomePage() {
             href="/signup"
             className="inline-flex items-center justify-center gap-3 px-14 py-5 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-400 text-white font-black text-xl shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all duration-200"
           >
-            Start Playing →
+            Start Playing
           </a>
           <div className="mt-8">
             <a

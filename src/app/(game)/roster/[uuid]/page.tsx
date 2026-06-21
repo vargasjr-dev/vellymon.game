@@ -5,13 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getVellymonInstance } from "~/data/getVellymonInstance.server";
 
-const ARCHETYPE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
-  tank: { label: "Tank", color: "bg-green-100 text-green-700", emoji: "🛡️" },
-  speedster: { label: "Speedster", color: "bg-blue-100 text-blue-700", emoji: "⚡" },
-  glass_cannon: { label: "Glass Cannon", color: "bg-red-100 text-red-700", emoji: "💥" },
-  support: { label: "Support", color: "bg-yellow-100 text-yellow-700", emoji: "✨" },
-  balanced: { label: "Balanced", color: "bg-purple-100 text-purple-700", emoji: "⚖️" },
-};
+
 
 function StatBar({
   label,
@@ -59,12 +53,6 @@ export default async function VellymonDetailPage({
 
   if (!vellymon) notFound();
 
-  const archetype = ARCHETYPE_LABELS[vellymon.archetype] ?? {
-    label: vellymon.archetype,
-    color: "bg-gray-100 text-gray-600",
-    emoji: "❓",
-  };
-
   // Stat budget — same formula as guide
   const statBudget = vellymon.health + vellymon.attack * 5 + vellymon.speed * 8;
 
@@ -100,22 +88,15 @@ export default async function VellymonDetailPage({
         <div className="p-6 space-y-6">
           {/* Header */}
           <div>
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {vellymon.name}
-                </h1>
-                {vellymon.flavor && (
-                  <p className="text-gray-500 italic mt-1 text-sm">
-                    &ldquo;{vellymon.flavor}&rdquo;
-                  </p>
-                )}
-              </div>
-              <span
-                className={`text-sm font-semibold px-3 py-1 rounded-full ${archetype.color} shrink-0`}
-              >
-                {archetype.emoji} {archetype.label}
-              </span>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {vellymon.name}
+              </h1>
+              {vellymon.flavor && (
+                <p className="text-gray-500 italic mt-1 text-sm">
+                  &ldquo;{vellymon.flavor}&rdquo;
+                </p>
+              )}
             </div>
           </div>
 

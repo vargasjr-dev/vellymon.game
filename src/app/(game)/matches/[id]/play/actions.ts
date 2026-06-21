@@ -59,7 +59,6 @@ export async function concedeAction(matchUuid: string, asTeamId?: 1 | 2) {
 // ─── Vellymon info (reads from library + power registry at runtime) ──────────
 
 export type VellymonInfo = {
-  archetype: string;
   flavor: string;
   powerName: string;
   powerDesc: string;
@@ -84,8 +83,7 @@ export async function getVellymonInfoAction(
       ? getPower(template.specialPowerId)
       : undefined;
     result[name] = {
-      archetype: template.archetype,
-      flavor: template.flavor,
+      flavor: template.flavor ?? "",
       powerName: power?.name ?? "",
       powerDesc: power?.description ?? "",
     };

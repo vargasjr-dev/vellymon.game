@@ -57,8 +57,8 @@ export default function StrategyPage() {
             <StrategyCard
               emoji="🏴"
               name="Occupation"
-              desc="Control territory — put tanky vellymons on occupation points and hold them for 2 ticks."
-              strength="Hard to dislodge tanks"
+              desc="Control the three occupation points. Put durable vellymons on them and hold for 2 uncontested ticks."
+                strength="Hard to dislodge once planted"
               weakness="Spread thin across 3 points"
             />
             <StrategyCard
@@ -80,7 +80,7 @@ export default function StrategyPage() {
         <Section title="Team Composition">
           <p className="mb-4">
             Your roster has 8 vellymons — 4 active, 4 on the bench. Here are
-            some archetypes to consider when building your team:
+            some roles to consider when building your team:
           </p>
 
           <RoleCard
@@ -94,8 +94,8 @@ export default function StrategyPage() {
             example="Blastova (ATK 20, HP 45) — hits like a supernova, but burns bright and dies fast."
           />
           <RoleCard
-            name="The Speedster"
-            desc="A fast vellymon that acts first each turn. Controls tempo — grabs harvest nodes, scouts positions, picks off weakened targets."
+            name="The Scout"
+            desc="A fast vellymon that acts first each turn. Controls tempo: grabs harvest nodes, reaches zones early, picks off weakened targets."
             example="Blinkatt (SPD 10, ATK 11) — phases in, strikes, phases out."
           />
           <RoleCard

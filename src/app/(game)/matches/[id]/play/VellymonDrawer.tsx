@@ -32,7 +32,6 @@ type PendingCmd = {
 };
 
 type VellymonInfo = {
-  archetype: string;
   flavor: string;
   powerName: string;
   powerDesc: string;
@@ -118,11 +117,6 @@ export default function VellymonDrawer({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-base truncate">{vellymon.name}</h3>
-                {info?.archetype && (
-                  <span className="text-[10px] bg-gray-700/60 text-gray-300 px-1.5 py-0.5 rounded">
-                    {info.archetype}
-                  </span>
-                )}
               </div>
 
               {/* HP bar */}
@@ -253,7 +247,7 @@ export default function VellymonDrawer({
                       ? "bg-red-900/40 text-red-300"
                       : "bg-yellow-900/40 text-yellow-300"
                 }`}>
-                  {selectedAction.label} — pick direction
+                  {selectedAction.label}: pick direction
                 </span>
               </div>
 
