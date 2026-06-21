@@ -106,8 +106,8 @@ export default async function HomePage() {
           </h1>
 
           <p className="text-xl sm:text-2xl text-slate-300 mb-3 font-light">
-            KO all 8 opponents. Hold all 3 zones.{" "}
-            <span className="text-white font-semibold">Race to 120 energy.</span>
+            Elimination. Occupation.{" "}
+            <span className="text-white font-semibold">Accumulation.</span>
           </p>
           <p className="text-slate-400 mb-12 max-w-lg mx-auto leading-relaxed">
             Build a squad and outthink every opponent in a simultaneous-action
