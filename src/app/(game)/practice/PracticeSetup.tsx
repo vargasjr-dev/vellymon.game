@@ -8,10 +8,30 @@ import { MAP_OPTIONS } from "~/lib/matchSettings";
 
 type TeamOption = { uuid: string; name: string };
 
-const DIFFICULTIES: { value: AIDifficulty; label: string; icon: string; desc: string }[] = [
-  { value: "easy", label: "Easy", icon: "🟢", desc: "Random moves — good for learning" },
-  { value: "medium", label: "Medium", icon: "🟡", desc: "Basic strategy — a real workout" },
-  { value: "hard", label: "Hard", icon: "🔴", desc: "Optimized play — prepare to sweat" },
+const DIFFICULTIES: {
+  value: AIDifficulty;
+  label: string;
+  icon: string;
+  desc: string;
+}[] = [
+  {
+    value: "easy",
+    label: "Easy",
+    icon: "🟢",
+    desc: "Random moves — good for learning",
+  },
+  {
+    value: "medium",
+    label: "Medium",
+    icon: "🟡",
+    desc: "Basic strategy — a real workout",
+  },
+  {
+    value: "hard",
+    label: "Hard",
+    icon: "🔴",
+    desc: "Optimized play — prepare to sweat",
+  },
 ];
 
 interface PracticeSetupProps {
@@ -48,12 +68,13 @@ export default function PracticeSetup({
   if (!subscribed) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">🤖</div>
+        <div className="text-6xl mb-4">🥊</div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           Premium Required
         </h2>
         <p className="text-gray-600 mb-4">
-          Sharpen your skills with AI sparring — subscribe to unlock.
+          Practice Mode is a Premium feature — subscribe to battle custom
+          opponent profiles and sharpen your strategy.
         </p>
         <a
           href="/subscribe"
@@ -106,7 +127,7 @@ export default function PracticeSetup({
       {/* Difficulty Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          AI Difficulty
+          Opponent Difficulty
         </label>
         <div className="grid grid-cols-3 gap-3">
           {DIFFICULTIES.map((d) => (
@@ -146,9 +167,7 @@ export default function PracticeSetup({
               <span className="font-medium text-sm text-gray-900">
                 {m.name}
               </span>
-              <span className="text-xs text-gray-400 ml-2">
-                {m.dimensions}
-              </span>
+              <span className="text-xs text-gray-400 ml-2">{m.dimensions}</span>
               <p className="text-xs text-gray-500 mt-0.5">{m.description}</p>
             </button>
           ))}
@@ -156,19 +175,17 @@ export default function PracticeSetup({
       </div>
 
       {/* Start Button */}
-      {error && (
-        <p className="text-red-600 text-sm">{error}</p>
-      )}
+      {error && <p className="text-red-600 text-sm">{error}</p>}
       <button
         onClick={handleStart}
         disabled={creating || !teamUuid}
         className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-lg font-bold rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 transition-all"
       >
-        {creating ? "Setting up match…" : "🤖 Start Sparring"}
+        {creating ? "Setting up match…" : "🥊 Start Practice"}
       </button>
 
       <p className="text-xs text-gray-400 text-center">
-        AI sparring has no ranked impact. Practice freely!
+        Practice Mode has no ranked impact. Train freely!
       </p>
     </div>
   );

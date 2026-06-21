@@ -9,8 +9,8 @@ import type { EnrichedMatchRow } from "~/data/getMatchHistoryWithStats.server";
 function opponentDisplay(match: EnrichedMatchRow): string {
   if (match.isSparring) {
     if (match.aiDifficulty)
-      return `${match.aiDifficulty.charAt(0).toUpperCase() + match.aiDifficulty.slice(1)} AI`;
-    return "AI";
+      return `${match.aiDifficulty.charAt(0).toUpperCase() + match.aiDifficulty.slice(1)} Bot`;
+    return "Bot";
   }
   return match.opponentName ?? "Unknown Trainer";
 }
@@ -59,7 +59,10 @@ export default async function MatchHistoryPage() {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
   const myName = session.user.name ?? null;
-  const { rows, summary } = await getMatchHistoryWithStats(session.user.id, myName);
+  const { rows, summary } = await getMatchHistoryWithStats(
+    session.user.id,
+    myName,
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -86,7 +89,9 @@ export default async function MatchHistoryPage() {
       {summary.total > 0 && (
         <div className="grid grid-cols-4 gap-3 mb-6">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">W / L</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+              W / L
+            </p>
             <p className="text-lg font-bold text-gray-900">
               <span className="text-green-600">{summary.wins}</span>
               <span className="text-gray-400 font-normal"> / </span>
@@ -94,15 +99,25 @@ export default async function MatchHistoryPage() {
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Win %</p>
-            <p className="text-lg font-bold text-gray-900">{summary.winRate}%</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+              Win %
+            </p>
+            <p className="text-lg font-bold text-gray-900">
+              {summary.winRate}%
+            </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">KOs</p>
-            <p className="text-lg font-bold text-gray-900">{summary.totalKOs}</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+              KOs
+            </p>
+            <p className="text-lg font-bold text-gray-900">
+              {summary.totalKOs}
+            </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Draws</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+              Draws
+            </p>
             <p className="text-lg font-bold text-gray-900">{summary.draws}</p>
           </div>
         </div>

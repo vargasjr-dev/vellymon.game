@@ -21,9 +21,10 @@ export default async function PracticePage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">🤖 AI Sparring</h1>
+        <h1 className="text-3xl font-bold text-gray-900">🥊 Practice Mode</h1>
         <p className="text-gray-600 mt-1">
-          Practice against AI opponents. No ranked impact.
+          Hone your strategy against automated opponent profiles — or pit
+          profiles against each other. No ranked impact.
         </p>
       </div>
 

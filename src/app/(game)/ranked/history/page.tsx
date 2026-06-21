@@ -9,8 +9,8 @@ import type { EnrichedMatchRow } from "~/data/getMatchHistoryWithStats.server";
 function opponentDisplay(match: EnrichedMatchRow): string {
   if (match.isSparring) {
     if (match.aiDifficulty)
-      return `${match.aiDifficulty.charAt(0).toUpperCase() + match.aiDifficulty.slice(1)} AI`;
-    return "AI";
+      return `${match.aiDifficulty.charAt(0).toUpperCase() + match.aiDifficulty.slice(1)} Bot`;
+    return "Bot";
   }
   return match.opponentName ?? "Unknown Trainer";
 }

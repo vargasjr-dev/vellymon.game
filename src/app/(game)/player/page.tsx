@@ -5,9 +5,12 @@ import Link from "next/link";
 import getVellymonRoster from "~/data/getVellymonRoster.server";
 import getTeams from "~/data/getTeams.server";
 import { getSubscriptionInfo } from "../../../../lib/subscription";
-import { getActiveRank, STARS_PER_RANK, type Rank } from "../../../../lib/ranked";
+import {
+  getActiveRank,
+  STARS_PER_RANK,
+  type Rank,
+} from "../../../../lib/ranked";
 import { getBalance } from "../../../../lib/currency";
-
 
 import { DailyCheckIn } from "./DailyCheckIn";
 import { getLoginStreak } from "../../../../lib/loginStreakService";
@@ -45,7 +48,10 @@ function StarRow({ stars, max }: { stars: number; max: number }) {
   return (
     <div className="flex gap-0.5 mt-1">
       {Array.from({ length: max }).map((_, i) => (
-        <span key={i} className={`text-base ${i < stars ? "opacity-100" : "opacity-20"}`}>
+        <span
+          key={i}
+          className={`text-base ${i < stars ? "opacity-100" : "opacity-20"}`}
+        >
           ⭐
         </span>
       ))}
@@ -61,14 +67,15 @@ export default async function PlayerHubPage() {
   const session = await auth.api.getSession({ headers: headersList });
   if (!session) redirect("/login");
 
-  const [roster, teams, subInfo, activeRank, creditBalance, loginStreak] = await Promise.all([
-    getVellymonRoster(session.user.id),
-    getTeams(session.user.id),
-    getSubscriptionInfo(session.user.id),
-    getActiveRank(session.user.id),
-    getBalance(session.user.id),
-    getLoginStreak(session.user.id),
-  ]);
+  const [roster, teams, subInfo, activeRank, creditBalance, loginStreak] =
+    await Promise.all([
+      getVellymonRoster(session.user.id),
+      getTeams(session.user.id),
+      getSubscriptionInfo(session.user.id),
+      getActiveRank(session.user.id),
+      getBalance(session.user.id),
+      getLoginStreak(session.user.id),
+    ]);
   const rank = (activeRank?.rank ?? "bronze") as Rank;
   const stars = activeRank?.stars ?? 0;
   const maxStars = STARS_PER_RANK[rank];
@@ -77,10 +84,14 @@ export default async function PlayerHubPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Rank + Currency Banner */}
-      <div className={`mb-8 bg-gradient-to-br ${RANK_BG[rank]} border-2 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4`}>
+      <div
+        className={`mb-8 bg-gradient-to-br ${RANK_BG[rank]} border-2 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4`}
+      >
         {/* Rank section */}
         <div className="flex-1 flex items-center gap-4">
-          <span className="text-5xl" aria-label={rank}>{RANK_EMOJI[rank]}</span>
+          <span className="text-5xl" aria-label={rank}>
+            {RANK_EMOJI[rank]}
+          </span>
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
               Ranked Season
@@ -111,7 +122,9 @@ export default async function PlayerHubPage() {
             <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
               Credits
             </p>
-            <p className="text-2xl font-bold text-gray-800">{creditBalance.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-800">
+              {creditBalance.toLocaleString()}
+            </p>
             <p className="text-xs text-gray-400 mt-1">Earn from every match</p>
           </div>
         </div>
@@ -147,8 +160,8 @@ export default async function PlayerHubPage() {
         </Link>
 
         {/* Teams Card */}
-          <Link
-            href="/roster"
+        <Link
+          href="/roster"
           className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
         >
           <div className="flex items-center gap-3 mb-2">
@@ -164,7 +177,6 @@ export default async function PlayerHubPage() {
               : `team${teams.length !== 1 ? "s" : ""} built`}
           </p>
         </Link>
-
       </div>
 
       {/* Daily Check-In */}
@@ -181,7 +193,8 @@ export default async function PlayerHubPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
           <h3 className="font-semibold text-gray-900">Your Profile</h3>
           <p className="text-sm text-gray-500">
-            View your public profile — stats, rank, and vellymon count visible to other trainers.
+            View your public profile — stats, rank, and vellymon count visible
+            to other trainers.
           </p>
           <Link
             href={`/profile/${session.user.id}`}
@@ -216,7 +229,7 @@ export default async function PlayerHubPage() {
         >
           <p className="text-3xl mb-2">🤖</p>
           <p className="font-semibold text-gray-900 group-hover:text-purple-600">
-            AI Sparring
+            Practice Mode
             {subInfo?.subscriptionStatus !== "active" && (
               <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">
                 PRO
@@ -225,8 +238,8 @@ export default async function PlayerHubPage() {
           </p>
           <p className="text-sm text-gray-500 mt-1">
             {subInfo?.subscriptionStatus === "active"
-              ? "Practice against AI opponents"
-              : "Subscribe to unlock AI practice"}
+              ? "Battle custom opponent profiles"
+              : "Subscribe to unlock Practice Mode"}
           </p>
         </Link>
         <Link
