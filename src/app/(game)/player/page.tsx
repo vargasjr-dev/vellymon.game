@@ -2,271 +2,187 @@ import { auth } from "~/lib/auth.server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import getVellymonRoster from "~/data/getVellymonRoster.server";
-import getTeams from "~/data/getTeams.server";
 import { getSubscriptionInfo } from "../../../../lib/subscription";
-import {
-  getActiveRank,
-  STARS_PER_RANK,
-  type Rank,
-} from "../../../../lib/ranked";
-import { getBalance } from "../../../../lib/currency";
-
-import { DailyCheckIn } from "./DailyCheckIn";
-import { getLoginStreak } from "../../../../lib/loginStreakService";
-
-// ─── Rank helpers ─────────────────────────────────────────────────────────────
-
-const RANK_EMOJI: Record<Rank, string> = {
-  bronze: "🥉",
-  silver: "🥈",
-  gold: "🥇",
-  platinum: "💠",
-  diamond: "💎",
-  legend: "👑",
-};
-
-const RANK_COLOR: Record<Rank, string> = {
-  bronze: "text-amber-700",
-  silver: "text-slate-500",
-  gold: "text-yellow-600",
-  platinum: "text-cyan-600",
-  diamond: "text-blue-500",
-  legend: "text-purple-600",
-};
-
-const RANK_BG: Record<Rank, string> = {
-  bronze: "from-amber-50 to-orange-50 border-amber-200",
-  silver: "from-slate-50 to-gray-100 border-slate-300",
-  gold: "from-yellow-50 to-amber-50 border-yellow-300",
-  platinum: "from-cyan-50 to-teal-50 border-cyan-300",
-  diamond: "from-blue-50 to-indigo-50 border-blue-300",
-  legend: "from-purple-50 to-pink-50 border-purple-300",
-};
-
-function StarRow({ stars, max }: { stars: number; max: number }) {
-  return (
-    <div className="flex gap-0.5 mt-1">
-      {Array.from({ length: max }).map((_, i) => (
-        <span
-          key={i}
-          className={`text-base ${i < stars ? "opacity-100" : "opacity-20"}`}
-        >
-          ⭐
-        </span>
-      ))}
-    </div>
-  );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function PlayerHubPage() {
   const headersList = await headers();
-  // Session guaranteed by (game)/layout.tsx auth gate
   const session = await auth.api.getSession({ headers: headersList });
   if (!session) redirect("/login");
 
-  const [roster, teams, subInfo, activeRank, creditBalance, loginStreak] =
-    await Promise.all([
-      getVellymonRoster(session.user.id),
-      getTeams(session.user.id),
-      getSubscriptionInfo(session.user.id),
-      getActiveRank(session.user.id),
-      getBalance(session.user.id),
-      getLoginStreak(session.user.id),
-    ]);
-  const rank = (activeRank?.rank ?? "bronze") as Rank;
-  const stars = activeRank?.stars ?? 0;
-  const maxStars = STARS_PER_RANK[rank];
-  const gamesPlayed = activeRank?.gamesPlayed ?? 0;
+  const subInfo = await getSubscriptionInfo(session.user.id);
+  const isSubscribed = subInfo?.subscriptionStatus === "active";
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Rank + Currency Banner */}
-      <div
-        className={`mb-8 bg-gradient-to-br ${RANK_BG[rank]} border-2 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4`}
-      >
-        {/* Rank section */}
-        <div className="flex-1 flex items-center gap-4">
-          <span className="text-5xl" aria-label={rank}>
-            {RANK_EMOJI[rank]}
-          </span>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
-              Ranked Season
-            </p>
-            <p className={`text-2xl font-bold capitalize ${RANK_COLOR[rank]}`}>
-              {rank}
-            </p>
-            {rank !== "legend" && maxStars !== Infinity ? (
-              <StarRow stars={stars} max={maxStars} />
-            ) : (
-              <p className="text-xs text-purple-500 mt-1 font-semibold">
-                #{activeRank?.mmr ?? 1000} MMR
-              </p>
-            )}
-            <p className="text-xs text-gray-400 mt-1">
-              {gamesPlayed} ranked match{gamesPlayed !== 1 ? "es" : ""} played
-            </p>
-          </div>
+    // Full-height canvas. Layout's bg gradient shows through.
+    <div className="relative flex items-center justify-center h-[calc(100dvh-56px)] overflow-hidden">
+      {/* ── Decorative floating vellymon emojis ──────────────────────────── */}
+      <FloatingEmojis />
+
+      {/* ── Centre card ─────────────────────────────────────────────────── */}
+      <div className="relative z-10 flex flex-col items-center gap-3 w-full max-w-xs px-4 sm:max-w-sm">
+        {/* Wordmark / greeting */}
+        <div className="text-center mb-2">
+          <p className="text-4xl mb-1">⚡️</p>
+          <h1 className="text-2xl font-black text-white drop-shadow-lg tracking-tight">
+            Vellymon
+          </h1>
+          <p className="text-xs text-white/70 font-medium tracking-widest uppercase mt-0.5">
+            Trainer Hub
+          </p>
         </div>
 
-        {/* Divider */}
-        <div className="hidden sm:block w-px h-16 bg-gray-200" />
-
-        {/* Credits section */}
-        <div className="flex items-center gap-3 sm:pr-2">
-          <span className="text-4xl">💰</span>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
-              Credits
-            </p>
-            <p className="text-2xl font-bold text-gray-800">
-              {creditBalance.toLocaleString()}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">Earn from every match</p>
-          </div>
-        </div>
-
-        {/* Ranked link */}
-        <Link
-          href="/matches"
-          className="sm:self-center px-4 py-2 bg-white/70 hover:bg-white rounded-lg text-sm font-semibold text-gray-700 hover:text-blue-600 border border-gray-200 transition whitespace-nowrap shadow-sm"
-        >
-          Play Ranked →
-        </Link>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        {/* Roster Card */}
-        <Link
+        {/* Primary actions */}
+        <HubButton href="/ranked" emoji="🏆" label="Play" sublabel="Ranked" />
+        <HubButton
           href="/roster"
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">🎮</span>
-            <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">
-              Roster
-            </h2>
-          </div>
-          <p className="text-3xl font-bold text-blue-600">{roster.length}</p>
-          <p className="text-sm text-gray-500 mt-1">
-            {roster.length === 0
-              ? "Visit the Market to get started"
-              : `vellymon${roster.length !== 1 ? "s" : ""} collected`}
-          </p>
-        </Link>
-
-        {/* Teams Card */}
-        <Link
-          href="/roster"
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">⚔️</span>
-            <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">
-              Teams
-            </h2>
-          </div>
-          <p className="text-3xl font-bold text-blue-600">{teams.length}</p>
-          <p className="text-sm text-gray-500 mt-1">
-            {teams.length === 0
-              ? "Create a team to compete"
-              : `team${teams.length !== 1 ? "s" : ""} built`}
-          </p>
-        </Link>
-      </div>
-
-      {/* Daily Check-In */}
-      <div className="mb-8">
-        <DailyCheckIn
-          initialStreak={loginStreak}
-          isSubscriber={subInfo?.subscriptionStatus === "active"}
+          emoji="🐾"
+          label="Roster"
+          sublabel="Build your team"
         />
-      </div>
-
-      {/* Subscription */}
-      {/* Profile & Settings */}
-      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
-          <h3 className="font-semibold text-gray-900">Your Profile</h3>
-          <p className="text-sm text-gray-500">
-            View your public profile — stats, rank, and vellymon count visible
-            to other trainers.
-          </p>
-          <Link
-            href={`/profile/${session.user.id}`}
-            className="inline-block text-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-sm py-2 px-4 rounded-lg transition"
-          >
-            👤 View My Profile
-          </Link>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
-          <h3 className="font-semibold text-gray-900">Account Settings</h3>
-          <p className="text-sm text-gray-500">
-            Change your handle, email, password, or manage your subscription.
-          </p>
-          <Link
-            href="/user"
-            className="inline-block text-center bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold text-sm py-2 px-4 rounded-lg transition"
-          >
-            ⚙️ Account Settings
-          </Link>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link
-          href="/practice"
-          className={`rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center ${
-            subInfo?.subscriptionStatus === "active"
-              ? "bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200"
-              : "bg-gray-50 border-2 border-gray-200"
-          }`}
-        >
-          <p className="text-3xl mb-2">🤖</p>
-          <p className="font-semibold text-gray-900 group-hover:text-purple-600">
-            Practice Mode
-            {subInfo?.subscriptionStatus !== "active" && (
-              <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">
-                PRO
-              </span>
-            )}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            {subInfo?.subscriptionStatus === "active"
-              ? "Battle custom opponent profiles"
-              : "Subscribe to unlock Practice Mode"}
-          </p>
-        </Link>
-        <Link
+        <HubButton
           href="/market"
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center"
-        >
-          <p className="text-3xl mb-2">🏪</p>
-          <p className="font-semibold text-gray-900 group-hover:text-blue-600">
-            Visit Market
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Browse and collect vellymons
-          </p>
-        </Link>
-        <Link
-          href="/guide"
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition group text-center"
-        >
-          <p className="text-3xl mb-2">📖</p>
-          <p className="font-semibold text-gray-900 group-hover:text-blue-600">
-            Game Guide
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Rules, strategy, and vellymon directory
-          </p>
-        </Link>
+          emoji="🛒"
+          label="Market"
+          sublabel="Collect vellymons"
+        />
+
+        {/* Practice — locked unless subscribed */}
+        {isSubscribed ? (
+          <HubButton
+            href="/practice"
+            emoji="🥊"
+            label="Practice Mode"
+            sublabel="Battle opponent profiles"
+          />
+        ) : (
+          <HubButton
+            href="/subscribe"
+            emoji="🥊"
+            label="Practice Mode"
+            sublabel="Subscribe to unlock"
+            locked
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+// ─── HubButton ────────────────────────────────────────────────────────────────
+
+function HubButton({
+  href,
+  emoji,
+  label,
+  sublabel,
+  locked = false,
+}: {
+  href: string;
+  emoji: string;
+  label: string;
+  sublabel: string;
+  locked?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`
+        group w-full flex items-center gap-4 rounded-2xl px-5 py-3.5 shadow-lg
+        border transition-all duration-150
+        ${
+          locked
+            ? "bg-white/10 border-white/10 cursor-pointer opacity-60 hover:opacity-75"
+            : "bg-white/90 border-white/30 hover:bg-white hover:scale-[1.02] active:scale-[0.98] hover:shadow-xl"
+        }
+      `}
+    >
+      <span className="text-2xl flex-shrink-0">{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p
+          className={`font-black text-base leading-tight ${locked ? "text-white" : "text-gray-900"}`}
+        >
+          {label}
+          {locked && (
+            <span className="ml-2 text-[9px] bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded-full font-bold align-middle uppercase tracking-wide">
+              PRO
+            </span>
+          )}
+        </p>
+        <p
+          className={`text-xs mt-0.5 ${locked ? "text-white/60" : "text-gray-500"}`}
+        >
+          {sublabel}
+        </p>
+      </div>
+      <span
+        className={`text-lg flex-shrink-0 transition-transform group-hover:translate-x-0.5 ${locked ? "text-white/40" : "text-gray-400"}`}
+      >
+        ›
+      </span>
+    </Link>
+  );
+}
+
+// ─── FloatingEmojis ──────────────────────────────────────────────────────────
+// Pure CSS animation — no JS, no hydration cost.
+
+const FLOATERS = [
+  {
+    emoji: "🐲",
+    cls: "top-[8%]  left-[6%]  text-5xl  animate-float-a opacity-30",
+  },
+  {
+    emoji: "⚡",
+    cls: "top-[12%] right-[8%] text-4xl  animate-float-b opacity-25",
+  },
+  {
+    emoji: "🔥",
+    cls: "top-[30%] left-[3%]  text-3xl  animate-float-c opacity-20",
+  },
+  {
+    emoji: "💎",
+    cls: "top-[22%] right-[5%] text-3xl  animate-float-a opacity-20",
+  },
+  {
+    emoji: "🌊",
+    cls: "bottom-[28%] left-[7%]  text-4xl  animate-float-b opacity-25",
+  },
+  {
+    emoji: "🌿",
+    cls: "bottom-[18%] right-[6%] text-5xl  animate-float-c opacity-20",
+  },
+  {
+    emoji: "⚔️",
+    cls: "bottom-[8%]  left-[12%] text-3xl  animate-float-a opacity-20",
+  },
+  {
+    emoji: "🛡️",
+    cls: "bottom-[10%] right-[12%] text-3xl animate-float-b opacity-20",
+  },
+  {
+    emoji: "✨",
+    cls: "top-[55%] left-[2%]  text-2xl  animate-float-c opacity-30",
+  },
+  {
+    emoji: "🌟",
+    cls: "top-[45%] right-[3%] text-2xl  animate-float-a opacity-25",
+  },
+];
+
+function FloatingEmojis() {
+  return (
+    <>
+      {FLOATERS.map(({ emoji, cls }, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className={`pointer-events-none select-none absolute ${cls}`}
+        >
+          {emoji}
+        </span>
+      ))}
+    </>
   );
 }
