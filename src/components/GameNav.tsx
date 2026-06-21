@@ -9,18 +9,14 @@ const navLinks = [
   { href: "/ranked", label: "🏆 Ranked" },
   { href: "/roster", label: "🐾 Roster" },
   { href: "/market", label: "🛒 Market" },
-
-  { href: "/practice", label: "🤖 Practice", premium: true },
-  { href: "/achievements", label: "🏅 Badges" },
   { href: "/quests", label: "📋 Quests" },
+  { href: "/practice", label: "🥊 Practice", premium: true },
 ];
 
 interface GameNavProps {
   user: { name: string; email: string } | null;
   creditBalance?: number;
   isSubscriber?: boolean;
-  /** Count of achievements unlocked in the last 24 hours — drives notification dot */
-  newAchievementCount?: number;
   /** Count of today's quests still incomplete — drives quest notification badge */
   activeQuestCount?: number;
   /** Current login streak — shows 🔥N badge on account button when streak > 1 */
@@ -33,7 +29,6 @@ export default function GameNav({
   user,
   creditBalance,
   isSubscriber,
-  newAchievementCount,
   activeQuestCount,
   currentStreak,
   isAdmin,
@@ -112,8 +107,6 @@ export default function GameNav({
             {navLinks.map((link) => {
               const isPremiumLocked =
                 "premium" in link && link.premium && !isSubscriber;
-              const showNewDot =
-                link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
               const questCount =
                 link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
               return (
@@ -132,12 +125,6 @@ export default function GameNav({
                   {"premium" in link && link.premium && (
                     <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
                       {isSubscriber ? "⭐" : "PRO"}
-                    </span>
-                  )}
-                  {showNewDot && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
                     </span>
                   )}
                   {questCount > 0 && (
@@ -339,8 +326,6 @@ export default function GameNav({
             {navLinks.map((link) => {
               const isPremiumLocked =
                 "premium" in link && link.premium && !isSubscriber;
-              const showNewDot =
-                link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
               const questCount =
                 link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
               return (
@@ -360,12 +345,6 @@ export default function GameNav({
                     {"premium" in link && link.premium && (
                       <span className="text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
                         {isSubscriber ? "⭐" : "PRO"}
-                      </span>
-                    )}
-                    {showNewDot && (
-                      <span className="flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-red-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
                       </span>
                     )}
                     {questCount > 0 && (

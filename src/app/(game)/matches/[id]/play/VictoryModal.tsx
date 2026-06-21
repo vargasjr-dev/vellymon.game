@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import type { MatchRewards } from "./actions";
-import type { Achievement } from "../../../../../../lib/achievements";
+
 import type { QuestWithProgress } from "../../../../../../lib/questService";
 
 type Props = {
@@ -28,8 +28,16 @@ type Particle = {
 };
 
 const CONFETTI_COLORS = [
-  "#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F",
-  "#BB8FCE", "#85C1E9", "#82E0AA", "#F8C471", "#F1948A",
+  "#FFD700",
+  "#FF6B6B",
+  "#4ECDC4",
+  "#45B7D1",
+  "#F7DC6F",
+  "#BB8FCE",
+  "#85C1E9",
+  "#82E0AA",
+  "#F8C471",
+  "#F1948A",
 ];
 
 function createParticle(canvasWidth: number): Particle {
@@ -48,9 +56,16 @@ function createParticle(canvasWidth: number): Particle {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function VictoryModal({ winner, condition, rewards, onComplete }: Props) {
+export default function VictoryModal({
+  winner,
+  condition,
+  rewards,
+  onComplete,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [phase, setPhase] = useState<"entrance" | "display" | "exit">("entrance");
+  const [phase, setPhase] = useState<"entrance" | "display" | "exit">(
+    "entrance",
+  );
   const [textVisible, setTextVisible] = useState(false);
   const [subtextVisible, setSubtextVisible] = useState(false);
   const particlesRef = useRef<Particle[]>([]);
@@ -119,18 +134,29 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
 
   // Sequenced reveal — no auto-navigate, let the player tap when ready
   useEffect(() => {
-    const t1 = setTimeout(() => { setPhase("display"); setTextVisible(true); }, 300);
+    const t1 = setTimeout(() => {
+      setPhase("display");
+      setTextVisible(true);
+    }, 300);
     const t2 = setTimeout(() => setSubtextVisible(true), 900);
     const t3 = setTimeout(() => setButtonVisible(true), 1500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, []);
 
   const conditionLabel =
-    condition === "concession" ? "Opponent Conceded"
-    : condition === "elimination" ? "Elimination"
-    : condition === "occupation" ? "Occupation"
-    : condition === "accumulation" ? "Accumulation"
-    : condition;
+    condition === "concession"
+      ? "Opponent Conceded"
+      : condition === "elimination"
+        ? "Elimination"
+        : condition === "occupation"
+          ? "Occupation"
+          : condition === "accumulation"
+            ? "Accumulation"
+            : condition;
 
   const handleDismiss = () => {
     if (phase === "exit") return; // already leaving
@@ -141,7 +167,11 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
   return (
     <div
       className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-500 ${
-        phase === "entrance" ? "opacity-0" : phase === "exit" ? "opacity-0" : "opacity-100"
+        phase === "entrance"
+          ? "opacity-0"
+          : phase === "exit"
+            ? "opacity-0"
+            : "opacity-100"
       }`}
       onClick={handleDismiss}
     >
@@ -149,7 +179,10 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
       <div className="absolute inset-0 bg-black/80" />
 
       {/* Confetti canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 pointer-events-none"
+      />
 
       {/* Victory text */}
       <div className="relative z-10 text-center px-6">
@@ -165,7 +198,9 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
         {/* Winner name */}
         <h1
           className={`text-3xl font-bold text-white mb-2 transition-all duration-500 ${
-            textVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+            textVisible
+              ? "translate-y-0 opacity-100"
+              : "translate-y-8 opacity-0"
           }`}
         >
           <span className="text-yellow-400">{winner}</span>
@@ -173,7 +208,9 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
 
         <p
           className={`text-xl text-white/90 mb-4 transition-all duration-500 delay-200 ${
-            textVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+            textVisible
+              ? "translate-y-0 opacity-100"
+              : "translate-y-8 opacity-0"
           }`}
         >
           Victory!
@@ -182,7 +219,9 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
         {/* Condition */}
         <p
           className={`text-sm text-gray-400 uppercase tracking-wider mb-4 transition-all duration-500 ${
-            subtextVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+            subtextVisible
+              ? "translate-y-0 opacity-100"
+              : "translate-y-4 opacity-0"
           }`}
         >
           {conditionLabel}
@@ -194,19 +233,23 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
             {/* XP / Credits / Rank / Sparring badges */}
             <div className="flex justify-center gap-3 flex-wrap">
               {/* XP */}
-                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                  <span className="text-lg">⚡️</span>
-                  <div className="text-left">
-                    <p className="text-xs text-gray-400 leading-none">⚡️</p>
-                    <p className="text-sm font-bold text-yellow-300">+{rewards.xpAwarded}</p>
-                  </div>
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                <span className="text-lg">⚡️</span>
+                <div className="text-left">
+                  <p className="text-xs text-gray-400 leading-none">⚡️</p>
+                  <p className="text-sm font-bold text-yellow-300">
+                    +{rewards.xpAwarded}
+                  </p>
                 </div>
+              </div>
               {/* Credits */}
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
                 <span className="text-lg">💰</span>
                 <div className="text-left">
                   <p className="text-xs text-gray-400 leading-none">Credits</p>
-                  <p className="text-sm font-bold text-yellow-300">+{rewards.creditsAwarded}</p>
+                  <p className="text-sm font-bold text-yellow-300">
+                    +{rewards.creditsAwarded}
+                  </p>
                 </div>
               </div>
               {/* Rank change (future) */}
@@ -215,7 +258,9 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
                   <span className="text-lg">🏅</span>
                   <div className="text-left">
                     <p className="text-xs text-gray-400 leading-none">Rank</p>
-                    <p className="text-sm font-bold text-blue-300">{rewards.rankChange}</p>
+                    <p className="text-sm font-bold text-blue-300">
+                      {rewards.rankChange}
+                    </p>
                   </div>
                 </div>
               )}
@@ -228,58 +273,41 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
               )}
             </div>
 
-            {/* Achievement Unlocked! toast cards */}
-            {rewards.newAchievements && rewards.newAchievements.length > 0 && (
-              <div className="mt-4 flex flex-col gap-2 max-w-xs mx-auto">
-                {rewards.newAchievements.map((achievement: Achievement, index: number) => (
-                  <div
-                    key={achievement.id}
-                    className="flex items-center gap-3 bg-yellow-500/15 border border-yellow-500/40 backdrop-blur-sm rounded-xl px-4 py-3"
-                    style={{ animationDelay: `${index * 150}ms` }}
-                  >
-                    <span className="text-2xl flex-shrink-0">{achievement.icon}</span>
-                    <div className="text-left flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-yellow-400 leading-none mb-1 uppercase tracking-wide">
-                        Achievement Unlocked!
-                      </p>
-                      <p className="text-sm font-bold text-white leading-none truncate">
-                        {achievement.name}
-                      </p>
-                    </div>
-                    <span className="text-xs font-bold text-yellow-300 bg-yellow-500/25 border border-yellow-500/30 px-2 py-1 rounded-full flex-shrink-0">
-                      +{achievement.points} pts
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* Quest Complete! toast cards */}
-            {rewards.newlyCompletedQuests && rewards.newlyCompletedQuests.length > 0 && (
-              <div className="mt-3 flex flex-col gap-2 max-w-xs mx-auto">
-                {rewards.newlyCompletedQuests.map((quest: QuestWithProgress, index: number) => (
-                  <div
-                    key={quest.id}
-                    className="flex items-center gap-3 bg-orange-500/15 border border-orange-500/40 backdrop-blur-sm rounded-xl px-4 py-3"
-                    style={{ animationDelay: `${(rewards.newAchievements?.length ?? 0) * 150 + index * 150}ms` }}
-                  >
-                    <span className="text-2xl flex-shrink-0">{quest.icon}</span>
-                    <div className="text-left flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-orange-400 leading-none mb-1 uppercase tracking-wide">
-                        Quest Complete!
-                      </p>
-                      <p className="text-sm font-bold text-white leading-none truncate">
-                        {quest.name}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                      <span className="text-xs font-bold text-yellow-300">+{quest.xpReward} ⚡️</span>
-                      <span className="text-xs font-bold text-orange-300">+{quest.creditsReward} 💰</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {rewards.newlyCompletedQuests &&
+              rewards.newlyCompletedQuests.length > 0 && (
+                <div className="mt-3 flex flex-col gap-2 max-w-xs mx-auto">
+                  {rewards.newlyCompletedQuests.map(
+                    (quest: QuestWithProgress, index: number) => (
+                      <div
+                        key={quest.id}
+                        className="flex items-center gap-3 bg-orange-500/15 border border-orange-500/40 backdrop-blur-sm rounded-xl px-4 py-3"
+                        style={{ animationDelay: `${index * 150}ms` }}
+                      >
+                        <span className="text-2xl flex-shrink-0">
+                          {quest.icon}
+                        </span>
+                        <div className="text-left flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-orange-400 leading-none mb-1 uppercase tracking-wide">
+                            Quest Complete!
+                          </p>
+                          <p className="text-sm font-bold text-white leading-none truncate">
+                            {quest.name}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                          <span className="text-xs font-bold text-yellow-300">
+                            +{quest.xpReward} ⚡️
+                          </span>
+                          <span className="text-xs font-bold text-orange-300">
+                            +{quest.creditsReward} 💰
+                          </span>
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
           </div>
         )}
 
@@ -288,8 +316,10 @@ export default function VictoryModal({ winner, condition, rewards, onComplete }:
           onClick={handleDismiss}
           className={`px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl
             text-lg shadow-lg shadow-yellow-500/30 transition-all duration-500 ${
-            buttonVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-6 opacity-0 scale-90"
-          }`}
+              buttonVisible
+                ? "translate-y-0 opacity-100 scale-100"
+                : "translate-y-6 opacity-0 scale-90"
+            }`}
         >
           View Results
         </button>

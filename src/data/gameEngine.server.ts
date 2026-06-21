@@ -17,7 +17,6 @@ import {
 } from "../../data/schema";
 import {
   awardMatchProgression,
-  checkAndAwardMatchAchievements,
   updateMatchQuestProgress,
 } from "../../lib/matchProgression";
 import { eq, asc } from "drizzle-orm";
@@ -633,8 +632,7 @@ export async function submitMatchCommands(
         .update(gameSession)
         .set({ metadata: meta, status: "completed" })
         .where(eq(gameSession.uuid, matchUuid));
-      // Sequence: write stats first (achievements depend on them), then run
-      // progression + achievement checks in parallel — all fire-and-forget.
+      // Sequence: write stats first, then run progression + quest checks fire-and-forget.
       const humanPlayerIds = gameState.teams
         .filter((t) => t.userId !== "ai-bot")
         .map((t) => t.userId);
@@ -642,7 +640,6 @@ export async function submitMatchCommands(
         .then(() =>
           Promise.all([
             awardMatchProgression(matchUuid, gameState, meta.sparring ?? false),
-            checkAndAwardMatchAchievements(matchUuid, humanPlayerIds),
             updateMatchQuestProgress(matchUuid, humanPlayerIds),
           ]),
         )
@@ -708,8 +705,7 @@ export async function concedeMatch(
     .set({ metadata: meta, status: "completed" })
     .where(eq(gameSession.uuid, matchUuid));
 
-  // Sequence: write stats first (achievements depend on them), then run
-  // progression + achievement checks in parallel — all fire-and-forget.
+  // Sequence: write stats first, then run progression + quest checks fire-and-forget.
   const humanPlayerIds = gameState.teams
     .filter((t) => t.userId !== "ai-bot")
     .map((t) => t.userId);
@@ -717,7 +713,6 @@ export async function concedeMatch(
     .then(() =>
       Promise.all([
         awardMatchProgression(matchUuid, gameState, meta.sparring ?? false),
-        checkAndAwardMatchAchievements(matchUuid, humanPlayerIds),
         updateMatchQuestProgress(matchUuid, humanPlayerIds),
       ]),
     )

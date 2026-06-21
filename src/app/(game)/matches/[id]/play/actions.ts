@@ -10,8 +10,7 @@ import {
 import { db } from "../../../../../../data/db";
 import { matchStats } from "../../../../../../data/schema";
 import { eq, and, desc, gte, lt, count } from "drizzle-orm";
-import { checkAndAwardAchievements } from "../../../../../../lib/achievementService";
-import type { Achievement } from "../../../../../../lib/achievements";
+
 import { getQuestsCompletedAroundMatch } from "../../../../../../lib/questService";
 import type { QuestWithProgress } from "../../../../../../lib/questService";
 
@@ -43,7 +42,12 @@ export async function submitCommandsAction(
     attackIndex: c.attackIndex,
   }));
 
-  return submitMatchCommands(matchUuid, session.user.id, engineCommands as never[], asTeamId);
+  return submitMatchCommands(
+    matchUuid,
+    session.user.id,
+    engineCommands as never[],
+    asTeamId,
+  );
 }
 
 export async function concedeAction(matchUuid: string, asTeamId?: 1 | 2) {
@@ -68,7 +72,8 @@ export type VellymonInfo = {
 export async function getVellymonInfoAction(
   names: string[],
 ): Promise<Record<string, VellymonInfo>> {
-  const { VELLYMON_LIBRARY } = await import("../../../../../../server/vellymonLibrary");
+  const { VELLYMON_LIBRARY } =
+    await import("../../../../../../server/vellymonLibrary");
   await import("../../../../../../server/powers");
   const { getPower } = await import("../../../../../../server/specialPowers");
   const result: Record<string, VellymonInfo> = {};
@@ -97,8 +102,6 @@ export type MatchRewards = {
   /** e.g. "Silver ★★" — null if not a ranked match or rank data unavailable */
   rankChange: string | null;
   isSparring: boolean;
-  /** Achievements newly unlocked by this match — empty array if none */
-  newAchievements: Achievement[];
   /** Daily quests completed by this match — empty array if none */
   newlyCompletedQuests: QuestWithProgress[];
 };
@@ -164,14 +167,11 @@ export async function getMatchRewardsAction(
     }
   }
 
-  // Check and award any newly unlocked achievements + fetch newly completed quests
-  const [newAchievements, newlyCompletedQuests] = await Promise.all([
-    checkAndAwardAchievements({
-      userId: session.user.id,
-      latestMatchUuid: matchUuid,
-    }),
-    getQuestsCompletedAroundMatch(session.user.id, row.completedAt),
-  ]);
+  // Fetch newly completed quests
+  const newlyCompletedQuests = await getQuestsCompletedAroundMatch(
+    session.user.id,
+    row.completedAt,
+  );
 
   return {
     result: row.result as "win" | "loss",
@@ -179,7 +179,6 @@ export async function getMatchRewardsAction(
     creditsAwarded,
     rankChange: null, // Phase 12 item 1 will surface this from userRank
     isSparring,
-    newAchievements,
     newlyCompletedQuests,
   };
 }
