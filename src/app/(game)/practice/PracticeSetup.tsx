@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createSparringMatchAction } from "./actions";
 import type { AIDifficulty } from "../../../../server/ai-opponent";
 import { MAP_OPTIONS } from "~/lib/matchSettings";
+import VellymonPremiumLogo from "~/components/VellymonPremiumLogo";
 
 type TeamOption = { uuid: string; name: string };
 
@@ -68,7 +69,9 @@ export default function PracticeSetup({
   if (!subscribed) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">🥊</div>
+        <div className="flex justify-center mb-5">
+          <VellymonPremiumLogo />
+        </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           Premium Required
         </h2>

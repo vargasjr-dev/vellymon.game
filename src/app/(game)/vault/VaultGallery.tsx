@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { purchaseVaultItemAction, type VaultItem } from "./actions";
+import VellymonPremiumLogo from "~/components/VellymonPremiumLogo";
 
 interface VaultGalleryProps {
   items: VaultItem[];
@@ -47,7 +48,9 @@ export default function VaultGallery({
   if (!subscribed) {
     return (
       <div className="text-center py-12">
-        <div className="text-5xl mb-4">🔒</div>
+        <div className="flex justify-center mb-5">
+          <VellymonPremiumLogo />
+        </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           Subscribers Only
         </h2>

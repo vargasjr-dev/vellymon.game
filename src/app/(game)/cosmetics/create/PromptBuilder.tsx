@@ -4,6 +4,7 @@ import { useState } from "react";
 import { generateCosmeticAction, type RosterItem } from "./actions";
 import { GENERATION_COSTS } from "../../../../../lib/cosmetic-generator";
 import type { CosmeticType } from "../../../../../lib/cosmetics";
+import VellymonPremiumLogo from "~/components/VellymonPremiumLogo";
 
 const COSMETIC_TYPES: { value: CosmeticType; label: string; needsVellymon: boolean }[] = [
   { value: "skin", label: "🎨 Skin", needsVellymon: true },
@@ -93,7 +94,9 @@ export default function PromptBuilder({
   if (!subscribed) {
     return (
       <div className="text-center py-12">
-        <div className="text-5xl mb-4">⭐</div>
+        <div className="flex justify-center mb-5">
+          <VellymonPremiumLogo />
+        </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           Premium Required
         </h2>
