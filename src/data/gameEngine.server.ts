@@ -15,7 +15,11 @@ import {
   vellymonInstance,
   matchStats,
 } from "../../data/schema";
-import { awardMatchProgression, checkAndAwardMatchAchievements, updateMatchQuestProgress } from "../../lib/matchProgression";
+import {
+  awardMatchProgression,
+  checkAndAwardMatchAchievements,
+  updateMatchQuestProgress,
+} from "../../lib/matchProgression";
 import { eq, asc } from "drizzle-orm";
 import {
   VELLYMON_LIBRARY,
@@ -160,6 +164,8 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
     .orderBy(asc(gamePlayer.joinedAt));
 
   if (players.length < 2) throw new Error("Need 2 players to start");
+  if (!players[0].teamUuid || !players[1].teamUuid)
+    throw new Error("Both players must have a team to start");
 
   // Build team setups (using map-specific spawn positions)
   const team1Setup = await buildTeamSetup(
@@ -640,7 +646,9 @@ export async function submitMatchCommands(
             updateMatchQuestProgress(matchUuid, humanPlayerIds),
           ]),
         )
-        .catch((e) => console.error("[game-over] post-match processing failed:", e));
+        .catch((e) =>
+          console.error("[game-over] post-match processing failed:", e),
+        );
       return { resolved: true, turnLog, gameOver: true };
     }
   }

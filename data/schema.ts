@@ -1,4 +1,15 @@
-import { pgTable, uuid, varchar, integer, timestamp, json, text, boolean, index, real } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  integer,
+  timestamp,
+  json,
+  text,
+  boolean,
+  index,
+  real,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const vellymonInstance = pgTable("vellymonInstance", {
@@ -41,9 +52,9 @@ export const gamePlayer = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => user.id),
-    teamUuid: uuid("teamUuid")
-      .notNull()
-      .references(() => team.uuid),
+    teamUuid: uuid("teamUuid").references(() => team.uuid, {
+      onDelete: "set null",
+    }),
     joinedAt: timestamp("joinedAt").notNull().defaultNow(),
     status: varchar("status", { length: 32 }).notNull().default("active"), // active, left, kicked
   },
@@ -104,7 +115,9 @@ export const user = pgTable("user", {
   subscriptionId: text("subscriptionId"),
   subscriptionStatus: text("subscriptionStatus").default("none").notNull(), // none | active | past_due | canceled
   subscribedAt: timestamp("subscribedAt"),
-  subscriptionStreakMonths: integer("subscriptionStreakMonths").default(0).notNull(),
+  subscriptionStreakMonths: integer("subscriptionStreakMonths")
+    .default(0)
+    .notNull(),
   // ───────────────────────────────────────────────────────────────────────────
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
@@ -351,9 +364,7 @@ export const seasonTrack = pgTable(
     freeReward: json("freeReward"), // { type, description, cosmeticId?, credits?, ... }
     premiumReward: json("premiumReward"), // same shape, premium track
   },
-  (table) => [
-    index("seasonTrack_seasonId_idx").on(table.seasonId),
-  ],
+  (table) => [index("seasonTrack_seasonId_idx").on(table.seasonId)],
 );
 
 export const userSeasonProgress = pgTable(
@@ -369,7 +380,9 @@ export const userSeasonProgress = pgTable(
     xp: integer("xp").default(0).notNull(),
     currentTier: integer("currentTier").default(0).notNull(),
     claimedFreeTiers: json("claimedFreeTiers").$type<number[]>().default([]),
-    claimedPremiumTiers: json("claimedPremiumTiers").$type<number[]>().default([]),
+    claimedPremiumTiers: json("claimedPremiumTiers")
+      .$type<number[]>()
+      .default([]),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
       .$onUpdate(() => new Date())
@@ -489,9 +502,13 @@ export const matchSnapshot = pgTable("matchSnapshot", {
   turnLogs: json("turnLogs"), // per-turn action logs: TurnLog[], parallel to turnSnapshots[1+]
   status: varchar("status", { length: 32 }).notNull().default("completed"),
   /** AI profile for team 1 (null for human/anonymous matches) */
-  p1ProfileId: text("p1ProfileId").references(() => aiProfile.id, { onDelete: "set null" }),
+  p1ProfileId: text("p1ProfileId").references(() => aiProfile.id, {
+    onDelete: "set null",
+  }),
   /** AI profile for team 2 (null for human/anonymous matches) */
-  p2ProfileId: text("p2ProfileId").references(() => aiProfile.id, { onDelete: "set null" }),
+  p2ProfileId: text("p2ProfileId").references(() => aiProfile.id, {
+    onDelete: "set null",
+  }),
   uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()
@@ -582,16 +599,22 @@ export const userAchievement = pgTable(
   (table) => [
     index("userAchievement_userId_idx").on(table.userId),
     // Prevent duplicates — each achievement can only be earned once
-    index("userAchievement_userId_achievementId_idx").on(table.userId, table.achievementId),
+    index("userAchievement_userId_achievementId_idx").on(
+      table.userId,
+      table.achievementId,
+    ),
   ],
 );
 
-export const userAchievementRelations = relations(userAchievement, ({ one }) => ({
-  user: one(user, {
-    fields: [userAchievement.userId],
-    references: [user.id],
+export const userAchievementRelations = relations(
+  userAchievement,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userAchievement.userId],
+      references: [user.id],
+    }),
   }),
-}));
+);
 
 // ─── Daily Quests ─────────────────────────────────────────────────────────────
 
@@ -630,12 +653,15 @@ export const userQuestProgress = pgTable(
   ],
 );
 
-export const userQuestProgressRelations = relations(userQuestProgress, ({ one }) => ({
-  user: one(user, {
-    fields: [userQuestProgress.userId],
-    references: [user.id],
+export const userQuestProgressRelations = relations(
+  userQuestProgress,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userQuestProgress.userId],
+      references: [user.id],
+    }),
   }),
-}));
+);
 
 // ─── Daily Login Streak ───────────────────────────────────────────────────────
 
@@ -663,12 +689,15 @@ export const userLoginStreak = pgTable("userLoginStreak", {
   lastFreezeGrantDate: text("lastFreezeGrantDate").notNull().default(""),
 });
 
-export const userLoginStreakRelations = relations(userLoginStreak, ({ one }) => ({
-  user: one(user, {
-    fields: [userLoginStreak.userId],
-    references: [user.id],
+export const userLoginStreakRelations = relations(
+  userLoginStreak,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userLoginStreak.userId],
+      references: [user.id],
+    }),
   }),
-}));
+);
 
 /**
  * Admin API keys — named bearer tokens for programmatic access.

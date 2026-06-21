@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "~/components/Toast";
 import ConfirmDialog from "~/components/ConfirmDialog";
-import { getMatchAction, cancelMatchAction, startMatchAction, deleteMatchAction } from "../actions";
+import {
+  getMatchAction,
+  cancelMatchAction,
+  startMatchAction,
+  deleteMatchAction,
+} from "../actions";
 
 // ─── Invite Link Button ───────────────────────────────────────────────────────
 
@@ -55,7 +60,7 @@ type Player = {
   uuid: string;
   userId: string;
   userName: string | null;
-  teamUuid: string;
+  teamUuid: string | null;
   teamName: string | null;
   joinedAt: Date;
 };
@@ -222,7 +227,10 @@ export default function WaitingRoom({
                 </div>
               </div>
               <p className="text-sm text-gray-600">
-                Team: <span className="font-medium">{player.teamName ?? "Unknown"}</span>
+                Team:{" "}
+                <span className="font-medium">
+                  {player.teamName ?? "Unknown"}
+                </span>
               </p>
             </div>
           ))}

@@ -1,5 +1,12 @@
 import { db } from "../../data/db";
-import { gameSession, gamePlayer, user, team, matchSnapshot, aiProfile } from "../../data/schema";
+import {
+  gameSession,
+  gamePlayer,
+  user,
+  team,
+  matchSnapshot,
+  aiProfile,
+} from "../../data/schema";
 import { eq } from "drizzle-orm";
 
 export type MatchDetail = {
@@ -14,13 +21,14 @@ export type MatchDetail = {
     uuid: string;
     userId: string;
     userName: string | null;
-    teamUuid: string;
+    teamUuid: string | null;
     teamName: string | null;
     joinedAt: Date;
   }[];
 };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const getMatch = async (matchUuid: string): Promise<MatchDetail | null> => {
   try {
@@ -76,7 +84,9 @@ const getMatch = async (matchUuid: string): Promise<MatchDetail | null> => {
     if (!snap) return null;
 
     // Resolve profile names for synthetic player rows (two queries max)
-    const profileIds = [snap.p1ProfileId, snap.p2ProfileId].filter(Boolean) as string[];
+    const profileIds = [snap.p1ProfileId, snap.p2ProfileId].filter(
+      Boolean,
+    ) as string[];
     const profileMap = new Map<string, string>();
     for (const id of profileIds) {
       const [p] = await db
@@ -88,8 +98,14 @@ const getMatch = async (matchUuid: string): Promise<MatchDetail | null> => {
 
     // Extract team names from gameState JSON if available
     const gs = snap.gameState as { teams?: Array<{ name?: string }> } | null;
-    const t1Name = gs?.teams?.[0]?.name ?? profileMap.get(snap.p1ProfileId ?? "") ?? "Team 1";
-    const t2Name = gs?.teams?.[1]?.name ?? profileMap.get(snap.p2ProfileId ?? "") ?? "Team 2";
+    const t1Name =
+      gs?.teams?.[0]?.name ??
+      profileMap.get(snap.p1ProfileId ?? "") ??
+      "Team 1";
+    const t2Name =
+      gs?.teams?.[1]?.name ??
+      profileMap.get(snap.p2ProfileId ?? "") ??
+      "Team 2";
 
     // Build synthetic MatchDetail — no real users/players for simulated matches
     const syntheticPlayers = [

@@ -65,11 +65,13 @@ export async function startMatchAction(matchUuid: string) {
     return { success: false, message: "Match is not ready to start" };
 
   const isPlayer = match.players.some((p) => p.userId === session.user.id);
-  if (!isPlayer) return { success: false, message: "You are not in this match" };
+  if (!isPlayer)
+    return { success: false, message: "You are not in this match" };
 
   // Initialize the game engine and transition to playing
   try {
-    const { initializeMatchGame } = await import("../../../data/gameEngine.server");
+    const { initializeMatchGame } =
+      await import("../../../data/gameEngine.server");
     await initializeMatchGame(matchUuid);
   } catch (error) {
     console.error("Failed to initialize game:", error);
@@ -112,7 +114,9 @@ export async function deleteMatchAction(matchUuid: string) {
  */
 export async function createRematchAction(
   originalMatchUuid: string,
-): Promise<{ success: true; matchUuid: string } | { success: false; message: string }> {
+): Promise<
+  { success: true; matchUuid: string } | { success: false; message: string }
+> {
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
@@ -132,13 +136,20 @@ export async function createRematchAction(
     return { success: false, message: "You were not a player in that match" };
   }
 
+  if (!myPlayer.teamUuid) {
+    return { success: false, message: "Original team no longer exists" };
+  }
+
   const result = await createMatch({
     userId: session.user.id,
     teamUuid: myPlayer.teamUuid,
   });
 
   if (!result.success) {
-    return { success: false, message: result.message ?? "Failed to create rematch" };
+    return {
+      success: false,
+      message: result.message ?? "Failed to create rematch",
+    };
   }
 
   revalidatePath("/matches");
