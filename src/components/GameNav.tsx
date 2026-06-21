@@ -30,7 +30,15 @@ interface GameNavProps {
   isAdmin?: boolean;
 }
 
-export default function GameNav({ user, creditBalance, isSubscriber, newAchievementCount, activeQuestCount, currentStreak, isAdmin }: GameNavProps) {
+export default function GameNav({
+  user,
+  creditBalance,
+  isSubscriber,
+  newAchievementCount,
+  activeQuestCount,
+  currentStreak,
+  isAdmin,
+}: GameNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -103,63 +111,54 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
           {/* Desktop Links */}
           <div className="hidden md:flex items-center space-x-1">
             {navLinks.map((link) => {
-                const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
-                const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
-                const questCount = link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`relative px-3 py-2 rounded-lg text-sm font-medium transition ${
-                      isActive(link.href)
-                        ? "bg-blue-600 text-white"
-                        : isPremiumLocked
-                          ? "text-gray-500 hover:bg-gray-800 hover:text-gray-400"
-                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                    }`}
-                  >
-                    {link.label}
-                    {"premium" in link && link.premium && (
-                      <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
-                        {isSubscriber ? "⭐" : "PRO"}
-                      </span>
-                    )}
-                    {showNewDot && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-                      </span>
-                    )}
-                    {questCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
-                        {questCount}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-              {isAdmin && (
+              const isPremiumLocked =
+                "premium" in link && link.premium && !isSubscriber;
+              const showNewDot =
+                link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
+              const questCount =
+                link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
+              return (
                 <Link
-                  href="/admin"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    isActive("/admin")
-                      ? "bg-red-600 text-white"
-                      : "text-red-400 hover:bg-gray-800 hover:text-red-300"
+                  key={link.href}
+                  href={link.href}
+                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    isActive(link.href)
+                      ? "bg-blue-600 text-white"
+                      : isPremiumLocked
+                        ? "text-gray-500 hover:bg-gray-800 hover:text-gray-400"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
                   }`}
                 >
-                  🛠️ Admin
+                  {link.label}
+                  {"premium" in link && link.premium && (
+                    <span className="ml-1 text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full">
+                      {isSubscriber ? "⭐" : "PRO"}
+                    </span>
+                  )}
+                  {showNewDot && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                    </span>
+                  )}
+                  {questCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
+                      {questCount}
+                    </span>
+                  )}
                 </Link>
-              )}
-            </div>
+              );
+            })}
+          </div>
 
           {/* Credit Balance (Desktop) */}
           {isSubscriber && creditBalance !== undefined && (
             <Link
               href="/credits"
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition"
-              >
-                <span>💰</span>
-                <span>{creditBalance.toLocaleString()}</span>
+            >
+              <span>💰</span>
+              <span>{creditBalance.toLocaleString()}</span>
             </Link>
           )}
 
@@ -238,6 +237,35 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
                   Profile
                 </Link>
 
+                {/* Admin Link (admins only) */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    Admin
+                  </Link>
+                )}
+
                 {/* Sign Out */}
                 <button
                   onClick={handleSignOut}
@@ -310,9 +338,12 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
         {menuOpen && (
           <div className="md:hidden pb-4 space-y-1 border-t border-gray-800 pt-2">
             {navLinks.map((link) => {
-              const isPremiumLocked = "premium" in link && link.premium && !isSubscriber;
-              const showNewDot = link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
-              const questCount = link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
+              const isPremiumLocked =
+                "premium" in link && link.premium && !isSubscriber;
+              const showNewDot =
+                link.href === "/achievements" && (newAchievementCount ?? 0) > 0;
+              const questCount =
+                link.href === "/quests" ? (activeQuestCount ?? 0) : 0;
               return (
                 <Link
                   key={link.href}
@@ -348,19 +379,6 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
               );
             })}
 
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  isActive("/admin")
-                    ? "bg-red-600 text-white"
-                    : "text-red-400 hover:bg-gray-800 hover:text-red-300"
-                }`}
-              >
-                🛠️ Admin
-              </Link>
-            )}
-
             {/* Mobile Credit Balance */}
             {isSubscriber && creditBalance !== undefined && (
               <Link
@@ -392,6 +410,18 @@ export default function GameNav({ user, creditBalance, isSubscriber, newAchievem
               >
                 Profile
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className={`block px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    isActive("/admin")
+                      ? "bg-red-600 text-white"
+                      : "text-red-400 hover:bg-gray-800 hover:text-red-300"
+                  }`}
+                >
+                  🛠️ Admin
+                </Link>
+              )}
               <button
                 onClick={handleSignOut}
                 disabled={signingOut}
