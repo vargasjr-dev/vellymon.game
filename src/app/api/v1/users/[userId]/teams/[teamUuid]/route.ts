@@ -17,14 +17,18 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../../../../data/db";
-import { team, teamSlot, vellymonInstance } from "../../../../../../../../data/schema";
+import {
+  team,
+  teamSlot,
+  vellymonInstance,
+} from "../../../../../../../../data/schema";
 import { eq, and } from "drizzle-orm";
 import { validateApiKey } from "../../../../../../../lib/apiKeyAuth.server";
 import updateTeam from "../../../../../../../data/updateTeam.server";
 import deleteTeam from "../../../../../../../data/deleteTeam.server";
 import type { SlotInput } from "../../../../../../../data/createTeam.server";
 import getVellymonModel from "../../../../../../../data/getVellymonModel.server";
-import "../../../../../../../server/powers";
+import "../../../../../../../../server/powers";
 
 async function getTeamWithSlots(teamUuid: string, userId: string) {
   const [t] = await db
@@ -52,7 +56,11 @@ async function getTeamWithSlots(teamUuid: string, userId: string) {
         .limit(1);
       let vellymonName = "Unknown";
       if (inst) {
-        try { vellymonName = getVellymonModel(inst.modelUuid).name; } catch { /* skip */ }
+        try {
+          vellymonName = getVellymonModel(inst.modelUuid).name;
+        } catch {
+          /* skip */
+        }
       }
       return { ...s, vellymonName };
     }),
@@ -91,14 +99,20 @@ export async function PUT(
 
   let body: { name?: string; slots?: SlotInput[] };
   try {
-    body = await req.json() as { name?: string; slots?: SlotInput[] };
+    body = (await req.json()) as { name?: string; slots?: SlotInput[] };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const { name, slots } = body;
-  if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
-    return NextResponse.json({ error: "name must be a non-empty string" }, { status: 400 });
+  if (
+    name !== undefined &&
+    (typeof name !== "string" || name.trim().length === 0)
+  ) {
+    return NextResponse.json(
+      { error: "name must be a non-empty string" },
+      { status: 400 },
+    );
   }
 
   const result = await updateTeam({

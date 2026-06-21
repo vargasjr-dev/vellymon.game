@@ -14,7 +14,7 @@ import { vellymonInstance, user } from "../../../../../../../data/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKey } from "../../../../../../lib/apiKeyAuth.server";
 import getVellymonModel from "../../../../../../data/getVellymonModel.server";
-import "../../../../../../server/powers"; // trigger power registration
+import "../../../../../../../server/powers"; // trigger power registration
 
 export async function GET(
   req: Request,

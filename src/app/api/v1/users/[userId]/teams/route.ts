@@ -16,13 +16,18 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../../../data/db";
-import { team, teamSlot, vellymonInstance, user } from "../../../../../../../data/schema";
+import {
+  team,
+  teamSlot,
+  vellymonInstance,
+  user,
+} from "../../../../../../../data/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKey } from "../../../../../../lib/apiKeyAuth.server";
 import createTeam from "../../../../../../data/createTeam.server";
 import type { SlotInput } from "../../../../../../data/createTeam.server";
 import getVellymonModel from "../../../../../../data/getVellymonModel.server";
-import "../../../../../../server/powers";
+import "../../../../../../../server/powers";
 
 async function requireUser(userId: string) {
   const [u] = await db
@@ -43,7 +48,7 @@ export async function GET(
   }
 
   const { userId } = await params;
-  if (!await requireUser(userId)) {
+  if (!(await requireUser(userId))) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
@@ -78,7 +83,11 @@ export async function GET(
             .limit(1);
           let vellymonName = "Unknown";
           if (inst) {
-            try { vellymonName = getVellymonModel(inst.modelUuid).name; } catch { /* skip */ }
+            try {
+              vellymonName = getVellymonModel(inst.modelUuid).name;
+            } catch {
+              /* skip */
+            }
           }
           return { ...s, vellymonName };
         }),
@@ -101,13 +110,13 @@ export async function POST(
   }
 
   const { userId } = await params;
-  if (!await requireUser(userId)) {
+  if (!(await requireUser(userId))) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
   let body: { name?: string; slots?: SlotInput[] };
   try {
-    body = await req.json() as { name?: string; slots?: SlotInput[] };
+    body = (await req.json()) as { name?: string; slots?: SlotInput[] };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -122,5 +131,8 @@ export async function POST(
     return NextResponse.json({ error: result.message }, { status: 422 });
   }
 
-  return NextResponse.json({ ok: true, teamUuid: result.teamUuid }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, teamUuid: result.teamUuid },
+    { status: 201 },
+  );
 }
