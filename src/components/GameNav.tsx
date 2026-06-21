@@ -6,12 +6,11 @@ import { usePathname } from "next/navigation";
 
 const navLinks = [
   { href: "/player", label: "🏠 Hub" },
+  { href: "/ranked", label: "🏆 Ranked" },
   { href: "/roster", label: "🐾 Roster" },
   { href: "/market", label: "🛒 Market" },
   { href: "/matches", label: "🎮 Matches" },
   { href: "/practice", label: "🤖 Practice", premium: true },
-  { href: "/season", label: "🏆 Season" },
-  { href: "/ranked", label: "⚔️ Ranked" },
   { href: "/achievements", label: "🏅 Badges" },
   { href: "/quests", label: "📋 Quests" },
 ];
