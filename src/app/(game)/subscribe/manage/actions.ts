@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { auth } from "~/lib/auth.server";
+import { isAdmin } from "~/lib/admin";
 import { getStripe } from "../../../../../lib/stripe";
 import { db } from "../../../../../data/db";
 import { user } from "../../../../../data/schema";
@@ -10,6 +11,8 @@ import { eq } from "drizzle-orm";
 /**
  * Create a Stripe Customer Portal session so the user can manage their
  * subscription (cancel, update payment method, view invoices).
+ * Admins use the test Stripe account, matching how their subscription
+ * was originally created.
  */
 export async function createPortalSession(): Promise<{
   url: string | null;
@@ -22,6 +25,8 @@ export async function createPortalSession(): Promise<{
     return { url: null, error: "Not authenticated" };
   }
 
+  const useTestMode = isAdmin(session);
+
   try {
     const [existing] = await db
       .select({ stripeCustomerId: user.stripeCustomerId })
@@ -33,7 +38,7 @@ export async function createPortalSession(): Promise<{
       return { url: null, error: "No subscription found" };
     }
 
-    const stripe = getStripe();
+    const stripe = getStripe(useTestMode);
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: existing.stripeCustomerId,
       return_url: `${getBaseUrl()}/player`,

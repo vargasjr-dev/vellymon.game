@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { auth } from "~/lib/auth.server";
+import { isAdmin } from "~/lib/admin";
 import { getStripe, getPremiumPriceId } from "../../../../lib/stripe";
 import { db } from "../../../../data/db";
 import { user } from "../../../../data/schema";
@@ -9,6 +10,8 @@ import { eq } from "drizzle-orm";
 
 /**
  * Create a Stripe Checkout Session for the Vellymon Premium subscription.
+ * Admins are routed through the test Stripe account so they can exercise the
+ * full payment flow without touching live billing.
  * Returns the checkout URL to redirect the user to.
  */
 export async function createCheckoutSession(): Promise<{
@@ -22,9 +25,11 @@ export async function createCheckoutSession(): Promise<{
     return { url: null, error: "Not authenticated" };
   }
 
+  const useTestMode = isAdmin(session);
+
   try {
-    const stripe = getStripe();
-    const priceId = await getPremiumPriceId();
+    const stripe = getStripe(useTestMode);
+    const priceId = await getPremiumPriceId(useTestMode);
 
     // Check if user already has a Stripe customer ID
     const [existing] = await db

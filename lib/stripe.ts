@@ -1,10 +1,25 @@
 import Stripe from "stripe";
 
-// Lazy-initialized so the build succeeds even when STRIPE_SECRET_KEY
-// isn't in the environment yet (preview deploys, CI, etc.).
+// Two lazy-initialized singletons — one for live, one for test.
+// Lazy so the build succeeds even when keys aren't in the environment yet.
 let _stripe: Stripe | null = null;
+let _stripeTest: Stripe | null = null;
 
-export function getStripe(): Stripe {
+export function getStripe(useTestMode = false): Stripe {
+  if (useTestMode) {
+    if (!_stripeTest) {
+      const key = process.env.STRIPE_TEST_SECRET_KEY;
+      if (!key) {
+        throw new Error("STRIPE_TEST_SECRET_KEY environment variable is required");
+      }
+      _stripeTest = new Stripe(key, {
+        apiVersion: "2026-04-22.dahlia",
+        typescript: true,
+      });
+    }
+    return _stripeTest;
+  }
+
   if (!_stripe) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
@@ -26,17 +41,13 @@ const PREMIUM_PRODUCT_NAME = "Vellymon Premium";
 const PREMIUM_PRICE_LOOKUP_KEY = "vellymon_premium_monthly";
 
 let cachedPriceId: string | null = null;
+let cachedTestPriceId: string | null = null;
 
 /**
- * Look up the Vellymon Premium monthly price ID from Stripe.
+ * Resolve the Vellymon Premium monthly price ID from a given Stripe client.
  * Uses lookup_key first (preferred), falls back to searching by product name.
- * Result is cached for the lifetime of the server process.
  */
-export async function getPremiumPriceId(): Promise<string> {
-  if (cachedPriceId) return cachedPriceId;
-
-  const stripe = getStripe();
-
+async function lookupPremiumPriceId(stripe: Stripe): Promise<string> {
   // Try lookup_key first — fastest and most deterministic
   const byKey = await stripe.prices.list({
     lookup_keys: [PREMIUM_PRICE_LOOKUP_KEY],
@@ -45,8 +56,7 @@ export async function getPremiumPriceId(): Promise<string> {
   });
 
   if (byKey.data.length > 0) {
-    cachedPriceId = byKey.data[0].id;
-    return cachedPriceId;
+    return byKey.data[0].id;
   }
 
   // Fallback: find product by name, then get its active recurring price
@@ -72,6 +82,24 @@ export async function getPremiumPriceId(): Promise<string> {
     );
   }
 
-  cachedPriceId = prices.data[0].id;
+  return prices.data[0].id;
+}
+
+/**
+ * Look up the Vellymon Premium monthly price ID from Stripe.
+ * Admins use the test Stripe account; regular users use live.
+ * Result is cached per mode for the lifetime of the server process.
+ */
+export async function getPremiumPriceId(useTestMode = false): Promise<string> {
+  if (useTestMode) {
+    if (!cachedTestPriceId) {
+      cachedTestPriceId = await lookupPremiumPriceId(getStripe(true));
+    }
+    return cachedTestPriceId;
+  }
+
+  if (!cachedPriceId) {
+    cachedPriceId = await lookupPremiumPriceId(getStripe(false));
+  }
   return cachedPriceId;
 }

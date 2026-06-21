@@ -6,13 +6,14 @@ import { user } from "../../../../../data/schema";
 import { eq } from "drizzle-orm";
 import { grantCredits, calculateMonthlyGrant } from "../../../../../lib/currency";
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const liveWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const testWebhookSecret = process.env.STRIPE_TEST_WEBHOOK_SECRET;
 
 // ─── Webhook Handler ─────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  if (!webhookSecret) {
-    console.error("STRIPE_WEBHOOK_SECRET not configured");
+  if (!liveWebhookSecret && !testWebhookSecret) {
+    console.error("No Stripe webhook secret configured");
     return NextResponse.json(
       { error: "Webhook not configured" },
       { status: 500 }
@@ -29,14 +30,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Try live secret first, then fall back to test secret.
+  // This lets the same endpoint handle both live and test webhooks
+  // (e.g. when an admin exercises the full payment flow in test mode).
   let event: Stripe.Event;
 
-  try {
-    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`Webhook signature verification failed: ${message}`);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  if (liveWebhookSecret) {
+    try {
+      event = getStripe(false).webhooks.constructEvent(body, signature, liveWebhookSecret);
+    } catch {
+      if (!testWebhookSecret) {
+        console.error("Webhook signature verification failed (live)");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      }
+      try {
+        event = getStripe(true).webhooks.constructEvent(body, signature, testWebhookSecret);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error(`Webhook signature verification failed (live + test): ${message}`);
+        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      }
+    }
+  } else {
+    // Only test secret configured
+    try {
+      event = getStripe(true).webhooks.constructEvent(body, signature, testWebhookSecret!);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error(`Webhook signature verification failed: ${message}`);
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    }
   }
 
   // ─── Event Routing ───────────────────────────────────────────────────────
