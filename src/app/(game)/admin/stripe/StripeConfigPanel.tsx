@@ -11,9 +11,7 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-sm font-medium ${
-        ok
-          ? "bg-green-100 text-green-800"
-          : "bg-red-100 text-red-800"
+        ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
       }`}
     >
       {ok ? "✅" : "❌"} {label}
@@ -21,7 +19,13 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-export default function StripeConfigPanel() {
+function StripeEnvPanel({
+  label,
+  useTestMode,
+}: {
+  label: string;
+  useTestMode: boolean;
+}) {
   const [config, setConfig] = useState<StripeConfigStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(false);
@@ -31,7 +35,7 @@ export default function StripeConfigPanel() {
     setLoading(true);
     setMessage(null);
     try {
-      const result = await verifyStripeConfig();
+      const result = await verifyStripeConfig(useTestMode);
       setConfig(result);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to verify");
@@ -44,11 +48,10 @@ export default function StripeConfigPanel() {
     setBootstrapping(true);
     setMessage(null);
     try {
-      const result = await bootstrapStripeProducts();
+      const result = await bootstrapStripeProducts(useTestMode);
       setMessage(result.message);
       if (result.success) {
-        // Re-verify to update the display
-        const updated = await verifyStripeConfig();
+        const updated = await verifyStripeConfig(useTestMode);
         setConfig(updated);
       }
     } catch (err) {
@@ -60,11 +63,9 @@ export default function StripeConfigPanel() {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-2">
-        💳 Stripe Configuration
-      </h2>
-      <p className="text-gray-600 mb-4">
-        Verify and manage the Vellymon Premium subscription product in Stripe.
+      <h2 className="text-lg font-bold text-gray-900 mb-1">{label}</h2>
+      <p className="text-gray-500 text-sm mb-4">
+        {useTestMode ? "Uses STRIPE_TEST_SECRET_KEY" : "Uses STRIPE_SECRET_KEY"}
       </p>
 
       <div className="flex gap-3 mb-4">
@@ -73,7 +74,7 @@ export default function StripeConfigPanel() {
           disabled={loading}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
         >
-          {loading ? "Checking…" : "Verify Config"}
+          {loading ? "Checking..." : "Verify"}
         </button>
 
         <button
@@ -81,7 +82,7 @@ export default function StripeConfigPanel() {
           disabled={bootstrapping}
           className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
         >
-          {bootstrapping ? "Creating…" : "Bootstrap Product"}
+          {bootstrapping ? "Creating..." : "Bootstrap"}
         </button>
       </div>
 
@@ -93,9 +94,7 @@ export default function StripeConfigPanel() {
 
       {config && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <StatusBadge ok={config.connected} label="Stripe Connected" />
-          </div>
+          <StatusBadge ok={config.connected} label="Connected" />
 
           {config.error && (
             <div className="p-3 bg-red-50 rounded-md text-sm text-red-700">
@@ -137,6 +136,15 @@ export default function StripeConfigPanel() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+export default function StripeConfigPanel() {
+  return (
+    <div className="space-y-6">
+      <StripeEnvPanel label="Live" useTestMode={false} />
+      <StripeEnvPanel label="Test" useTestMode={true} />
     </div>
   );
 }

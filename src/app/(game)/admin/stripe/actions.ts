@@ -39,7 +39,7 @@ export type StripeConfigStatus = {
 
 // ─── Verify Config ───────────────────────────────────────────────────────────
 
-export async function verifyStripeConfig(): Promise<StripeConfigStatus> {
+export async function verifyStripeConfig(useTestMode = false): Promise<StripeConfigStatus> {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
   requireAdmin(session);
@@ -51,7 +51,7 @@ export async function verifyStripeConfig(): Promise<StripeConfigStatus> {
   };
 
   try {
-    const stripe = getStripe();
+    const stripe = getStripe(useTestMode);
 
     // Verify connection by listing products (will throw if key is invalid)
     const products = await stripe.products.list({ active: true, limit: 100 });
@@ -106,7 +106,7 @@ export async function verifyStripeConfig(): Promise<StripeConfigStatus> {
 
 // ─── Bootstrap Products ──────────────────────────────────────────────────────
 
-export async function bootstrapStripeProducts(): Promise<{
+export async function bootstrapStripeProducts(useTestMode = false): Promise<{
   success: boolean;
   message: string;
   priceId?: string;
@@ -116,7 +116,7 @@ export async function bootstrapStripeProducts(): Promise<{
   requireAdmin(session);
 
   try {
-    const stripe = getStripe();
+    const stripe = getStripe(useTestMode);
 
     // Find or create product
     const products = await stripe.products.list({ active: true, limit: 100 });
@@ -157,7 +157,7 @@ export async function bootstrapStripeProducts(): Promise<{
     }
 
     // Verify the lookup works end-to-end
-    const resolvedId = await getPremiumPriceId();
+    const resolvedId = await getPremiumPriceId(useTestMode);
 
     return {
       success: true,
