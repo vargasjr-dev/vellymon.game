@@ -233,7 +233,7 @@ export default function GameNav({
                       d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                     />
                   </svg>
-                  Profile
+                  👤 Profile
                 </Link>
 
                 {/* Admin Link (admins only) */}
@@ -261,7 +261,7 @@ export default function GameNav({
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                       />
                     </svg>
-                    Admin
+                    🛠️ Admin
                   </Link>
                 )}
 
@@ -284,7 +284,7 @@ export default function GameNav({
                       d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                     />
                   </svg>
-                  {signingOut ? "Signing out…" : "Sign Out"}
+                  {signingOut ? "Signing out…" : "🚪 Sign Out"}
                 </button>
                 {signOutError && (
                   <p className="px-4 py-1 text-xs text-red-500">
@@ -407,7 +407,7 @@ export default function GameNav({
                     : "text-gray-300 hover:bg-gray-800 hover:text-white"
                 }`}
               >
-                Profile
+                👤 Profile
               </Link>
               {isAdmin && (
                 <Link
@@ -426,7 +426,7 @@ export default function GameNav({
                 disabled={signingOut}
                 className="block w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-gray-800 transition disabled:opacity-50"
               >
-                {signingOut ? "Signing out…" : "Sign Out"}
+                {signingOut ? "Signing out…" : "🚪 Sign Out"}
               </button>
               {signOutError && (
                 <p className="px-4 py-1 text-xs text-red-400">
