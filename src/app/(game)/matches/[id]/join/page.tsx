@@ -126,14 +126,12 @@ export default async function JoinMatchPage({
       {teams.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <p className="text-5xl mb-4">⚔️</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            No teams yet
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">No teams yet</h2>
           <p className="text-gray-600 mb-6">
             Build a team before joining a match.
           </p>
           <Link
-            href="/teams/new"
+            href="/roster/teams/new"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
             Build a Team
@@ -143,9 +141,7 @@ export default async function JoinMatchPage({
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <p className="text-5xl mb-4">⚠️</p>
           <h2 className="text-xl font-bold text-gray-900 mb-2">
-            {isPlayBothSides
-              ? "Need a second team"
-              : "No eligible teams"}
+            {isPlayBothSides ? "Need a second team" : "No eligible teams"}
           </h2>
           <p className="text-gray-600 mb-6">
             {isPlayBothSides
@@ -153,17 +149,14 @@ export default async function JoinMatchPage({
               : "Teams need at least 4 active vellymons to compete."}
           </p>
           <Link
-            href="/teams/new"
+            href="/roster/teams/new"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
             Build Another Team
           </Link>
         </div>
       ) : (
-        <JoinTeamSelector
-          matchUuid={match.uuid}
-          teams={eligibleTeams}
-        />
+        <JoinTeamSelector matchUuid={match.uuid} teams={eligibleTeams} />
       )}
     </div>
   );

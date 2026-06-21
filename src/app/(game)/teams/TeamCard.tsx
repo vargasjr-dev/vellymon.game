@@ -54,7 +54,7 @@ export default function TeamCard({ team }: { team: Team }) {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={`/teams/${team.uuid}/edit`}
+            href={`/roster/teams/${team.uuid}/edit`}
             className="text-sm text-blue-600 hover:text-blue-800 font-medium px-3 py-1 border border-blue-200 rounded-lg hover:bg-blue-50 transition"
           >
             Edit
@@ -102,7 +102,7 @@ export default function TeamCard({ team }: { team: Team }) {
           <p className="text-gray-400 text-sm">
             No vellymons assigned.{" "}
             <Link
-              href={`/teams/${team.uuid}/edit`}
+              href={`/roster/teams/${team.uuid}/edit`}
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
               Edit team →

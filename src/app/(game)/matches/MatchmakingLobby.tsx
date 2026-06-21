@@ -71,7 +71,7 @@ export default function MatchmakingLobby({ teams }: { teams: Team[] }) {
           Build a team before entering the arena.
         </p>
         <Link
-          href="/teams/new"
+          href="/roster/teams/new"
           className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
         >
           Build a Team

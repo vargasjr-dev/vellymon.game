@@ -280,7 +280,7 @@ export default function RankedPlayPage({
             Build a team before entering the arena.
           </p>
           <Link
-            href="/teams/new"
+            href="/roster/teams/new"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
             Build a Team
@@ -352,7 +352,7 @@ export default function RankedPlayPage({
         {/* Pagination + nav links */}
         <div className="flex items-center justify-between mt-auto pt-1">
           <Link
-            href="/teams/new"
+            href="/roster/teams/new"
             className="text-xs text-blue-600 hover:text-blue-800 font-medium transition"
           >
             + New team

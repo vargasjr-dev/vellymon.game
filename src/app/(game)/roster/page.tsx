@@ -81,7 +81,7 @@ export default async function RosterPage() {
           </p>
         </div>
         <Link
-          href="/teams/new"
+          href="/roster/teams/new"
           className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition text-sm"
         >
           + New Team
@@ -97,7 +97,7 @@ export default async function RosterPage() {
             in matches.
           </p>
           <Link
-            href="/teams/new"
+            href="/roster/teams/new"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
             Create Your First Team
