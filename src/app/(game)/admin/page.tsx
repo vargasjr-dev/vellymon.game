@@ -100,6 +100,21 @@ export default async function AdminPage() {
         </Link>
       </div>
 
+      {/* Practice Usage */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">📊 Simulation Usage</h2>
+        <p className="text-gray-600 mb-4">
+          Per-user automated match counts, daily rate-limit status, and average
+          simulation time — our proxy for compute cost.
+        </p>
+        <Link
+          href="/admin/usage"
+          className="inline-flex items-center px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 text-sm font-medium"
+        >
+          View Usage →
+        </Link>
+      </div>
+
       {/* API Keys */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-2">🔑 API Keys</h2>

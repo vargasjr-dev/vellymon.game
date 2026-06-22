@@ -509,6 +509,10 @@ export const matchSnapshot = pgTable("matchSnapshot", {
   p2ProfileId: text("p2ProfileId").references(() => aiProfile.id, {
     onDelete: "set null",
   }),
+  /** Set when a user triggers an automated simulation from Practice Mode (null for CLI/admin). */
+  triggeredByUserId: text("triggeredByUserId"),
+  /** Wall-clock milliseconds the simulation loop took — proxy for compute cost. */
+  simulationMs: integer("simulationMs"),
   uploadedAt: timestamp("uploadedAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt")
     .notNull()

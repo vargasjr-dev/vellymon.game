@@ -229,6 +229,9 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
     aiTeamId?: 1 | 2;
     playerTeamUuid?: string;
     matchSettings?: MatchSettings;
+    /** Profile-based sparring: use these specific mons for the AI team. */
+    aiProfileTeamNames?: string[];
+    aiProfileName?: string;
   };
 
   if (!meta.sparring) throw new Error("Not a sparring match");
@@ -258,7 +261,9 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
     map,
   );
 
-  const aiTeamSetup = buildAITeamSetup(2, map, meta.aiDifficulty ?? "medium");
+  const aiTeamSetup = meta.aiProfileTeamNames
+    ? buildProfileTeamSetup(meta.aiProfileTeamNames, meta.aiProfileName ?? "AI Profile", 2, map)
+    : buildAITeamSetup(2, map, meta.aiDifficulty ?? "medium");
 
   const gameState = initializeGame(matchUuid, humanTeamSetup, aiTeamSetup, {
     board,
@@ -344,6 +349,67 @@ function buildAITeamSetup(
   return {
     userId: "ai-bot",
     teamName: difficultyLabel[difficulty],
+    active,
+    bench,
+  };
+}
+
+/**
+ * Build a TeamSetup from a specific list of vellymon names (used for AI profile sparring).
+ * First 4 names → active; names 5-6 → bench.  Names 7-8 are reserved for future use.
+ */
+function buildProfileTeamSetup(
+  teamNames: string[],
+  profileName: string,
+  teamId: 1 | 2,
+  map?: import("../../server/maps").MapConfig,
+): TeamSetup {
+  const spawns = map
+    ? getMapSpawnPositions(map, teamId)
+    : getDefaultSpawnPositions(
+        teamId,
+        GAME_CONFIG.board.width,
+        GAME_CONFIG.board.height,
+      );
+
+  const templates = teamNames
+    .slice(0, 6)
+    .map((name) =>
+      VELLYMON_LIBRARY.find((v) => v.name.toLowerCase() === name.toLowerCase()),
+    )
+    .filter((v): v is (typeof VELLYMON_LIBRARY)[0] => v !== undefined);
+
+  const active: VellymonSetup[] = [];
+  const bench: VellymonSetup[] = [];
+
+  templates.forEach((template, index) => {
+    const setup: VellymonSetup = {
+      uuid: `ai-${teamId}-${index}`,
+      name: template.name,
+      maxHp: template.hp,
+      speed: template.speed,
+      attack: template.attack,
+      attacks: template.attacks.map((a) => ({
+        key: a.key,
+        name: a.name,
+        damage: a.damage,
+        energyCost: a.energyCost,
+        range: a.range,
+      })),
+      spawnPosition:
+        index < 4 ? (spawns[index] ?? { x: 0, y: 0 }) : { x: 0, y: 0 },
+      imageUrl: undefined,
+    };
+    if (index < 4) {
+      active.push(setup);
+    } else {
+      bench.push(setup);
+    }
+  });
+
+  return {
+    userId: "ai-bot",
+    teamName: profileName,
     active,
     bench,
   };
