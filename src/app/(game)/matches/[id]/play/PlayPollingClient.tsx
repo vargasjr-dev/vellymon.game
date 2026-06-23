@@ -18,11 +18,21 @@ import VictoryModal from "./VictoryModal";
 import { useSoundEffects } from "./useSoundEffects";
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
-import type { Overlays } from "./BattleCanvas";
+
 import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
+import {
+  type RawGameState,
+  type RawTurnLog,
+  buildUnifiedSteps,
+  buildVellymonLookup,
+} from "./turnAnimation";
+import { useTurnAnimation } from "./useTurnAnimation";
 import VellymonDrawer from "./VellymonDrawer";
 
 type Dir = "up" | "down" | "left" | "right";
+
+// ─── Raw state type alias (re-exports from turnAnimation used locally) ─────────
+// RawGameState + RawTurnLog are imported from turnAnimation.ts for animation.
 
 /**
  * Translate a screen-space direction to a game-space direction.
@@ -199,9 +209,14 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
-  /** Brief heal-label overlays shown on the board after each turn resolve */
-  const [healOverlays, setHealOverlays] = useState<Overlays>({});
-  const healOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Turn animation — shared hook, replaces the old healOverlays approach.
+  const { overlays: animOverlays, activeTween, startAnimation } =
+    useTurnAnimation();
+  // Snapshot of game state captured just before submitting commands.
+  // Passed to buildUnifiedSteps as the "from" state for animation.
+  const preTurnSnapRef = useRef<RawGameState | null>(null);
+
   const [teams, setTeams] = useState<[TeamDisplay, TeamDisplay] | null>(null);
   const [boardWidth, setBoardWidth] = useState(8);
   const [boardHeight, setBoardHeight] = useState(5);
@@ -331,46 +346,6 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       const t2 = gs.teams[1] ? mapTeam(gs.teams[1]) : t1;
       setTeams([t1, t2]);
 
-      // ── Heal overlays: flash +N 💧 labels on board for turn-start heals ─
-      if (data.turnHistory && data.turnHistory.length > 0) {
-        const latest = data.turnHistory[data.turnHistory.length - 1] as TurnSnapshot;
-        type TurnStartEvt = { targetUuid: string; healAmount?: number; damageAmount?: number };
-        const turnStartEvts: TurnStartEvt[] = (
-          (latest?.log as { turnStartEvents?: TurnStartEvt[] })?.turnStartEvents ?? []
-        );
-        if (turnStartEvts.length > 0) {
-          // Build position map from raw gs.teams
-          const posMap = new Map<string, { x: number; y: number }>();
-          for (const t of gs.teams) {
-            for (const v of t.active) {
-              if (v.position) posMap.set(v.uuid, v.position);
-            }
-          }
-          const labels = turnStartEvts
-            .map((e) => {
-              const pos = posMap.get(e.targetUuid);
-              if (!pos) return null;
-              if (e.damageAmount) {
-                return { x: pos.x, y: pos.y - 0.5, text: `-${e.damageAmount} 🔥`, color: 0xf97316, alpha: 1 };
-              }
-              if (e.healAmount) {
-                return { x: pos.x, y: pos.y - 0.5, text: `+${e.healAmount} 💧`, color: 0x4ade80, alpha: 1 };
-              }
-              return null;
-            })
-            .filter((l): l is NonNullable<typeof l> => l !== null);
-
-          if (labels.length > 0) {
-            if (healOverlayTimerRef.current) clearTimeout(healOverlayTimerRef.current);
-            setHealOverlays({ labels });
-            healOverlayTimerRef.current = setTimeout(
-              () => setHealOverlays({}),
-              2000,
-            );
-          }
-        }
-      }
-
       // KO detection — play KO sound if either team gained a new KO
       const newT1Knocked = gs.teams[0]?.knocked?.length ?? 0;
       const newT2Knocked = gs.teams[1]?.knocked?.length ?? 0;
@@ -494,6 +469,48 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const handleSubmitTurn = useCallback(async () => {
     play("submit");
     setSubmitting(true);
+
+    // Capture the board state NOW (before submit) so animation can diff from→to.
+    // We build a minimal RawGameState from current React state.
+    const snapTeams = teams;
+    const snapBoard = boardSpaces;
+    const fromSnap: RawGameState | null =
+      snapTeams
+        ? {
+            turn,
+            teams: snapTeams.map((t) => ({
+              id: t.id,
+              userId: "",
+              name: t.name,
+              energy: t.energy,
+              active: t.active.map((v) => ({
+                uuid: v.uuid,
+                name: v.name,
+                hp: v.hp,
+                maxHp: v.maxHp,
+                speed: v.speed,
+                attack: v.attack,
+                attacks: v.attacks as RawGameState["teams"][0]["active"][0]["attacks"],
+                position: { x: v.x, y: v.y },
+                isKO: v.isKO,
+                imageUrl: v.imageUrl,
+              })),
+              bench: [],
+              knocked: [],
+            })),
+            boardWidth,
+            boardHeight,
+            board: snapBoard.map((s) => ({
+              position: { x: s.x, y: s.y },
+              type: s.type,
+              occupationCounter: s.occupationCounter,
+              harvestYield: s.harvestYield,
+            })),
+            result: null,
+          }
+        : null;
+    preTurnSnapRef.current = fromSnap;
+
     try {
       const result = await submitCommandsAction(
         matchUuid,
@@ -509,15 +526,55 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         setWaitingForSwitch(true);
         setTimeout(() => setWaitingForSwitch(false), 500);
       } else if (result.resolved) {
-        // Turn resolved — refresh state
+        // Turn resolved — fetch new state, then run animation
         const data = await getGameStateAction(matchUuid);
-        parseState(data);
-        play("resolve");
-        // Brief flash on the Turn counter
-        setTurnFlash(true);
-        setTimeout(() => setTurnFlash(false), 400);
-        if (isAdminSelfMatch) {
-          setActiveTeamId(1); // Reset to P1 for next turn
+        if (!data) {
+          setError("Failed to fetch game state after turn");
+          return;
+        }
+        const rawLog = data.turnHistory?.[
+          data.turnHistory.length - 1
+        ]?.log as RawTurnLog | undefined;
+        const gs = data.gameState as RawGameState;
+
+        // Run animation before applying state (so vellymons don't teleport)
+        if (fromSnap && rawLog) {
+          const lookup = buildVellymonLookup(fromSnap);
+          const cmds = rawLog.commandResults ?? [];
+          const getSpeed = (uuid: string): number => {
+            for (const t of fromSnap.teams) {
+              const vm = t.active.find((av) => av.uuid === uuid);
+              if (vm) return vm.speed;
+            }
+            return 0;
+          };
+          const sortedCmds = [...cmds].sort(
+            (x, y) =>
+              getSpeed(y.command.vellymonUuid) -
+              getSpeed(x.command.vellymonUuid),
+          );
+          const steps = buildUnifiedSteps(
+            sortedCmds,
+            fromSnap,
+            gs,
+            lookup,
+            rawLog.turnStartEvents ?? [],
+          );
+          // Apply new state only after animation completes
+          startAnimation(steps, () => {
+            parseState(data);
+            play("resolve");
+            setTurnFlash(true);
+            setTimeout(() => setTurnFlash(false), 400);
+            if (isAdminSelfMatch) setActiveTeamId(1);
+          });
+        } else {
+          // No animation data — apply state immediately
+          parseState(data);
+          play("resolve");
+          setTurnFlash(true);
+          setTimeout(() => setTurnFlash(false), 400);
+          if (isAdminSelfMatch) setActiveTeamId(1);
         }
       } else if (isAdminSelfMatch && activeTeamId === 2) {
         // P2 submitted in admin match — turn should resolve now
@@ -526,14 +583,14 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         play("resolve");
         setTurnFlash(true);
         setTimeout(() => setTurnFlash(false), 400);
-        setActiveTeamId(1); // Reset to P1 for next turn
+        setActiveTeamId(1);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to submit commands");
     } finally {
       setSubmitting(false);
     }
-  }, [matchUuid, pendingCommands, parseState, isAdminSelfMatch, activeTeamId, play]);
+  }, [matchUuid, pendingCommands, parseState, isAdminSelfMatch, activeTeamId, play, teams, boardSpaces, turn, boardWidth, boardHeight, startAnimation]);
 
   const handleConcede = useCallback(async () => {
     try {
@@ -703,7 +760,8 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               selectedVellymon={selectedVellymon}
               onSelectVellymon={setSelectedVellymon}
               commandedUuids={commandedUuids}
-              overlays={healOverlays}
+              overlays={animOverlays ?? undefined}
+              tween={activeTween ?? undefined}
             />
 
             {/* Vellymon drawer — overlays the board when a vellymon is selected */}
