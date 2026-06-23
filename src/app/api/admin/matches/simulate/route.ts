@@ -198,6 +198,7 @@ export async function POST(req: Request) {
           status: "completed",
           p1ProfileId: p1Info.profileId ?? null,
           p2ProfileId: p2Info.profileId ?? null,
+          triggeredByUserId: session!.user.id,
         });
 
         const winner = getWinner(gs);
