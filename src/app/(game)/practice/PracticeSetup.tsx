@@ -3,27 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  createSparringMatchAction,
-  createProfileSparringMatchAction,
-} from "./actions";
-import type { AIDifficulty } from "../../../../server/ai-opponent";
+import { createProfileSparringMatchAction } from "./actions";
 import { MAP_OPTIONS } from "~/lib/matchSettings";
 import VellymonPremiumLogo from "~/components/VellymonPremiumLogo";
 
 type TeamOption = { uuid: string; name: string };
 type ProfileOption = { id: string; name: string; description: string };
-
-const DIFFICULTIES: {
-  value: AIDifficulty;
-  label: string;
-  icon: string;
-  desc: string;
-}[] = [
-  { value: "easy", label: "Easy", icon: "🟢", desc: "Random moves — good for learning" },
-  { value: "medium", label: "Medium", icon: "🟡", desc: "Basic strategy — a real workout" },
-  { value: "hard", label: "Hard", icon: "🔴", desc: "Optimized play — prepare to sweat" },
-];
 
 interface PracticeSetupProps {
   teams: TeamOption[];
@@ -72,6 +57,19 @@ function NoTeamsGate() {
   );
 }
 
+// ── No profiles ───────────────────────────────────────────────────────────────
+function NoProfilesGate() {
+  return (
+    <div className="text-center py-10 text-gray-500">
+      <p className="text-4xl mb-3">🤖</p>
+      <p className="font-medium text-gray-700">No opponent profiles yet</p>
+      <p className="text-sm mt-1">
+        AI profiles are coming soon — check back shortly.
+      </p>
+    </div>
+  );
+}
+
 // ── Play tab ──────────────────────────────────────────────────────────────────
 function PlayTab({
   teams,
@@ -82,24 +80,17 @@ function PlayTab({
 }) {
   const router = useRouter();
   const [teamUuid, setTeamUuid] = useState(teams[0]?.uuid ?? "");
-  const [opponentType, setOpponentType] = useState<"difficulty" | "profile">(
-    profiles.length > 0 ? "profile" : "difficulty",
-  );
-  const [difficulty, setDifficulty] = useState<AIDifficulty>("medium");
   const [profileId, setProfileId] = useState(profiles[0]?.id ?? "");
   const [mapId, setMapId] = useState("standard");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleStart() {
-    if (!teamUuid) return;
+    if (!teamUuid || !profileId) return;
     setCreating(true);
     setError(null);
 
-    const result =
-      opponentType === "profile" && profileId
-        ? await createProfileSparringMatchAction(teamUuid, profileId, mapId)
-        : await createSparringMatchAction(teamUuid, difficulty, mapId);
+    const result = await createProfileSparringMatchAction(teamUuid, profileId, mapId);
 
     if (result.success) {
       router.push(`/matches/${result.matchUuid}`);
@@ -108,6 +99,8 @@ function PlayTab({
       setCreating(false);
     }
   }
+
+  if (profiles.length === 0) return <NoProfilesGate />;
 
   return (
     <div className="space-y-6">
@@ -129,77 +122,31 @@ function PlayTab({
         </select>
       </div>
 
-      {/* Opponent type toggle */}
+      {/* Opponent profile */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Opponent
         </label>
-
-        {profiles.length > 0 && (
-          <div className="flex gap-2 mb-4">
+        <div className="space-y-2">
+          {profiles.map((p) => (
             <button
-              onClick={() => setOpponentType("profile")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border-2 transition ${
-                opponentType === "profile"
-                  ? "border-orange-400 bg-orange-50 text-orange-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+              key={p.id}
+              onClick={() => setProfileId(p.id)}
+              className={`w-full text-left p-3 rounded-xl border-2 transition ${
+                profileId === p.id
+                  ? "border-orange-400 bg-orange-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
               }`}
             >
-              🤖 AI Profile
+              <span className="font-semibold text-sm text-gray-900">{p.name}</span>
+              {p.description && (
+                <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                  {p.description}
+                </p>
+              )}
             </button>
-            <button
-              onClick={() => setOpponentType("difficulty")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border-2 transition ${
-                opponentType === "difficulty"
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
-              }`}
-            >
-              ⚡ Difficulty
-            </button>
-          </div>
-        )}
-
-        {opponentType === "profile" && profiles.length > 0 ? (
-          <div className="space-y-2">
-            {profiles.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setProfileId(p.id)}
-                className={`w-full text-left p-3 rounded-xl border-2 transition ${
-                  profileId === p.id
-                    ? "border-orange-400 bg-orange-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <span className="font-semibold text-sm text-gray-900">{p.name}</span>
-                {p.description && (
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                    {p.description}
-                  </p>
-                )}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {DIFFICULTIES.map((d) => (
-              <button
-                key={d.value}
-                onClick={() => setDifficulty(d.value)}
-                className={`p-4 rounded-xl border-2 text-center transition ${
-                  difficulty === d.value
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <span className="text-2xl block mb-1">{d.icon}</span>
-                <span className="font-bold text-sm text-gray-900">{d.label}</span>
-                <p className="text-xs text-gray-500 mt-1">{d.desc}</p>
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
       </div>
 
       {/* Map */}
@@ -228,11 +175,7 @@ function PlayTab({
 
       <button
         onClick={handleStart}
-        disabled={
-          creating ||
-          !teamUuid ||
-          (opponentType === "profile" && !profileId)
-        }
+        disabled={creating || !teamUuid || !profileId}
         className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-lg font-bold rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 transition-all"
       >
         {creating ? "Setting up match…" : "🥊 Start Practice"}
