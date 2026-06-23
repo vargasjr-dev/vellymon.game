@@ -30,24 +30,22 @@ export default async function PracticePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">🥊 Practice Mode</h1>
-          <p className="text-gray-600 mt-1">
-            Hone your strategy against AI profiles — or watch two profiles battle
-            it out. No ranked impact.
-          </p>
-        </div>
-        <Link
-          href="/practice/history"
-          className="shrink-0 mt-1 text-sm text-blue-600 hover:underline"
-        >
-          Match History →
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">🥊 Practice Mode</h1>
+        <p className="text-gray-600 mt-1">
+          Hone your strategy against AI profiles — or watch two profiles battle
+          it out. No ranked impact.
+        </p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-xl p-6">
         <PracticeSetup teams={teams} subscribed={subscribed} profiles={profiles} />
+      </div>
+
+      <div className="mt-4 text-center">
+        <Link href="/practice/history" className="text-sm text-blue-600 hover:underline">
+          View match history →
+        </Link>
       </div>
     </div>
   );

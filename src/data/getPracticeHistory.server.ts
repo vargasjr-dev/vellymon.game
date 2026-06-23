@@ -1,44 +1,70 @@
 /**
- * Practice match history — sparring-only matchStats rows enriched with
- * the opponent profile name from gameSession.metadata.
+ * Practice history — two sources merged into one list:
+ *
+ *  1. matchStats (isSparring=true)         → matches the user *played* via Play tab
+ *  2. matchSnapshot (triggeredByUserId)    → simulations the user *ran* via Watch tab
+ *
+ * Both are sorted newest-first after merging.
  */
 
 import { db } from "../../data/db";
-import { matchStats, gameSession } from "../../data/schema";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { matchStats, gameSession, matchSnapshot, aiProfile } from "../../data/schema";
+import { eq, and, inArray, isNotNull, desc } from "drizzle-orm";
 
-export type PracticeMatchRow = {
+// ─── Shared row type ──────────────────────────────────────────────────────────
+
+type PlayedRow = {
+  type: "played";
   uuid: string;
   result: "win" | "loss" | "draw";
   turns: number;
   enemyKOs: number;
-  ownKOs: number;
   winCondition: string | null;
-  /** Profile name from metadata, e.g. "Aggro Rusher". Null for old-style random-AI match. */
+  /** Profile name from gameSession metadata. */
   opponentProfileName: string | null;
   completedAt: Date;
 };
 
+type SimulatedRow = {
+  type: "simulated";
+  uuid: string;
+  /** Profile name for team 1. */
+  p1Name: string | null;
+  /** Profile name for team 2. */
+  p2Name: string | null;
+  /** 1 or 2 — whichever team won. null = draw/timeout. */
+  winner: 1 | 2 | null;
+  turns: number;
+  completedAt: Date;
+};
+
+export type PracticeHistoryRow = PlayedRow | SimulatedRow;
+
 export type PracticeHistorySummary = {
-  total: number;
+  /** Total played (not simulated) matches. */
+  totalPlayed: number;
   wins: number;
   losses: number;
   draws: number;
   winRate: number; // 0–100
   totalKOs: number;
+  /** Total simulations triggered. */
+  totalSimulated: number;
 };
+
+// ─── Main query ───────────────────────────────────────────────────────────────
 
 export async function getPracticeHistory(
   userId: string,
   limit = 50,
-): Promise<{ rows: PracticeMatchRow[]; summary: PracticeHistorySummary }> {
-  const stats = await db
+): Promise<{ rows: PracticeHistoryRow[]; summary: PracticeHistorySummary }> {
+  // ── 1. Played matches (matchStats) ────────────────────────────────────────
+  const statsRows = await db
     .select({
       gameSessionUuid: matchStats.gameSessionUuid,
       result: matchStats.result,
       turns: matchStats.turns,
       enemyKOs: matchStats.enemyKOs,
-      ownKOs: matchStats.ownKOs,
       winCondition: matchStats.winCondition,
       completedAt: matchStats.completedAt,
     })
@@ -47,55 +73,108 @@ export async function getPracticeHistory(
     .orderBy(desc(matchStats.completedAt))
     .limit(limit);
 
-  if (stats.length === 0) {
-    return {
-      rows: [],
-      summary: { total: 0, wins: 0, losses: 0, draws: 0, winRate: 0, totalKOs: 0 },
-    };
+  // Pull aiProfileName from each gameSession's metadata
+  const playedRows: PlayedRow[] = [];
+  if (statsRows.length > 0) {
+    const uuids = statsRows.map((s) => s.gameSessionUuid);
+    const sessions = await db
+      .select({ uuid: gameSession.uuid, metadata: gameSession.metadata })
+      .from(gameSession)
+      .where(inArray(gameSession.uuid, uuids));
+
+    const metaByUuid = new Map(
+      sessions.map((s) => {
+        const meta = s.metadata as Record<string, unknown> | null;
+        return [s.uuid, (meta?.aiProfileName as string | undefined) ?? null];
+      }),
+    );
+
+    for (const s of statsRows) {
+      playedRows.push({
+        type: "played",
+        uuid: s.gameSessionUuid,
+        result: s.result as "win" | "loss" | "draw",
+        turns: s.turns,
+        enemyKOs: s.enemyKOs,
+        winCondition: s.winCondition,
+        opponentProfileName: metaByUuid.get(s.gameSessionUuid) ?? null,
+        completedAt: s.completedAt,
+      });
+    }
   }
 
-  const uuids = stats.map((s) => s.gameSessionUuid);
+  // ── 2. Simulations the user ran (matchSnapshot) ───────────────────────────
+  const snapRows = await db
+    .select({
+      id: matchSnapshot.id,
+      p1ProfileId: matchSnapshot.p1ProfileId,
+      p2ProfileId: matchSnapshot.p2ProfileId,
+      gameState: matchSnapshot.gameState,
+      uploadedAt: matchSnapshot.uploadedAt,
+    })
+    .from(matchSnapshot)
+    .where(
+      and(
+        eq(matchSnapshot.triggeredByUserId, userId),
+        isNotNull(matchSnapshot.p1ProfileId),
+      ),
+    )
+    .orderBy(desc(matchSnapshot.uploadedAt))
+    .limit(limit);
 
-  // Pull metadata for each session to extract aiProfileName
-  const sessions = await db
-    .select({ uuid: gameSession.uuid, metadata: gameSession.metadata })
-    .from(gameSession)
-    .where(inArray(gameSession.uuid, uuids));
+  // Collect all unique profile IDs to batch-fetch names
+  const profileIds = [
+    ...new Set(
+      snapRows.flatMap((r) =>
+        [r.p1ProfileId, r.p2ProfileId].filter((id): id is string => id !== null),
+      ),
+    ),
+  ];
 
-  const metaByUuid = new Map(
-    sessions.map((s) => {
-      const meta = s.metadata as Record<string, unknown> | null;
-      const profileName = (meta?.aiProfileName as string | undefined) ?? null;
-      return [s.uuid, profileName];
-    }),
+  const profileNameById = new Map<string, string>();
+  if (profileIds.length > 0) {
+    const profiles = await db
+      .select({ id: aiProfile.id, name: aiProfile.name })
+      .from(aiProfile)
+      .where(inArray(aiProfile.id, profileIds));
+    for (const p of profiles) profileNameById.set(p.id, p.name);
+  }
+
+  const simulatedRows: SimulatedRow[] = snapRows.map((r) => {
+    const gs = r.gameState as { result?: { winner?: 1 | 2 }; turn?: number } | null;
+    return {
+      type: "simulated",
+      uuid: r.id,
+      p1Name: r.p1ProfileId ? (profileNameById.get(r.p1ProfileId) ?? r.p1ProfileId) : null,
+      p2Name: r.p2ProfileId ? (profileNameById.get(r.p2ProfileId) ?? r.p2ProfileId) : null,
+      winner: gs?.result?.winner ?? null,
+      turns: gs?.turn ?? 0,
+      completedAt: r.uploadedAt,
+    };
+  });
+
+  // ── 3. Merge and sort newest-first ────────────────────────────────────────
+  const rows: PracticeHistoryRow[] = [...playedRows, ...simulatedRows].sort(
+    (a, b) => b.completedAt.getTime() - a.completedAt.getTime(),
   );
 
-  const rows: PracticeMatchRow[] = stats.map((s) => ({
-    uuid: s.gameSessionUuid,
-    result: s.result as "win" | "loss" | "draw",
-    turns: s.turns,
-    enemyKOs: s.enemyKOs,
-    ownKOs: s.ownKOs,
-    winCondition: s.winCondition,
-    opponentProfileName: metaByUuid.get(s.gameSessionUuid) ?? null,
-    completedAt: s.completedAt,
-  }));
-
-  const wins = rows.filter((r) => r.result === "win").length;
-  const losses = rows.filter((r) => r.result === "loss").length;
-  const draws = rows.filter((r) => r.result === "draw").length;
-  const total = rows.length;
-  const totalKOs = rows.reduce((sum, r) => sum + r.enemyKOs, 0);
+  // ── 4. Summary (played matches only) ─────────────────────────────────────
+  const wins = playedRows.filter((r) => r.result === "win").length;
+  const losses = playedRows.filter((r) => r.result === "loss").length;
+  const draws = playedRows.filter((r) => r.result === "draw").length;
+  const totalPlayed = playedRows.length;
+  const totalKOs = playedRows.reduce((sum, r) => sum + r.enemyKOs, 0);
 
   return {
     rows,
     summary: {
-      total,
+      totalPlayed,
       wins,
       losses,
       draws,
-      winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
+      winRate: totalPlayed > 0 ? Math.round((wins / totalPlayed) * 100) : 0,
       totalKOs,
+      totalSimulated: simulatedRows.length,
     },
   };
 }
