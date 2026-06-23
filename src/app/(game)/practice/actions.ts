@@ -56,7 +56,6 @@ export async function createProfileSparringMatchAction(
           mode: "casual" as const,
         },
         sparring: true,
-        aiDifficulty: "medium" as const,
         aiTeamId: 2,
         playerTeamUuid,
         aiProfileId: profile.id,

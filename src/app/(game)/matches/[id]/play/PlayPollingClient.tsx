@@ -231,8 +231,6 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
 
   // Sparring (AI opponent) metadata
   const [isSparring, setIsSparring] = useState(false);
-  const [aiDifficulty, setAiDifficulty] = useState<string | null>(null);
-  const [aiProfileName, setAiProfileName] = useState<string | null>(null);
 
   // Vellymon display metadata — fetched once from server (library + power registry)
   const [vellymonInfoCache, setVellymonInfoCache] = useState<
@@ -275,8 +273,6 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         status: string;
         turnHistory?: TurnSnapshot[];
         sparring?: boolean;
-        aiDifficulty?: string | null;
-        aiProfileName?: string | null;
       } | null,
     ) => {
       if (!data?.gameState) return;
@@ -322,8 +318,6 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       // Sparring metadata — set once on first poll
       if (data.sparring) {
         setIsSparring(true);
-        setAiDifficulty(data.aiDifficulty ?? null);
-        setAiProfileName(data.aiProfileName ?? null);
       }
 
       // Figure out which team this user belongs to
@@ -692,11 +686,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                     🗡️{opponentTeam.active.filter((v) => !v.isKO).length}
                   </span>
                   <span>💀{opponentTeam.knockedCount}</span>
-                  {isSparring && !aiProfileName && aiDifficulty && (
-                    <span className="ml-auto text-xs font-medium text-gray-400 uppercase tracking-wide">
-                      🤖 {aiDifficulty}
-                    </span>
-                  )}
+
                 </div>
               </div>
             )}

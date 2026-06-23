@@ -16,7 +16,6 @@ export type EnrichedMatchRow = {
   ownKOs: number;
   winCondition: string | null;
   isSparring: boolean;
-  aiDifficulty: string | null;
   completedAt: Date;
   /** Current user's display name */
   myName: string | null;
@@ -53,7 +52,6 @@ export async function getMatchHistoryWithStats(
       ownKOs: matchStats.ownKOs,
       winCondition: matchStats.winCondition,
       isSparring: matchStats.isSparring,
-      aiDifficulty: matchStats.aiDifficulty,
       completedAt: matchStats.completedAt,
     })
     .from(matchStats)
@@ -108,7 +106,6 @@ export async function getMatchHistoryWithStats(
     ownKOs: s.ownKOs,
     winCondition: s.winCondition,
     isSparring: s.isSparring ?? false,
-    aiDifficulty: s.aiDifficulty,
     completedAt: s.completedAt,
     myName,
     opponentName: opponentBySession.get(s.gameSessionUuid) ?? null,

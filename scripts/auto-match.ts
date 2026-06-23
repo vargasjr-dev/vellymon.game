@@ -194,8 +194,8 @@ const match: MatchFile = {
 while (isGameActive(gs) && gs.turn < MAX_TURNS) {
   const timer = startTurn(gs);
   // TODO: Replace with LLM runner — use profile description + board state description as user message
-  submitCommands(timer, 1, generateAICommands(gs, 1, "medium"));
-  submitCommands(timer, 2, generateAICommands(gs, 2, "medium"));
+  submitCommands(timer, 1, generateAICommands(gs, 1));
+  submitCommands(timer, 2, generateAICommands(gs, 2));
 
   const turnLog = resolveTurn(gs, timer);
   match.turnLogs.push(turnLog);

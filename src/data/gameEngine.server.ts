@@ -50,10 +50,7 @@ import {
 import type { GameState } from "../../server/types";
 import type { Command } from "../../server/commands";
 import type { MatchSettings } from "../lib/matchSettings";
-import {
-  generateAICommands,
-  type AIDifficulty,
-} from "../../server/ai-opponent";
+import { generateAICommands } from "../../server/ai-opponent";
 
 // ─── Vellymon lookup ─────────────────────────────────────────────────────────
 
@@ -118,8 +115,6 @@ type MatchMetadata = {
   // ─── Sparring (AI opponent) fields ────────────────────────────────
   /** True when this is an AI sparring match (practice mode). */
   sparring?: boolean;
-  /** AI difficulty tier. Only present when sparring === true. */
-  aiDifficulty?: AIDifficulty;
   /** Which team the AI controls (1 or 2). Only present when sparring === true. */
   aiTeamId?: 1 | 2;
   /** The human player's team UUID — used to build the human team setup. */
@@ -212,7 +207,7 @@ export async function initializeMatchGame(matchUuid: string): Promise<void> {
  * Unlike initializeMatchGame, sparring matches:
  *   - Have only one human gamePlayer row in the DB
  *   - Use a randomly selected AI team from VELLYMON_LIBRARY
- *   - Store aiTeamId / aiDifficulty in metadata for auto-turn resolution
+ *   - Store aiTeamId in metadata for auto-turn resolution
  *
  * AI team is always team 2. Human is always team 1.
  */
@@ -225,7 +220,6 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
   if (!row?.metadata) throw new Error("Sparring match not found");
   const meta = row.metadata as Partial<MatchMetadata> & {
     sparring?: boolean;
-    aiDifficulty?: AIDifficulty;
     aiTeamId?: 1 | 2;
     playerTeamUuid?: string;
     matchSettings?: MatchSettings;
@@ -263,7 +257,7 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
 
   const aiTeamSetup = meta.aiProfileTeamNames
     ? buildProfileTeamSetup(meta.aiProfileTeamNames, meta.aiProfileName ?? "AI Profile", 2, map)
-    : buildAITeamSetup(2, map, meta.aiDifficulty ?? "medium");
+    : buildAITeamSetup(2, map);
 
   const gameState = initializeGame(matchUuid, humanTeamSetup, aiTeamSetup, {
     board,
@@ -280,7 +274,6 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
     turnLog: null,
     turnHistory: [],
     sparring: true,
-    aiDifficulty: meta.aiDifficulty ?? "medium",
     aiTeamId: 2,
     playerTeamUuid: meta.playerTeamUuid,
   };
@@ -298,7 +291,6 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
 function buildAITeamSetup(
   teamId: 1 | 2,
   map?: import("../../server/maps").MapConfig,
-  difficulty: AIDifficulty = "medium",
 ): TeamSetup {
   // Shuffle the library and pick 6 (or fewer if library is small)
   const shuffled = [...VELLYMON_LIBRARY].sort(() => Math.random() - 0.5);
@@ -340,15 +332,9 @@ function buildAITeamSetup(
     }
   });
 
-  const difficultyLabel: Record<AIDifficulty, string> = {
-    easy: "🟢 Easy AI",
-    medium: "🟡 Medium AI",
-    hard: "🔴 Hard AI",
-  };
-
   return {
     userId: "ai-bot",
-    teamName: difficultyLabel[difficulty],
+    teamName: "AI Bot",
     active,
     bench,
   };
@@ -525,10 +511,7 @@ export async function getMatchGameState(matchUuid: string) {
     turnLog: meta.turnLog,
     turnHistory: meta.turnHistory ?? [],
     status: match.status,
-    // Sparring metadata — surfaces AI info to the play UI
     sparring: meta.sparring ?? false,
-    aiDifficulty: meta.aiDifficulty ?? null,
-    aiProfileName: (meta as Record<string, unknown>).aiProfileName as string | null ?? null,
   };
 }
 
@@ -547,7 +530,7 @@ export async function getMatchGameState(matchUuid: string) {
  *   ownKOs       — own vellymons knocked out
  *   winCondition — engine win condition string (or "concession")
  *   isSparring   — true for AI practice matches
- *   aiDifficulty — difficulty tier if sparring
+ *   sparring — true if this is a practice match
  */
 async function writeMatchStats(
   matchUuid: string,
@@ -587,7 +570,6 @@ async function writeMatchStats(
         ownKOs,
         winCondition,
         isSparring: meta.sparring ?? false,
-        aiDifficulty: meta.aiDifficulty ?? null,
       } as const;
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -648,8 +630,7 @@ export async function submitMatchCommands(
   // generate and submit AI commands so the turn resolves without a second poll.
   if (meta.sparring && meta.aiTeamId && meta.aiTeamId !== teamId) {
     const aiTeamId = meta.aiTeamId;
-    const difficulty = meta.aiDifficulty ?? "medium";
-    const aiCommands = generateAICommands(gameState, aiTeamId, difficulty);
+    const aiCommands = generateAICommands(gameState, aiTeamId);
     submitTimerCommands(timer, aiTeamId, aiCommands);
     meta.pendingCommands[String(aiTeamId)] = aiCommands;
   }

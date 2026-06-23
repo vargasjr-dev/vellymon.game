@@ -168,8 +168,8 @@ export async function POST(req: Request) {
         while (isGameActive(gs) && gs.turn < maxTurns) {
           const timer = startTurn(gs);
           // TODO: replace with LLM runner once profile.description → board state → Haiku
-          submitCommands(timer, 1, generateAICommands(gs, 1, "medium"));
-          submitCommands(timer, 2, generateAICommands(gs, 2, "medium"));
+          submitCommands(timer, 1, generateAICommands(gs, 1));
+          submitCommands(timer, 2, generateAICommands(gs, 2));
 
           const turnLog = resolveTurn(gs, timer);
           turnLogs.push(turnLog);

@@ -471,7 +471,7 @@ export const userRankRelations = relations(userRank, ({ one }) => ({
 
 // ─── AI Player Profiles ───────────────────────────────────────────────────────
 // Named AI personas used for automated playtesting.
-// A profile defines a fixed team composition + difficulty tier.
+// A profile defines a fixed team composition for AI sparring.
 // Profiles are referenced from matchSnapshot so you can query match history
 // per-profile and compare head-to-head records.
 
@@ -562,7 +562,7 @@ export const matchStats = pgTable(
     winCondition: varchar("winCondition", { length: 32 }),
     /** True when this was an AI sparring match */
     isSparring: boolean("isSparring").notNull().default(false),
-    /** AI difficulty: "easy" | "medium" | "hard" — null for PvP */
+    /** Legacy field — no longer written; kept for historical data only */
     aiDifficulty: varchar("aiDifficulty", { length: 16 }),
     completedAt: timestamp("completedAt").notNull().defaultNow(),
   },

@@ -13,7 +13,6 @@ export type MatchStatRow = {
   ownKOs: number;
   winCondition: string;
   isSparring: boolean;
-  aiDifficulty: string | null;
   completedAt: Date;
   /** Calculated client-side — mirrors matchProgression.ts logic */
   xpAwarded: number;
@@ -70,7 +69,6 @@ const getMatchSummary = async (
         ownKOs: matchStats.ownKOs,
         winCondition: matchStats.winCondition,
         isSparring: matchStats.isSparring,
-        aiDifficulty: matchStats.aiDifficulty,
         completedAt: matchStats.completedAt,
       })
       .from(matchStats)
@@ -127,7 +125,6 @@ const getMatchSummary = async (
         ownKOs: row.ownKOs,
         winCondition: row.winCondition ?? "",
         isSparring: row.isSparring,
-        aiDifficulty: row.aiDifficulty,
         completedAt: row.completedAt,
         xpAwarded,
         creditsAwarded,

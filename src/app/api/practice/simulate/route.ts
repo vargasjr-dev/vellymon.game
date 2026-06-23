@@ -171,8 +171,8 @@ export async function POST(req: Request) {
     const MAX_TURNS = 15;
     while (isGameActive(gs) && gs.turn < MAX_TURNS) {
       const timer = startTurn(gs);
-      submitCommands(timer, 1, generateAICommands(gs, 1, "medium"));
-      submitCommands(timer, 2, generateAICommands(gs, 2, "medium"));
+      submitCommands(timer, 1, generateAICommands(gs, 1));
+      submitCommands(timer, 2, generateAICommands(gs, 2));
       const turnLog = resolveTurn(gs, timer);
       turnLogs.push(turnLog);
       turnSnapshots.push(JSON.parse(JSON.stringify(gs)) as GameState);

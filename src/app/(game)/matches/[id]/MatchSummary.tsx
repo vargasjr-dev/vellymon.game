@@ -195,9 +195,7 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
                   {row.teamName && (
                     <p className="text-xs text-gray-500">{row.teamName}</p>
                   )}
-                  {row.isSparring && row.aiDifficulty && !isMe && (
-                    <p className="text-xs text-gray-500">{row.aiDifficulty}</p>
-                  )}
+
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-bold ${

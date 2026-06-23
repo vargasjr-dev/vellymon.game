@@ -1,11 +1,6 @@
 /**
  * AI Opponent Engine for Vellymon sparring matches.
  *
- * Three difficulty tiers:
- * - Easy: random valid moves
- * - Medium: basic priority strategy (attack > harvest > move toward enemy)
- * - Hard: optimized play (focus low-HP targets, harvest when energy-starved, position for range)
- *
  * The AI uses the same command interface as human players — it generates
  * Command[] for each of its active vellymons each turn.
  */
@@ -16,8 +11,6 @@ import { directionToOffset } from "./commands";
 import { hasEnergy } from "./energy";
 import { GAME_CONFIG } from "./config";
 
-export type AIDifficulty = "easy" | "medium" | "hard";
-
 // ─── Core AI ─────────────────────────────────────────────────────────────────
 
 /**
@@ -26,7 +19,6 @@ export type AIDifficulty = "easy" | "medium" | "hard";
 export function generateAICommands(
   state: GameState,
   aiTeamId: 1 | 2,
-  difficulty: AIDifficulty,
 ): Command[] {
   const aiTeam = state.teams[aiTeamId - 1];
   const enemyTeam = state.teams[aiTeamId === 1 ? 1 : 0];
@@ -35,71 +27,12 @@ export function generateAICommands(
     (v) => !v.isKO && v.position != null,
   );
 
-  switch (difficulty) {
-    case "easy":
-      return activeVellymons.map((v) =>
-        generateEasyCommand(v, aiTeam, enemyTeam, state),
-      );
-    case "medium":
-      return activeVellymons.map((v) =>
-        generateMediumCommand(v, aiTeam, enemyTeam, state),
-      );
-    case "hard":
-      return generateHardCommands(activeVellymons, aiTeam, enemyTeam, state);
-  }
+  return activeVellymons.map((v) =>
+    generateMediumCommand(v, aiTeam, enemyTeam, state),
+  );
 }
 
-// ─── Easy AI: Random Valid Moves ─────────────────────────────────────────────
-
-function generateEasyCommand(
-  vellymon: VellymonState,
-  aiTeam: TeamState,
-  enemyTeam: TeamState,
-  state: GameState,
-): Command {
-  const options: Command[] = [];
-
-  // Add all valid move directions
-  for (const dir of DIRECTIONS) {
-    if (canMove(vellymon, dir, state)) {
-      options.push({ type: "move", vellymonUuid: vellymon.uuid, direction: dir });
-    }
-  }
-
-  // Add attack options if has energy
-  if (aiTeam.energy > 0) {
-    for (let i = 0; i < vellymon.attacks.length; i++) {
-      const atk = vellymon.attacks[i];
-      if (atk && aiTeam.energy >= atk.energyCost) {
-        for (const dir of DIRECTIONS) {
-          if (findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam)) {
-            options.push({
-              type: "attack",
-              vellymonUuid: vellymon.uuid,
-              attackIndex: i,
-              direction: dir,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // Add harvest options
-  for (const dir of DIRECTIONS) {
-    if (canHarvest(vellymon, dir, state)) {
-      options.push({ type: "harvest", vellymonUuid: vellymon.uuid, direction: dir });
-    }
-  }
-
-  // Pick random option, or fallback to move
-  if (options.length === 0) {
-    return { type: "move", vellymonUuid: vellymon.uuid, direction: "up" };
-  }
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-// ─── Medium AI: Priority Strategy ────────────────────────────────────────────
+// ─── AI Strategy ─────────────────────────────────────────────────────────────
 
 function generateMediumCommand(
   vellymon: VellymonState,
@@ -144,121 +77,12 @@ function generateMediumCommand(
     }
   }
 
-  // Fallback: random move
-  return generateEasyCommand(vellymon, aiTeam, enemyTeam, state);
-}
-
-// ─── Hard AI: Optimized Play ─────────────────────────────────────────────────
-
-function generateHardCommands(
-  vellymons: VellymonState[],
-  aiTeam: TeamState,
-  enemyTeam: TeamState,
-  state: GameState,
-): Command[] {
-  const commands: Command[] = [];
-  let remainingEnergy = aiTeam.energy;
-
-  // Sort vellymons by speed (fastest acts first)
-  const sorted = [...vellymons].sort((a, b) => b.speed - a.speed);
-
-  for (const vellymon of sorted) {
-    const command = generateHardSingleCommand(
-      vellymon,
-      remainingEnergy,
-      aiTeam,
-      enemyTeam,
-      state,
-    );
-    commands.push(command);
-
-    // Track energy spent
-    if (command.type === "attack") {
-      const atk = vellymon.attacks[command.attackIndex];
-      if (atk) remainingEnergy -= atk.energyCost;
-    }
-  }
-
-  return commands;
-}
-
-function generateHardSingleCommand(
-  vellymon: VellymonState,
-  remainingEnergy: number,
-  aiTeam: TeamState,
-  enemyTeam: TeamState,
-  state: GameState,
-): Command {
-  // Priority 1: Kill shot — attack low-HP enemies first
-  const enemies = enemyTeam.active.filter((e) => !e.isKO && e.position != null);
-  if (remainingEnergy > 0) {
-    for (const atk of vellymon.attacks) {
-      if (atk && remainingEnergy >= atk.energyCost) {
-        const atkIdx = vellymon.attacks.indexOf(atk);
-        for (const dir of DIRECTIONS) {
-          const target = findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam);
-          if (target && target.hp <= atk.damage * (vellymon.attack / 100)) {
-            return {
-              type: "attack",
-              vellymonUuid: vellymon.uuid,
-              attackIndex: atkIdx,
-              direction: dir,
-            };
-          }
-        }
-      }
-    }
-
-    // Priority 2: Attack strongest available target
-    for (let i = 0; i < vellymon.attacks.length; i++) {
-      const atk = vellymon.attacks[i];
-      if (atk && remainingEnergy >= atk.energyCost) {
-        for (const dir of DIRECTIONS) {
-          if (findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam)) {
-            return {
-              type: "attack",
-              vellymonUuid: vellymon.uuid,
-              attackIndex: i,
-              direction: dir,
-            };
-          }
-        }
-      }
-    }
-  }
-
-  // Priority 3: Harvest if energy-starved (< 2)
-  if (remainingEnergy < 2) {
-    for (const dir of DIRECTIONS) {
-      if (canHarvest(vellymon, dir, state)) {
-        return { type: "harvest", vellymonUuid: vellymon.uuid, direction: dir };
-      }
-    }
-  }
-
-  // Priority 4: Position for next turn — move into attack range of an enemy
-  const nearestEnemy = findNearestEnemy(vellymon, enemyTeam);
-  if (nearestEnemy) {
-    const dir = directionToward(vellymon.position!, nearestEnemy);
-    if (dir && canMove(vellymon, dir, state)) {
-      return { type: "move", vellymonUuid: vellymon.uuid, direction: dir };
-    }
-  }
-
-  // Priority 5: Harvest if possible (energy banking)
-  for (const dir of DIRECTIONS) {
-    if (canHarvest(vellymon, dir, state)) {
-      return { type: "harvest", vellymonUuid: vellymon.uuid, direction: dir };
-    }
-  }
-
   // Fallback: random valid move
   for (const dir of DIRECTIONS) {
     if (canMove(vellymon, dir, state)) {
       return { type: "move", vellymonUuid: vellymon.uuid, direction: dir };
     }
   }
-
   return { type: "move", vellymonUuid: vellymon.uuid, direction: "up" };
 }
 
