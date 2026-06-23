@@ -733,6 +733,9 @@ export default function BattleCanvas({
       ref={containerRef}
       className="absolute inset-0"
       style={{ touchAction: "none" }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     />
   );
 }

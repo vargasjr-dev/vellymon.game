@@ -398,7 +398,7 @@ function buildProfileTeamSetup(
       })),
       spawnPosition:
         index < 4 ? (spawns[index] ?? { x: 0, y: 0 }) : { x: 0, y: 0 },
-      imageUrl: undefined,
+      imageUrl: template.imageUrl,
     };
     if (index < 4) {
       active.push(setup);
@@ -525,9 +525,10 @@ export async function getMatchGameState(matchUuid: string) {
     turnLog: meta.turnLog,
     turnHistory: meta.turnHistory ?? [],
     status: match.status,
-    // Sparring metadata — surfaces AI difficulty to the play UI
+    // Sparring metadata — surfaces AI info to the play UI
     sparring: meta.sparring ?? false,
     aiDifficulty: meta.aiDifficulty ?? null,
+    aiProfileName: (meta as Record<string, unknown>).aiProfileName as string | null ?? null,
   };
 }
 

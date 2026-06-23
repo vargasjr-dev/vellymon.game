@@ -93,7 +93,7 @@ function PlayTab({
     const result = await createProfileSparringMatchAction(teamUuid, profileId, mapId);
 
     if (result.success) {
-      router.push(`/matches/${result.matchUuid}`);
+      router.push(`/matches/${result.matchUuid}/play`);
     } else {
       setError(result.error);
       setCreating(false);
