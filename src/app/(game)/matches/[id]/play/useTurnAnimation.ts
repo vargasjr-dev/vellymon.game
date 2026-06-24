@@ -76,13 +76,11 @@ export function useTurnAnimation(): TurnAnimationControls {
     a.stepIdx += 1;
 
     // 1 — Accumulate preview arrows/ghosts
-    if (
-      step.previewOverlay &&
-      (step.previewOverlay.arrows?.length || step.previewOverlay.ghosts?.length)
-    ) {
+    const previewOvl = step.previewOverlay;
+    if (previewOvl && (previewOvl.arrows?.length || previewOvl.ghosts?.length)) {
       setOverlays((prev) => ({
-        ghosts: [...(prev?.ghosts ?? []), ...(step.previewOverlay.ghosts ?? [])],
-        arrows: [...(prev?.arrows ?? []), ...(step.previewOverlay.arrows ?? [])],
+        ghosts: [...(prev?.ghosts ?? []), ...(previewOvl.ghosts ?? [])],
+        arrows: [...(prev?.arrows ?? []), ...(previewOvl.arrows ?? [])],
         labels: prev?.labels ?? [],
       }));
     }

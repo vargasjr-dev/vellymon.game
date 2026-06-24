@@ -106,7 +106,7 @@ export type RawTurnLog = {
 export type UnifiedStep = {
   key: string;
   // Arrow(s) to accumulate before this step tweens
-  previewOverlay: Overlays;
+  previewOverlay: Overlays | null;
   previewMs: number;
   // Primary tween (move to new pos, or lunge toward target for attacks)
   tweenFrom: CanvasVellymon[];
@@ -373,6 +373,53 @@ export function buildUnifiedSteps(
             labels: [{ x: tx, y: ty, text: "✗", color: 0x6b7280, alpha: 1 }],
           },
           impactMs: 300,
+        });
+      }
+      continue;
+    }
+
+    // Failed moves — preview arrow + bump-and-return tween + "Blocked" label
+    if (!cmd.success && cmd.command.type === "move") {
+      const uuid = cmd.command.vellymonUuid;
+      const cur = workingPos.get(uuid);
+      const dir = cmd.command.direction as Dir | undefined;
+      const offset = dir ? DIR_OFFSETS[dir] : null;
+      if (cur && offset) {
+        const tx = cur.x + offset.dx;
+        const ty = cur.y + offset.dy;
+        const from = snapshot();
+        // Nudge 35% toward target
+        workingPos.set(uuid, { x: cur.x + offset.dx * 0.35, y: cur.y + offset.dy * 0.35 });
+        const nudged = snapshot();
+        // Restore original position
+        workingPos.set(uuid, { x: cur.x, y: cur.y });
+        const restored = snapshot();
+        steps.push({
+          key: String(stepIdx++),
+          previewOverlay: {
+            arrows: [{ fromX: cur.x, fromY: cur.y, toX: tx, toY: ty, color: 0xfbbf24, alpha: 0.45 }],
+          },
+          previewMs: 250,
+          tweenFrom: from,
+          tweenTo: nudged,
+          tweenMs: 120,
+          impactOverlay: {
+            labels: [{ x: tx, y: ty, text: "✗ Blocked", color: 0x9ca3af, alpha: 1 }],
+          },
+          impactMs: 0,
+        });
+        // Bounce back
+        steps.push({
+          key: String(stepIdx++),
+          previewOverlay: null,
+          previewMs: 0,
+          tweenFrom: nudged,
+          tweenTo: restored,
+          tweenMs: 100,
+          impactOverlay: {
+            labels: [{ x: tx, y: ty, text: "✗ Blocked", color: 0x9ca3af, alpha: 1 }],
+          },
+          impactMs: 250,
         });
       }
       continue;
