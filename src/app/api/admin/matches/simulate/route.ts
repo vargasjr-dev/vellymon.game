@@ -83,8 +83,8 @@ export async function POST(req: Request) {
   // ── Match rules context (surfaced in AI profile system prompts) ──────────
   // Describes the custom match parameters so LLM-driven profiles know the rules.
   function buildMatchRulesContext(): string {
-    const effectiveStarting = startingEnergy ?? 120;
-    const effectiveWinning = winningEnergy ?? 500;
+    const effectiveStarting = startingEnergy ?? 20;
+    const effectiveWinning = winningEnergy ?? 120;
     return [
       `Match rules:`,
       `- Max turns: ${maxTurns}`,

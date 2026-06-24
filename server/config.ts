@@ -80,8 +80,8 @@ export type GameConfig = {
 
 export const GAME_CONFIG: GameConfig = {
   energy: {
-    starting: 120,
-    accumulationWinThreshold: 500,
+    starting: 20,
+    accumulationWinThreshold: 120,
     baseHarvestRate: 1,
   },
 
