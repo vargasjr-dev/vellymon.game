@@ -74,9 +74,12 @@ type Dir = "up" | "down" | "left" | "right";
 
 /**
  * Convert a game-space direction to a screen-space label.
- * The board is rotated 90° clockwise in portrait mode for team 1 (your team at
- * the bottom), so game "right" appears as screen "down", etc.
+ * In portrait mode the board is rotated: team 1 gets row = boardWidth-1-gx
+ * (so increasing gx = decreasing row = moving UP on screen), team 2 gets
+ * row = gx (increasing gx = moving DOWN on screen).
  * In landscape or when direction is absent, returns the raw direction string.
+ *
+ * Derived from gridToScreen in BattleCanvas.tsx — must stay in sync.
  */
 function gameDirToScreenLabel(
   gameDir: string | undefined,
@@ -94,21 +97,21 @@ function gameDirToScreenLabel(
   };
 
   if (teamId === 1) {
-    // Team 1: game right → screen down, game left → screen up,
-    //         game up → screen left, game down → screen right
+    // row = boardWidth-1-gx → gx+ = row- = pixel y- = screen UP
+    // col = gy            → gy+ = col+ = pixel x+ = screen RIGHT
     const map: Record<Dir, string> = {
-      right: " down",
-      left: " up",
+      right: " up",
+      left: " down",
       up: " left",
       down: " right",
     };
     return map[gameDir as Dir] ?? labels[gameDir as Dir] ?? ` ${gameDir}`;
   } else {
-    // Team 2 (mirrored): game right → screen up, game left → screen down,
-    //                    game up → screen right, game down → screen left
+    // row = gx → gx+ = row+ = pixel y+ = screen DOWN
+    // col = gy → gy+ = col+ = pixel x+ = screen RIGHT
     const map: Record<Dir, string> = {
-      right: " up",
-      left: " down",
+      right: " down",
+      left: " up",
       up: " right",
       down: " left",
     };

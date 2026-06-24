@@ -25,6 +25,12 @@ export type AttackTemplate = {
   damage: number;
   energyCost: number;
   range: number;
+  /**
+   * When true, this attack arcs over allied vellymons during target scanning
+   * instead of stopping at them. It still stops at enemies and void tiles.
+   * Represents physically lobbing a projectile over your own team.
+   */
+  arcOver?: boolean;
 };
 
 export type Archetype = {
@@ -50,7 +56,7 @@ export const ATTACK_TEMPLATES: Record<string, AttackTemplate> = {
   slam:   { key: "slam",   name: "Slam",   damage: 12, energyCost: 3, range: 1 },
   nuke:   { key: "nuke",   name: "Nuke",   damage: 15, energyCost: 3, range: 1 },
   snipe:  { key: "snipe",  name: "Snipe",  damage: 6,  energyCost: 2, range: 2 },
-  lob:    { key: "lob",    name: "Lob",    damage: 10, energyCost: 3, range: 2 },
+  lob:    { key: "lob",    name: "Lob",    damage: 10, energyCost: 3, range: 2, arcOver: true },
   chip:   { key: "chip",   name: "Chip",   damage: 2,  energyCost: 1, range: 2 },
 };
 

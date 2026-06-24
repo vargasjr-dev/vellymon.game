@@ -34,6 +34,8 @@ export type Attack = {
   damage: number;
   energyCost: number;
   range: number;
+  /** When true, scan skips over own-team vellymons (arcs over them). See AttackTemplate. */
+  arcOver?: boolean;
 };
 
 export type VellymonState = {

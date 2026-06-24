@@ -41,6 +41,7 @@ export function buildTeamSetup(
       damage: a.damage,
       energyCost: a.energyCost,
       range: a.range,
+      ...(a.arcOver ? { arcOver: true } : {}),
     })),
     spawnPosition: spawns[i % spawns.length],
     specialPowerId: t.specialPowerId,

@@ -151,6 +151,7 @@ function scanForTarget(
   range: number,
   ownTeam: TeamState,
   positionSnapshot?: Map<string, Position | null>,
+  arcOver?: boolean,
 ): { position: Position; target: VellymonState } | null {
   const offset = directionToOffset(direction);
 
@@ -180,9 +181,11 @@ function scanForTarget(
       : getVellymonAtPosition(state, pos);
 
     if (occupant) {
-      // Skip own team (don't friendly-fire, but also stop scanning — can't shoot through allies)
       const isOwnTeam = ownTeam.active.some((v) => v.uuid === occupant.uuid);
-      if (isOwnTeam) break;
+      if (isOwnTeam) {
+        if (arcOver) continue; // arc over allies — keep scanning
+        break;                 // normal attacks stop at allied blockers
+      }
       return { position: pos, target: occupant };
     }
   }
@@ -412,6 +415,7 @@ export function resolveAttack(
     attack.range,
     team,
     positionSnapshot,
+    attack.arcOver,
   );
 
   if (!hit) {
