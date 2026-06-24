@@ -211,7 +211,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
   const [turn, setTurn] = useState(0);
 
   // Turn animation — shared hook, replaces the old healOverlays approach.
-  const { overlays: animOverlays, activeTween, startAnimation } =
+  const { animPhase, overlays: animOverlays, activeTween, startAnimation } =
     useTurnAnimation();
   // Snapshot of game state captured just before submitting commands.
   // Passed to buildUnifiedSteps as the "from" state for animation.
@@ -414,13 +414,19 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     };
   }, []);
 
-  // Poll game state
+  // Poll game state — skip parseState while a turn animation is playing so the
+  // win modal doesn't fire mid-animation (parseState is called in onComplete instead).
+  const animPhaseRef = useRef(animPhase);
+  useEffect(() => {
+    animPhaseRef.current = animPhase;
+  }, [animPhase]);
+
   useEffect(() => {
     let active = true;
     const poll = async () => {
       try {
         const data = await getGameStateAction(matchUuid);
-        if (active) {
+        if (active && animPhaseRef.current === "idle") {
           parseState(data);
           setLoading(false);
           setError(null);
