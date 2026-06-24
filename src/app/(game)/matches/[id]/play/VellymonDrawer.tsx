@@ -44,8 +44,10 @@ type Props = {
   pendingCommand: PendingCmd | null;
   dirToArrow: (dir: Dir) => string;
   /** Unified callback: (actionType, screenDirection, attackIndex?) */
-  onAction: (type: "move" | "attack" | "harvest", dir: Dir, attackIndex?: number) => void;
+  onAction?: (type: "move" | "attack" | "harvest", dir: Dir, attackIndex?: number) => void;
   onClose: () => void;
+  /** When true, shows stats only — no action buttons (used for opponent mons). */
+  readOnly?: boolean;
 };
 
 /**
@@ -67,6 +69,7 @@ export default function VellymonDrawer({
   dirToArrow,
   onAction,
   onClose,
+  readOnly = false,
 }: Props) {
   // null = action select (screen 1), object = direction select (screen 2)
   const [selectedAction, setSelectedAction] = useState<{
@@ -84,7 +87,7 @@ export default function VellymonDrawer({
   const canAfford2 = attack2 ? teamEnergy >= attack2.energyCost : false;
 
   const handleDirectionPick = (dir: Dir) => {
-    if (!selectedAction) return;
+    if (!selectedAction || !onAction) return;
     onAction(selectedAction.type, dir, selectedAction.attackIndex);
   };
 
@@ -155,8 +158,8 @@ export default function VellymonDrawer({
             </div>
           )}
 
-          {/* Pending command badge */}
-          {pendingCommand && (
+          {/* Pending command badge — own mons only */}
+          {!readOnly && pendingCommand && (
             <div className="bg-yellow-900/30 border border-yellow-700/30 rounded-lg px-3 py-1.5 mb-3 flex items-center gap-2">
               <span className="text-yellow-400 text-xs">📋 Queued:</span>
               <span className="text-yellow-300 text-xs font-medium">
@@ -169,8 +172,38 @@ export default function VellymonDrawer({
             </div>
           )}
 
-          {/* ─── Screen 1: Action Select ─── */}
-          {!selectedAction && (
+          {/* ─── Read-only: move list with cost/range info, no actions ─── */}
+          {readOnly && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[10px] text-red-400/80 bg-red-900/30 border border-red-700/30 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide">
+                  👁 Scouting
+                </span>
+              </div>
+              {vellymon.attacks.length > 0 && (
+                <div className="space-y-1">
+                  {vellymon.attacks.map((atk, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between bg-gray-800/50 border border-gray-700/30 rounded-xl px-3 py-2"
+                    >
+                      <span className="text-sm font-semibold text-red-300">{atk.name}</span>
+                      <div className="flex gap-3 text-[11px] text-gray-400">
+                        <span>💥 {atk.damage}</span>
+                        <span className={teamEnergy >= atk.energyCost ? "text-yellow-400" : "text-gray-600"}>
+                          ⚡ {atk.energyCost}
+                        </span>
+                        <span>rng {atk.range}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── Screen 1: Action Select (own mons only) ─── */}
+          {!readOnly && !selectedAction && (
             <div className="grid grid-cols-2 gap-2">
               {/* Move */}
               <button
@@ -228,8 +261,8 @@ export default function VellymonDrawer({
             </div>
           )}
 
-          {/* ─── Screen 2: Direction Select ─── */}
-          {selectedAction && (
+          {/* ─── Screen 2: Direction Select (own mons only) ─── */}
+          {!readOnly && selectedAction && (
             <div>
               {/* Back button + action label */}
               <button

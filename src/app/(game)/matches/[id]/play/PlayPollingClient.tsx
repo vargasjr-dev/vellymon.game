@@ -627,9 +627,16 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     [teams],
   );
 
-  const selectedVm = yourTeam?.active.find(
+  // Check your team first; fall back to opponent (read-only scouting view)
+  const selectedYourVm = yourTeam?.active.find(
     (v) => v.uuid === selectedVellymon && !v.isKO,
   );
+  const selectedOpponentVm = !selectedYourVm
+    ? opponentTeam?.active.find((v) => v.uuid === selectedVellymon && !v.isKO)
+    : undefined;
+  const selectedVm = selectedYourVm ?? selectedOpponentVm ?? null;
+  const isOpponentVm = !!selectedOpponentVm;
+
   const pendingForSelected = pendingCommands.find(
     (c) => c.vellymonUuid === selectedVellymon,
   );
@@ -764,20 +771,28 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               tween={activeTween ?? undefined}
             />
 
-            {/* Vellymon drawer — overlays the board when a vellymon is selected */}
+            {/* Vellymon drawer — own mon → full command UI; opponent → read-only scout */}
             {selectedVm && !waitingForSwitch && (
               <VellymonDrawer
                 vellymon={selectedVm}
                 info={vellymonInfoCache[selectedVm.name]}
-                teamEnergy={yourTeam?.energy ?? 0}
-                pendingCommand={pendingForSelected ?? null}
+                teamEnergy={
+                  isOpponentVm
+                    ? (opponentTeam?.energy ?? 0)
+                    : (yourTeam?.energy ?? 0)
+                }
+                pendingCommand={isOpponentVm ? null : (pendingForSelected ?? null)}
                 dirToArrow={(dir) =>
                   gameDirToScreenArrow(dir, isPortrait, yourTeam?.id ?? 1)
                 }
-                onAction={(type, dir, attackIndex) =>
-                  addDirectionalCommand(type, selectedVm.uuid, dir, attackIndex)
+                onAction={
+                  isOpponentVm
+                    ? undefined
+                    : (type, dir, attackIndex) =>
+                        addDirectionalCommand(type, selectedVm.uuid, dir, attackIndex)
                 }
                 onClose={() => setSelectedVellymon(null)}
+                readOnly={isOpponentVm}
               />
             )}
           </div>
