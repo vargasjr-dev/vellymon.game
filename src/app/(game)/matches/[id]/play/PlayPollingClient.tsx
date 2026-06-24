@@ -766,6 +766,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               yourTeamId={yourTeam?.id ?? 1}
               selectedVellymon={selectedVellymon}
               onSelectVellymon={setSelectedVellymon}
+              tapAllVellymons={true}
               commandedUuids={commandedUuids}
               overlays={animOverlays ?? undefined}
               tween={activeTween ?? undefined}
