@@ -251,23 +251,29 @@ export default function VellymonDrawer({
                 </span>
               </div>
 
-              {/* Directional pad — 2×2 grid */}
+              {/* Directional pad — 4 screen-space direction buttons.
+                  We iterate screen directions and display their raw arrow symbols.
+                  dirToArrow (game→screen) is only used for the pending-command badge
+                  above; using it here would double-convert in portrait mode. */}
               <div className="grid grid-cols-4 gap-2">
-                {(["up", "down", "left", "right"] as Dir[]).map((dir) => (
-                  <button
-                    key={dir}
-                    onClick={() => handleDirectionPick(dir)}
-                    className={`h-14 rounded-xl text-xl font-bold transition active:scale-95 ${
-                      selectedAction.type === "move"
-                        ? "bg-gray-700/60 hover:bg-gray-600/60 border border-gray-600/40 text-white"
-                        : selectedAction.type === "attack"
-                          ? "bg-red-900/50 hover:bg-red-800/50 border border-red-700/40 text-red-200"
-                          : "bg-yellow-900/50 hover:bg-yellow-800/50 border border-yellow-700/40 text-yellow-200"
-                    }`}
-                  >
-                    {dirToArrow(dir)}
-                  </button>
-                ))}
+                {(["left", "right", "down", "up"] as Dir[]).map((screenDir) => {
+                  const ARROWS: Record<Dir, string> = { left: "←", right: "→", down: "↓", up: "↑" };
+                  return (
+                    <button
+                      key={screenDir}
+                      onClick={() => handleDirectionPick(screenDir)}
+                      className={`h-14 rounded-xl text-xl font-bold transition active:scale-95 ${
+                        selectedAction.type === "move"
+                          ? "bg-gray-700/60 hover:bg-gray-600/60 border border-gray-600/40 text-white"
+                          : selectedAction.type === "attack"
+                            ? "bg-red-900/50 hover:bg-red-800/50 border border-red-700/40 text-red-200"
+                            : "bg-yellow-900/50 hover:bg-yellow-800/50 border border-yellow-700/40 text-yellow-200"
+                      }`}
+                    >
+                      {ARROWS[screenDir]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
