@@ -251,7 +251,7 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
             href="/practice"
             className="flex-1 text-center bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold transition"
           >
-            🤖 Spar Again
+            🥊 Spar Again
           </Link>
         ) : (
           <Link
