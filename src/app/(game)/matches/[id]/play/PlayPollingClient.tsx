@@ -18,6 +18,7 @@ import VictoryModal from "./VictoryModal";
 import { useSoundEffects } from "./useSoundEffects";
 
 const BattleCanvas = dynamic(() => import("./BattleCanvas"), { ssr: false });
+import type { PendingCommandDisplay } from "./BattleCanvas";
 
 import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
 import {
@@ -653,6 +654,17 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     [pendingCommands],
   );
 
+  // Pending command overlays rendered on the board (faint badge per mon)
+  const pendingCommandDisplays = useMemo<PendingCommandDisplay[]>(
+    () =>
+      pendingCommands.map((c) => ({
+        vellymonUuid: c.vellymonUuid,
+        type: c.type,
+        direction: c.direction,
+      })),
+    [pendingCommands],
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-[#0a0f1a] text-white flex flex-col">
       {loading && (
@@ -774,6 +786,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               onSelectVellymon={setSelectedVellymon}
               tapAllVellymons={true}
               commandedUuids={commandedUuids}
+              pendingCommandDisplays={pendingCommandDisplays}
               overlays={animOverlays ?? undefined}
               tween={activeTween ?? undefined}
             />
@@ -814,36 +827,12 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
               </div>
             ) : (
               <div className="mb-2">
-                {/* Pending commands summary — always rendered to keep bar height stable */}
-                {pendingCommands.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {pendingCommands.map((cmd) => {
-                      const vm = yourTeam?.active.find(
-                        (v) => v.uuid === cmd.vellymonUuid,
-                      );
-                      return (
-                        <button
-                          key={cmd.vellymonUuid}
-                          onClick={() => setSelectedVellymon(cmd.vellymonUuid)}
-                          className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-300 transition"
-                        >
-                          {vm?.name?.slice(0, 8)}: {cmd.type}{" "}
-                          {cmd.direction
-                            ? gameDirToScreenArrow(
-                                cmd.direction,
-                                isPortrait,
-                                yourTeam?.id ?? 1,
-                              )
-                            : ""}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-center text-sm text-gray-500">
-                    Tap a vellymon to issue commands
-                  </p>
-                )}
+                {/* Command hints — commands are shown as badges on the board */}
+                <p className="text-center text-sm text-gray-500">
+                  {pendingCommands.length > 0
+                    ? `${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""} queued`
+                    : "Tap a vellymon to issue commands"}
+                </p>
               </div>
             )}
 

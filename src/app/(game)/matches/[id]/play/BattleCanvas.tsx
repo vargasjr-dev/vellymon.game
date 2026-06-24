@@ -86,6 +86,12 @@ export type TweenTarget = {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
+export type PendingCommandDisplay = {
+  vellymonUuid: string;
+  type: "move" | "attack" | "harvest";
+  direction?: string;
+};
+
 type Props = {
   boardWidth: number;
   boardHeight: number;
@@ -95,6 +101,8 @@ type Props = {
   selectedVellymon: string | null;
   onSelectVellymon: (uuid: string | null) => void;
   commandedUuids: Set<string>;
+  /** Pending commands — shown as faint badge overlays on each vellymon tile */
+  pendingCommandDisplays?: PendingCommandDisplay[];
   overlays?: Overlays;
   /** When provided and key changes, animates vellymon positions internally via Pixi ticker. */
   tween?: TweenTarget;
@@ -211,6 +219,7 @@ export default function BattleCanvas({
   selectedVellymon,
   onSelectVellymon,
   commandedUuids,
+  pendingCommandDisplays,
   overlays,
   tween,
   tapAllVellymons,
@@ -231,6 +240,7 @@ export default function BattleCanvas({
     yourTeamId,
     selectedVellymon,
     commandedUuids,
+    pendingCommandDisplays: pendingCommandDisplays ?? [],
     overlays,
     tapAllVellymons: false,
   });
@@ -244,6 +254,7 @@ export default function BattleCanvas({
     yourTeamId,
     selectedVellymon,
     commandedUuids,
+    pendingCommandDisplays: pendingCommandDisplays ?? [],
     overlays,
     tapAllVellymons: tapAllVellymons ?? false,
   };
@@ -259,6 +270,7 @@ export default function BattleCanvas({
       yourTeamId: myTeam,
       selectedVellymon: selVm,
       commandedUuids: cmdSet,
+      pendingCommandDisplays: pendingCmds,
       overlays: ovl,
       tapAllVellymons: tapAll,
     } = stateRef.current;
@@ -517,6 +529,47 @@ export default function BattleCanvas({
         hpFill.roundRect(hpBarX, hpBarY, hpBarW * hpPercent, hpBarH, 2);
         hpFill.fill(hpColor);
         boardContainer.addChild(hpFill);
+      }
+
+      // Pending command badge — faint icon overlaid on the mon
+      const pendingCmd = pendingCmds.find((c) => c.vellymonUuid === vm.uuid);
+      if (pendingCmd && vm.teamId === myTeam) {
+        const typeIcon =
+          pendingCmd.type === "move"
+            ? "👟"
+            : pendingCmd.type === "attack"
+              ? "⚔️"
+              : "🌱";
+        // Convert game-space direction to the screen arrow the player sees.
+        // Mirrors the gameDirToScreenArrow logic in PlayPollingClient.
+        const gameDir = pendingCmd.direction as "up" | "down" | "left" | "right" | undefined;
+        let screenDir = gameDir;
+        if (gameDir && isPortrait) {
+          const t1Map: Record<string, "up" | "down" | "left" | "right"> = {
+            right: "up", left: "down", up: "left", down: "right",
+          };
+          const t2Map: Record<string, "up" | "down" | "left" | "right"> = {
+            left: "up", right: "down", down: "left", up: "right",
+          };
+          screenDir = myTeam === 1 ? t1Map[gameDir] : t2Map[gameDir];
+        }
+        const arrowMap: Record<string, string> = {
+          up: "↑", down: "↓", left: "←", right: "→",
+        };
+        const dirArrow = screenDir ? ` ${arrowMap[screenDir]}` : "";
+        const badgeText = new Text({
+          text: `${typeIcon}${dirArrow}`,
+          style: new TextStyle({
+            fontSize: Math.min(tileSize * 0.28, 18),
+            fill: 0xffffff,
+            align: "center",
+          }),
+        });
+        badgeText.anchor.set(0.5);
+        badgeText.x = centerX;
+        badgeText.y = centerY - 2;
+        badgeText.alpha = 0.35;
+        boardContainer.addChild(badgeText);
       }
     }
 
