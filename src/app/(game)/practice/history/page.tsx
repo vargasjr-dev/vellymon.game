@@ -39,7 +39,7 @@ function PlayedMatchRow({ match }: { match: Extract<PracticeHistoryRow, { type: 
         href={`/matches/${match.uuid}/spectate`}
         className="shrink-0 bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
       >
-        Spectate →
+        Watch →
       </Link>
     </div>
   );
