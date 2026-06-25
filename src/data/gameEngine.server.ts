@@ -320,9 +320,11 @@ function buildAITeamSetup(
         damage: a.damage,
         energyCost: a.energyCost,
         range: a.range,
+        ...(a.arcOver ? { arcOver: true } : {}),
       })),
       spawnPosition: spawns[index % spawns.length] ?? spawns[0],
-      imageUrl: undefined,
+      specialPowerId: template.specialPowerId,
+      imageUrl: template.imageUrl,
     };
     if (index < 4) {
       active.push(setup);
@@ -380,8 +382,10 @@ function buildProfileTeamSetup(
         damage: a.damage,
         energyCost: a.energyCost,
         range: a.range,
+        ...(a.arcOver ? { arcOver: true } : {}),
       })),
       spawnPosition: spawns[index % spawns.length] ?? spawns[0],
+      specialPowerId: template.specialPowerId,
       imageUrl: template.imageUrl,
     };
     if (index < 4) {
@@ -446,8 +450,10 @@ async function buildTeamSetup(
         damage: a.damage,
         energyCost: a.energyCost,
         range: a.range,
+        ...(a.arcOver ? { arcOver: true } : {}),
       })),
       spawnPosition: spawns[slot.slotIndex % spawns.length],
+      specialPowerId: template.specialPowerId,
       imageUrl: template.imageUrl,
     };
 

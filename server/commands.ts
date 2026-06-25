@@ -70,6 +70,16 @@ export type CommandResult = {
    * e.g. { 2: -2 } means team 2 lost 2 energy (Voidclaw drain).
    */
   powerEnergyDeltas?: Partial<Record<1 | 2, number>>;
+  /**
+   * Effects triggered by the defender's special power (onDamaged hook).
+   * e.g. Ironpup Loyal Guard: 2 bonus damage to attacker + 1 HP heal to self.
+   */
+  defenderPowerEffects?: Array<{
+    type: "bonus_damage" | "heal";
+    targetName: string;
+    amount: number;
+    powerName: string;
+  }>;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

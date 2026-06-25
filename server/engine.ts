@@ -62,7 +62,7 @@ export type VellymonSetup = {
   maxHp: number;
   speed: number;
   attack: number;
-  attacks: { key: string; name: string; damage: number; energyCost: number; range: number }[];
+  attacks: { key: string; name: string; damage: number; energyCost: number; range: number; arcOver?: boolean }[];
   spawnPosition: Position;
   imageUrl?: string;
   specialPowerId?: string;
@@ -474,6 +474,14 @@ export function resolveTurn(
       const enemyTeam = state.teams.find((t) => t.id === enemyTeamId);
       const defender = enemyTeam?.active.find((v) => v.uuid === result.targetUuid);
       if (defender?.specialPowerId && attackerVellymon) {
+        // Snapshot names before effects apply (target could be KO'd by bite-back)
+        const nameOf = (uuid: string) => {
+          for (const t of state.teams) {
+            const found = [...t.active, ...t.bench, ...t.knocked].find((v) => v.uuid === uuid);
+            if (found) return found.name;
+          }
+          return uuid;
+        };
         const damagedCtx = {
           self: defender,
           team: enemyTeamId as 1 | 2,
@@ -485,6 +493,19 @@ export function resolveTurn(
         const damagedEffects = runHook("onDamaged", defender.specialPowerId, damagedCtx);
         if (damagedEffects.length > 0) {
           applyEffects(damagedEffects, state);
+          const powerName = getPower(defender.specialPowerId)?.name ?? defender.specialPowerId;
+          result.defenderPowerEffects = damagedEffects
+            .filter((e) => e.type === "bonus_damage" || e.type === "heal")
+            .map((e) => ({
+              type: e.type as "bonus_damage" | "heal",
+              targetName: nameOf(
+                e.type === "bonus_damage"
+                  ? (e as { targetId: string }).targetId
+                  : (e as { targetId: string }).targetId,
+              ),
+              amount: (e as { amount: number }).amount,
+              powerName,
+            }));
         }
       }
     }
