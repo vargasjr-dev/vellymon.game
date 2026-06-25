@@ -150,6 +150,31 @@ function resultIcon(r: CommandResult): string {
   }
 }
 
+/**
+ * Compute the net energy delta per team across all command results for a turn.
+ * Accounts for both base command costs/gains (energyDelta) and special-power
+ * triggered energy changes (powerEnergyDeltas).
+ */
+function computeTeamEnergyDeltas(
+  log: TurnLogData,
+): Partial<Record<1 | 2, number>> {
+  const deltas: Partial<Record<1 | 2, number>> = {};
+  for (const r of log.commandResults) {
+    if (!r.success) continue;
+    const teamId: 1 | 2 = r.command.vellymonUuid.startsWith("1-") ? 1 : 2;
+    if (r.energyDelta !== undefined) {
+      deltas[teamId] = (deltas[teamId] ?? 0) + r.energyDelta;
+    }
+    if (r.powerEnergyDeltas) {
+      for (const [t, amt] of Object.entries(r.powerEnergyDeltas)) {
+        const tid = Number(t) as 1 | 2;
+        deltas[tid] = (deltas[tid] ?? 0) + (amt ?? 0);
+      }
+    }
+  }
+  return deltas;
+}
+
 function turnSummaryIcons(log: TurnLogData): string {
   const icons: string[] = [];
   const attacks = log.commandResults.filter((r) => r.command.type === "attack" && r.success);
@@ -189,6 +214,10 @@ function formatResult(
       const ko = r.targetKO ? " [KO!]" : "";
       const move = r.attackName ? ` ${r.attackName}` : "";
       const missed = !r.damageDealt ? " — missed" : "";
+      const cost =
+        r.energyDelta !== undefined && r.energyDelta < 0
+          ? ` [−${Math.abs(r.energyDelta)}⚡]`
+          : "";
       const powerDrain = r.powerEnergyDeltas
         ? Object.entries(r.powerEnergyDeltas)
             .map(([t, amt]) =>
@@ -196,7 +225,7 @@ function formatResult(
             )
             .join("")
         : "";
-      return `${name} used${move}${dir}${victim}${dmg}${ko}${missed}${powerDrain}`;
+      return `${name} used${move}${dir}${victim}${dmg}${ko}${missed}${cost}${powerDrain}`;
     }
     case "harvest": {
       const energy = r.energyDelta ? ` (+${r.energyDelta}⚡)` : "";
@@ -285,10 +314,41 @@ export default function TurnHistory({ history, isOpen, onToggle, isPortrait = fa
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div className="ml-8 mb-2 space-y-1">
-                      {/* Energy before */}
-                      <div className="text-xs text-gray-500 mb-1">
-                        ⚡ T1: {snap.teamsBefore[0]?.energy ?? "?"} | T2: {snap.teamsBefore[1]?.energy ?? "?"}
-                      </div>
+                      {/* Energy: before → after for each team */}
+                      {(() => {
+                        const deltas = computeTeamEnergyDeltas(snap.log);
+                        return (
+                          <div className="text-xs text-gray-500 mb-1">
+                            {([1, 2] as const).map((tid) => {
+                              const before = snap.teamsBefore.find((t) => t.id === tid)?.energy;
+                              const delta = deltas[tid] ?? 0;
+                              const after = before !== undefined ? before + delta : undefined;
+                              const deltaLabel =
+                                delta > 0
+                                  ? ` +${delta}⚡`
+                                  : delta < 0
+                                    ? ` −${Math.abs(delta)}⚡`
+                                    : "";
+                              return (
+                                <span key={tid}>
+                                  {tid > 1 && " | "}
+                                  ⚡ T{tid}: {before ?? "?"}
+                                  {after !== undefined && after !== before && (
+                                    <span
+                                      className={
+                                        delta > 0 ? "text-emerald-400" : "text-red-400"
+                                      }
+                                    >
+                                      {deltaLabel} → {after}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+
 
                       {/* Turn-start passive power events (heals, burns) */}
                       {(snap.log.turnStartEvents ?? []).map((e, i) => (
