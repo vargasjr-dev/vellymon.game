@@ -32,7 +32,7 @@ import {
   validateCommand,
   resolveCommand,
 } from "./commands";
-import { checkWinConditions, updateOccupationCounters } from "./winConditions";
+import { checkWinConditions, updateOccupationCounters, type OccupationEvent } from "./winConditions";
 import { processAllBenchEntries, type BenchEntry } from "./bench";
 import {
   runHook,
@@ -169,6 +169,8 @@ export type TurnLog = {
   turnStartEvents: TurnStartEvent[];
   commandResults: CommandResult[];
   benchEntries: { team1: BenchEntry[]; team2: BenchEntry[] };
+  /** Occupation counter changes that happened at end-of-turn */
+  occupationEvents: OccupationEvent[];
   winResult: WinResult | null;
 };
 
@@ -494,7 +496,7 @@ export function resolveTurn(
   const benchEntries = processAllBenchEntries(state);
 
   // Update occupation counters
-  updateOccupationCounters(state);
+  const occupationEvents = updateOccupationCounters(state);
 
   // Check win conditions
   const winResult = checkWinConditions(state);
@@ -508,6 +510,7 @@ export function resolveTurn(
     turnStartEvents,
     commandResults,
     benchEntries,
+    occupationEvents,
     winResult,
   };
 }

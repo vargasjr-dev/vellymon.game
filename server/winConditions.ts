@@ -129,6 +129,17 @@ export function checkWinConditions(state: GameState): WinResult | null {
 
 // ─── Occupation Counter Update ───────────────────────────────────────────────
 
+export type OccupationEvent = {
+  x: number;
+  y: number;
+  /** Counter before this turn's update */
+  counterBefore: number;
+  /** Counter after this turn's update */
+  counterAfter: number;
+  /** Which team is ticking the point (or null if no change) */
+  tickingTeam: 1 | 2;
+};
+
 /**
  * Update occupation counters based on which vellymons are standing on
  * occupation points at the end of a turn.
@@ -138,10 +149,13 @@ export function checkWinConditions(state: GameState): WinResult | null {
  * - Opponent vellymon on point → tick counter back (contest/decrement)
  * - Both teams on same point → cancel out (no change)
  * - Nobody on point → no change
+ *
+ * Returns one event per point that actually changed.
  */
-export function updateOccupationCounters(state: GameState): void {
+export function updateOccupationCounters(state: GameState): OccupationEvent[] {
   const [team1, team2] = state.teams;
   const threshold = GAME_CONFIG.occupation.ticksToControl;
+  const events: OccupationEvent[] = [];
 
   for (const space of state.board) {
     if (space.type !== "occupation") continue;
@@ -159,15 +173,23 @@ export function updateOccupationCounters(state: GameState): void {
         v.position?.y === space.position.y,
     );
 
-    const counter = space.occupationCounter ?? 0;
+    const counterBefore = space.occupationCounter ?? 0;
 
     if (team1OnSpace && !team2OnSpace) {
       // Tick toward team 1 (negative direction)
-      space.occupationCounter = Math.max(counter - 1, -threshold);
+      space.occupationCounter = Math.max(counterBefore - 1, -threshold);
+      if (space.occupationCounter !== counterBefore) {
+        events.push({ x: space.position.x, y: space.position.y, counterBefore, counterAfter: space.occupationCounter, tickingTeam: 1 });
+      }
     } else if (team2OnSpace && !team1OnSpace) {
       // Tick toward team 2 (positive direction)
-      space.occupationCounter = Math.min(counter + 1, threshold);
+      space.occupationCounter = Math.min(counterBefore + 1, threshold);
+      if (space.occupationCounter !== counterBefore) {
+        events.push({ x: space.position.x, y: space.position.y, counterBefore, counterAfter: space.occupationCounter, tickingTeam: 2 });
+      }
     }
     // Both or neither → no change
   }
+
+  return events;
 }

@@ -37,11 +37,20 @@ type TurnStartEvent = {
   damageAmount?: number;
 };
 
+type OccupationEvent = {
+  x: number;
+  y: number;
+  counterBefore: number;
+  counterAfter: number;
+  tickingTeam: 1 | 2;
+};
+
 type TurnLogData = {
   turn: number;
   turnStartEvents?: TurnStartEvent[];
   commandResults: CommandResult[];
   benchEntries: { team1: BenchEntry[]; team2: BenchEntry[] };
+  occupationEvents?: OccupationEvent[];
   winResult: { winner: 1 | 2; condition: string } | null;
 };
 
@@ -146,9 +155,11 @@ function turnSummaryIcons(log: TurnLogData): string {
   const attacks = log.commandResults.filter((r) => r.command.type === "attack" && r.success);
   const kos = log.commandResults.filter((r) => r.targetKO);
   const harvests = log.commandResults.filter((r) => r.command.type === "harvest" && r.success);
+  const occCaptures = (log.occupationEvents ?? []).filter((e) => Math.abs(e.counterAfter) >= 2);
   if (attacks.length > 0) icons.push(`⚔️${attacks.length}`);
   if (kos.length > 0) icons.push(`💀${kos.length}`);
   if (harvests.length > 0) icons.push(`🌿${harvests.length}`);
+  if (occCaptures.length > 0) icons.push(`⭐${occCaptures.length}`);
   if (icons.length === 0) icons.push("→"); // all moves
   return icons.join(" ");
 }
@@ -326,6 +337,25 @@ export default function TurnHistory({ history, isOpen, onToggle, isPortrait = fa
                           </span>
                         </div>
                       ))}
+
+                      {/* Occupation events */}
+                      {(snap.log.occupationEvents ?? []).map((e, i) => {
+                        const threshold = 2; // matches GAME_CONFIG.occupation.ticksToControl
+                        const owned = Math.abs(e.counterAfter) >= threshold;
+                        const contested = Math.sign(e.counterBefore) !== 0 && Math.sign(e.counterAfter) !== Math.sign(e.counterBefore);
+                        const teamColor = e.tickingTeam === yourTeamId ? "text-blue-400" : "text-red-400";
+                        const label = owned
+                          ? `⭐ Point (${e.x},${e.y}) captured`
+                          : contested
+                            ? `⭐ Point (${e.x},${e.y}) contested`
+                            : `⭐ Point (${e.x},${e.y}) +1 (${e.counterAfter > 0 ? "T2" : "T1"})`;
+                        return (
+                          <div key={`occ-${i}`} className="flex items-start gap-1.5 text-xs">
+                            <span className="shrink-0">⭐</span>
+                            <span className={teamColor}>{label.replace("⭐ ", "")}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

@@ -88,11 +88,20 @@ export type RawTurnStartEvent = {
   damageAmount?: number;
 };
 
+export type RawOccupationEvent = {
+  x: number;
+  y: number;
+  counterBefore: number;
+  counterAfter: number;
+  tickingTeam: 1 | 2;
+};
+
 export type RawTurnLog = {
   turn: number;
   turnStartEvents?: RawTurnStartEvent[];
   commandResults: RawCommandResult[];
   benchEntries: { team1: RawBenchEntry[]; team2: RawBenchEntry[] };
+  occupationEvents?: RawOccupationEvent[];
   winResult: { winner: 1 | 2; condition: string } | null;
 };
 
@@ -232,6 +241,7 @@ export function buildUnifiedSteps(
   toSnap: RawGameState,
   lookup: Map<string, { name: string; teamId: 1 | 2 }>,
   turnStartEvents: RawTurnStartEvent[] = [],
+  rawLog?: Pick<RawTurnLog, "occupationEvents">,
 ): UnifiedStep[] {
   const steps: UnifiedStep[] = [];
 
@@ -578,6 +588,29 @@ export function buildUnifiedSteps(
     impactOverlay: null,
     impactMs: 0,
   });
+
+  // Occupation event steps — one label flash per changed point
+  const occEvents = rawLog?.occupationEvents ?? [];
+  if (occEvents.length > 0) {
+    const finalPos = snapshotToVellymons(toSnap);
+    const THRESHOLD = 2; // matches GAME_CONFIG.occupation.ticksToControl
+    const occLabels = occEvents.map((e) => {
+      const owned = Math.abs(e.counterAfter) >= THRESHOLD;
+      const teamColor = e.tickingTeam === 1 ? 0x3b82f6 : 0xef4444;
+      const text = owned ? "⭐ Captured!" : `⭐ +1`;
+      return { x: e.x, y: e.y, text, color: teamColor, alpha: 1 };
+    });
+    steps.push({
+      key: "occ-events",
+      previewOverlay: { labels: occLabels },
+      previewMs: 700,
+      tweenFrom: finalPos,
+      tweenTo: finalPos,
+      tweenMs: 0,
+      impactOverlay: null,
+      impactMs: 0,
+    });
+  }
 
   return steps;
 }

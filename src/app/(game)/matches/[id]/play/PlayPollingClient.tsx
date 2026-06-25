@@ -571,6 +571,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
             gs,
             lookup,
             rawLog.turnStartEvents ?? [],
+            rawLog,
           );
           // Apply new state only after animation completes
           startAnimation(steps, () => {

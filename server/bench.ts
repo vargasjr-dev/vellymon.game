@@ -69,20 +69,35 @@ export function processBenchEntries(
       continue;
     }
 
-    if (isSpawnClear(state, benchMon.spawnPosition)) {
+    // Try the pre-assigned spawn first, then fall back to any clear team spawn
+    const assignedClear = isSpawnClear(state, benchMon.spawnPosition);
+    const entryPos: Position | null = assignedClear
+      ? benchMon.spawnPosition
+      : (() => {
+          // Find all spawn tiles belonging to this team and pick a clear one
+          const teamSpawns = state.board.filter(
+            (s) => s.type === "spawn" && s.team === team.id,
+          );
+          for (const s of teamSpawns) {
+            if (isSpawnClear(state, s.position)) return s.position;
+          }
+          return null;
+        })();
+
+    if (entryPos) {
       // Enter the battlefield
-      benchMon.position = { ...benchMon.spawnPosition };
+      benchMon.position = { ...entryPos };
       benchMon.isKO = false;
       toEnter.push(benchMon);
 
       entries.push({
         vellymonUuid: benchMon.uuid,
         vellymonName: benchMon.name,
-        spawnPosition: { ...benchMon.spawnPosition },
+        spawnPosition: { ...entryPos },
         status: "entered",
       });
     } else {
-      // Spawn blocked — queue for next turn
+      // All team spawns blocked — queue for next turn
       remaining.push(benchMon);
 
       entries.push({
