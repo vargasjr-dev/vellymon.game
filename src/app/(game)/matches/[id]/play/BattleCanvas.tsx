@@ -557,18 +557,20 @@ export default function BattleCanvas({
           up: "↑", down: "↓", left: "←", right: "→",
         };
         const dirArrow = screenDir ? ` ${arrowMap[screenDir]}` : "";
+        const badgeFontSize = Math.min(tileSize * 0.3, 18);
         const badgeText = new Text({
           text: `${typeIcon}${dirArrow}`,
           style: new TextStyle({
-            fontSize: Math.min(tileSize * 0.28, 18),
+            fontSize: badgeFontSize,
             fill: 0xffffff,
             align: "center",
+            dropShadow: { color: 0x000000, blur: 4, alpha: 0.85, distance: 0 },
           }),
         });
         badgeText.anchor.set(0.5);
         badgeText.x = centerX;
         badgeText.y = centerY - 2;
-        badgeText.alpha = 0.35;
+        badgeText.alpha = 0.85;
         boardContainer.addChild(badgeText);
       }
     }

@@ -135,7 +135,7 @@ function resultIcon(r: CommandResult): string {
   if (!r.success) return "⊘";
   switch (r.command.type) {
     case "move": return "→";
-    case "attack": return r.targetKO ? "💀" : "⚔️";
+    case "attack": return r.targetKO ? "💀" : r.damageDealt === 0 ? "💨" : "⚔️";
     case "harvest": return "🌿";
     default: return "•";
   }
@@ -177,6 +177,7 @@ function formatResult(
       const dmg = r.damageDealt ? ` −${r.damageDealt} HP` : "";
       const ko = r.targetKO ? " [KO!]" : "";
       const move = r.attackName ? ` ${r.attackName}` : "";
+      const missed = !r.damageDealt ? " — missed" : "";
       const powerDrain = r.powerEnergyDeltas
         ? Object.entries(r.powerEnergyDeltas)
             .map(([t, amt]) =>
@@ -184,7 +185,7 @@ function formatResult(
             )
             .join("")
         : "";
-      return `${name} used${move}${dir}${victim}${dmg}${ko}${powerDrain}`;
+      return `${name} used${move}${dir}${victim}${dmg}${ko}${missed}${powerDrain}`;
     }
     case "harvest": {
       const energy = r.energyDelta ? ` (+${r.energyDelta}⚡)` : "";
@@ -299,8 +300,10 @@ export default function TurnHistory({ history, isOpen, onToggle, isPortrait = fa
                         </div>
                       ))}
 
-                      {/* Command results sorted by execution order */}
-                      {snap.log.commandResults.map((r, i) => {
+                      {/* Command results sorted by execution order.
+                          Skip "Vellymon not found" — it means a mon was KO'd
+                          earlier in the same turn and its queued command never ran. */}
+                      {snap.log.commandResults.filter((r) => r.reason !== "Vellymon not found").map((r, i) => {
                         const icon = resultIcon(r);
                         const teamId = r.command.vellymonUuid.startsWith("1-") ? 1 : 2;
                         const teamColor = teamId === 1 ? "text-blue-400" : "text-red-400";

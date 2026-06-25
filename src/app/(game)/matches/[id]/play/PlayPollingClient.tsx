@@ -24,6 +24,7 @@ import TurnHistory, { type TurnSnapshot } from "./TurnHistory";
 import {
   type RawGameState,
   type RawTurnLog,
+  type RawCommandResult,
   buildUnifiedSteps,
   buildVellymonLookup,
 } from "./turnAnimation";
@@ -547,7 +548,11 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
         // Run animation before applying state (so vellymons don't teleport)
         if (fromSnap && rawLog) {
           const lookup = buildVellymonLookup(fromSnap);
-          const cmds = rawLog.commandResults ?? [];
+          // Filter out "Vellymon not found" — the mon was KO'd earlier this turn,
+          // its queued command should produce no animation.
+          const cmds = (rawLog.commandResults ?? []).filter(
+            (r: RawCommandResult) => r.reason !== "Vellymon not found",
+          );
           const getSpeed = (uuid: string): number => {
             for (const t of fromSnap.teams) {
               const vm = t.active.find((av) => av.uuid === uuid);

@@ -321,8 +321,7 @@ function buildAITeamSetup(
         energyCost: a.energyCost,
         range: a.range,
       })),
-      spawnPosition:
-        index < 4 ? (spawns[index] ?? { x: 0, y: 0 }) : { x: 0, y: 0 },
+      spawnPosition: spawns[index % spawns.length] ?? spawns[0],
       imageUrl: undefined,
     };
     if (index < 4) {
@@ -382,8 +381,7 @@ function buildProfileTeamSetup(
         energyCost: a.energyCost,
         range: a.range,
       })),
-      spawnPosition:
-        index < 4 ? (spawns[index] ?? { x: 0, y: 0 }) : { x: 0, y: 0 },
+      spawnPosition: spawns[index % spawns.length] ?? spawns[0],
       imageUrl: template.imageUrl,
     };
     if (index < 4) {
