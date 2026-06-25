@@ -240,11 +240,6 @@ export function validateCommand(
         return "Cannot move to void space";
       }
 
-      // Can't move onto spawn spaces (one-way entry)
-      if (space.type === "spawn") {
-        return "Cannot move onto spawn spaces";
-      }
-
       return null;
     }
 
@@ -356,7 +351,6 @@ export function resolveMove(
   if (
     !space ||
     space.type === "void" ||
-    space.type === "spawn" ||
     target.x < 0 ||
     target.x >= state.boardWidth ||
     target.y < 0 ||
