@@ -267,7 +267,7 @@ export default function VictoryModal({
               {/* Sparring label */}
               {rewards.isSparring && (
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                  <span className="text-lg">🤖</span>
+                  <span className="text-lg">🥊</span>
                   <p className="text-xs text-gray-400">Practice match</p>
                 </div>
               )}

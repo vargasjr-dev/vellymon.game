@@ -104,7 +104,7 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
         <p className="text-sm text-gray-500 mt-1 uppercase tracking-wide">{conditionLabel}</p>
         {isSparring && (
           <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
-            🤖 Practice Match
+            🥊 Practice Match
           </span>
         )}
         <p className="text-xs text-gray-400 mt-2">{matchTurns} turns played</p>

@@ -61,7 +61,7 @@ function NoTeamsGate() {
 function NoProfilesGate() {
   return (
     <div className="text-center py-10 text-gray-500">
-      <p className="text-4xl mb-3">🤖</p>
+      <p className="text-4xl mb-3">🥊</p>
       <p className="font-medium text-gray-700">No opponent profiles yet</p>
       <p className="text-sm mt-1">
         AI profiles are coming soon — check back shortly.
@@ -234,7 +234,7 @@ function WatchTab({ profiles }: { profiles: ProfileOption[] }) {
   if (profiles.length < 2) {
     return (
       <div className="text-center py-10 text-gray-500">
-        <p className="text-4xl mb-3">🤖</p>
+        <p className="text-4xl mb-3">🥊</p>
         <p className="font-medium text-gray-700">Not enough profiles yet</p>
         <p className="text-sm mt-1">
           At least 2 AI profiles are needed for a Watch simulation.
