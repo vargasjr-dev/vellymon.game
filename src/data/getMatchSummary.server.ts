@@ -111,7 +111,7 @@ const getMatchSummary = async (
     const stats: MatchStatRow[] = Array.from(byUser.values()).map((row) => {
       const won = row.result === "win";
       const isSparring = row.isSparring;
-      const creditsAwarded = 10 + (won && !isSparring ? 25 : 0);
+      const creditsAwarded = isSparring ? 0 : 10 + (won ? 25 : 0);
       const xpAwarded = Math.round((won ? 100 : 50) * (!isSparring ? 1.5 : 1));
       const rankInfo = rankMap.get(row.userId);
 

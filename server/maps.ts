@@ -40,7 +40,7 @@ export type MapConfig = {
  * ```
  * 1 . . . . . . . 2     y=0
  * 1 . O . f . . . 2     y=1
- * . . f . h . f . .     y=2  ← center row: lush middle (+4), fertile flanks
+ * . . f . O . f . .     y=2  ← center row: contested middle, fertile flanks
  * 1 . . . f . O . 2     y=3
  * 1 . . . . . . . 2     y=4
  * ```
@@ -54,7 +54,7 @@ const STANDARD: MapConfig = {
   layout: [
     "1 . . . . . . . 2",
     "1 . O . f . . . 2",
-    ". . f . h . f . .",
+    ". . f . O . f . .",
     "1 . . . f . O . 2",
     "1 . . . . . . . 2",
   ],

@@ -174,17 +174,15 @@ export async function awardMatchProgression(
       }
 
       // ── 2. Currency reward ─────────────────────────────────────────────────
-      const credits =
-        CREDITS_PARTICIPATION + (won && !isSparring ? CREDITS_WIN_BONUS : 0);
-      const creditDesc = isSparring
-        ? "Sparring match participation"
-        : won
-          ? "Match win reward"
-          : "Match participation reward";
-
-      await grantCredits(p.userId, credits, "purchase", creditDesc).catch(
-        (e) => console.error("[progression] currency grant failed:", e),
-      );
+      // No credits for sparring/practice — too easy to farm against profiles
+      // designed to lose. Credits are PvP-only.
+      if (!isSparring) {
+        const credits = CREDITS_PARTICIPATION + (won ? CREDITS_WIN_BONUS : 0);
+        const creditDesc = won ? "Match win reward" : "Match participation reward";
+        await grantCredits(p.userId, credits, "purchase", creditDesc).catch(
+          (e) => console.error("[progression] currency grant failed:", e),
+        );
+      }
 
       // ── 3. Rank update (PvP only) ──────────────────────────────────────────
       if (!isSparring && activeSeason) {

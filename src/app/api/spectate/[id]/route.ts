@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { db } from "../../../../../data/db";
-import { matchSnapshot } from "../../../../../data/schema";
+import { matchSnapshot, gameSession } from "../../../../../data/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(
@@ -21,8 +21,8 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Sanitize: only allow alphanumeric match IDs to prevent path traversal
-  if (!/^[a-zA-Z0-9]+$/.test(id)) {
+  // Sanitize: allow alphanumeric + hyphens (UUIDs) to prevent path traversal
+  if (!/^[a-zA-Z0-9-]+$/.test(id)) {
     return NextResponse.json({ error: "Invalid match ID" }, { status: 400 });
   }
 
@@ -62,6 +62,30 @@ export async function GET(
         turnSnapshots: (row.turnSnapshots as unknown[]) ?? [],
         turnLogs: (row.turnLogs as unknown[]) ?? [],
         turnHistory: [],
+      });
+    }
+  } catch {
+    // DB unavailable — fall through
+  }
+
+  // ── 3. gameSession fallback — web practice/ranked matches ─────────────────
+  try {
+    const [row] = await db
+      .select()
+      .from(gameSession)
+      .where(eq(gameSession.uuid, id));
+
+    if (row) {
+      const meta = row.metadata as {
+        gameState?: unknown;
+        turnHistory?: unknown[];
+      } | null;
+      return NextResponse.json({
+        gameState: meta?.gameState ?? null,
+        status: "completed",
+        turnSnapshots: [],
+        turnLogs: [],
+        turnHistory: meta?.turnHistory ?? [],
       });
     }
   } catch {

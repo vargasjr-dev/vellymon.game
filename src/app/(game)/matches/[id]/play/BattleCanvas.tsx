@@ -769,7 +769,10 @@ export default function BattleCanvas({
     };
     app.ticker.add(ticker);
     return () => {
-      app.ticker.remove(ticker);
+      // Guard: app may already be destroyed (e.g. component unmounted on win screen)
+      if (appRef.current) {
+        app.ticker.remove(ticker);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tween?.key]);

@@ -263,7 +263,7 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
         )}
 
         <Link
-          href="/matches"
+          href={isSparring ? "/practice/history" : "/matches"}
           className="flex-1 text-center border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-xl font-semibold transition"
         >
           Match History

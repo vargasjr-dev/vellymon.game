@@ -27,10 +27,10 @@ export default function ErrorFallback({
       )}
       <div className="flex gap-3 justify-center">
         <button
-          onClick={reset}
+          onClick={() => window.location.reload()}
           className="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
         >
-          Try Again
+          Refresh
         </button>
         <a
           href="/player"
