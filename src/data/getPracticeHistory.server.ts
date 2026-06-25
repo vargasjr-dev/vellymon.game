@@ -73,7 +73,9 @@ export async function getPracticeHistory(
     .orderBy(desc(matchStats.completedAt))
     .limit(limit);
 
-  // Pull aiProfileName from each gameSession's metadata
+  // Pull opponent profile name from each gameSession's metadata.
+  // Prefer the denormalized aiProfileName field; fall back to joining aiProfile
+  // via aiProfileId (handles sessions created before the name was denormalized).
   const playedRows: PlayedRow[] = [];
   if (statsRows.length > 0) {
     const uuids = statsRows.map((s) => s.gameSessionUuid);
@@ -82,14 +84,36 @@ export async function getPracticeHistory(
       .from(gameSession)
       .where(inArray(gameSession.uuid, uuids));
 
-    const metaByUuid = new Map(
-      sessions.map((s) => {
-        const meta = s.metadata as Record<string, unknown> | null;
-        return [s.uuid, (meta?.aiProfileName as string | undefined) ?? null];
-      }),
+    // Collect any aiProfileIds that need a name lookup
+    type MetaShape = { aiProfileName?: string; aiProfileId?: string };
+    const metaByUuid = new Map<string, MetaShape>(
+      sessions.map((s) => [s.uuid, (s.metadata as MetaShape | null) ?? {}]),
     );
 
+    // Collect profile IDs where the name wasn't denormalized into metadata
+    const missingIds = [
+      ...new Set(
+        sessions
+          .map((s) => s.metadata as MetaShape | null)
+          .filter((m): m is MetaShape => !!m?.aiProfileId && !m.aiProfileName)
+          .map((m) => m.aiProfileId as string),
+      ),
+    ];
+
+    const profileNamesById = new Map<string, string>();
+    if (missingIds.length > 0) {
+      const profiles = await db
+        .select({ id: aiProfile.id, name: aiProfile.name })
+        .from(aiProfile)
+        .where(inArray(aiProfile.id, missingIds));
+      for (const p of profiles) profileNamesById.set(p.id, p.name);
+    }
+
     for (const s of statsRows) {
+      const meta = metaByUuid.get(s.gameSessionUuid);
+      const profileName =
+        meta?.aiProfileName ??
+        (meta?.aiProfileId ? (profileNamesById.get(meta.aiProfileId) ?? null) : null);
       playedRows.push({
         type: "played",
         uuid: s.gameSessionUuid,
@@ -97,7 +121,7 @@ export async function getPracticeHistory(
         turns: s.turns,
         enemyKOs: s.enemyKOs,
         winCondition: s.winCondition,
-        opponentProfileName: metaByUuid.get(s.gameSessionUuid) ?? null,
+        opponentProfileName: profileName,
         completedAt: s.completedAt,
       });
     }
