@@ -433,7 +433,7 @@ export function resolveTurn(
           command: {
             type: command.type,
             vellymonUuid: command.vellymonUuid,
-            direction: command.direction,
+            vec: command.vec,
           },
           commandResult: {
             success: result.success,

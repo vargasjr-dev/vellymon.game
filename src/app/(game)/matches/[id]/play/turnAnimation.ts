@@ -54,11 +54,14 @@ export type RawGameState = {
 
 // ─── Turn log types ───────────────────────────────────────────────────────────
 
+export type Vec2 = { dx: number; dy: number };
+
 export type RawCommandResult = {
   command: {
     type: "move" | "attack" | "harvest";
     vellymonUuid: string;
-    direction?: string;
+    /** Game-space cardinal unit vector. Old DB rows may still carry direction string — normalizeVec handles compat. */
+    vec?: Vec2;
     attackIndex?: number;
   };
   success: boolean;
@@ -129,16 +132,28 @@ export type UnifiedStep = {
   impactMs: number;
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Compat: old DB turns store direction as a string; new turns use vec ──────
 
-export type Dir = "up" | "down" | "left" | "right";
-
-export const DIR_OFFSETS: Record<Dir, { dx: number; dy: number }> = {
-  up: { dx: 0, dy: -1 },
-  down: { dx: 0, dy: 1 },
-  left: { dx: -1, dy: 0 },
-  right: { dx: 1, dy: 0 },
-};
+/**
+ * Extract a Vec2 from a raw command result.
+ * New turns: `cmd.command.vec` is already present.
+ * Old DB turns (pre-dx/dy refactor): `cmd.command` may still have a `direction` string.
+ * Converts "up"→{dx:0,dy:-1}, etc. at read time so the rest of the animation
+ * pipeline is always Vec2-clean.
+ */
+export function normalizeVec(cmd: RawCommandResult): Vec2 | undefined {
+  if (cmd.command.vec) return cmd.command.vec;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const legacyDir = (cmd.command as any).direction as string | undefined;
+  if (!legacyDir) return undefined;
+  switch (legacyDir) {
+    case "up":    return { dx: 0, dy: -1 };
+    case "down":  return { dx: 0, dy:  1 };
+    case "left":  return { dx: -1, dy: 0 };
+    case "right": return { dx:  1, dy: 0 };
+    default:      return undefined;
+  }
+}
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 
@@ -167,17 +182,17 @@ export function snapshotToVellymons(snap: RawGameState): CanvasVellymon[] {
 }
 
 /**
- * Scan along an attack direction in the pre-turn snapshot to find the actual
+ * Scan along an attack Vec2 in the pre-turn snapshot to find the actual
  * hit tile. Needed so the arrow draws to where the target actually was, not
  * just attacker + 1 tile (which is wrong for range-2+ attacks).
  */
 export function findAttackTargetTile(
   cmd: RawCommandResult,
   attackerPos: { x: number; y: number },
-  dir: Dir,
+  vec: Vec2,
   fromSnap: RawGameState,
 ): { x: number; y: number } {
-  const offset = DIR_OFFSETS[dir];
+  const offset = vec;
   let range = 1;
   for (const t of fromSnap.teams) {
     const v = t.active.find((av) => av.uuid === cmd.command.vellymonUuid);
@@ -210,7 +225,7 @@ export function findAttackTargetTile(
       if (hit) return pos;
     }
   }
-  return { x: attackerPos.x + offset.dx, y: attackerPos.y + offset.dy };
+  return { x: attackerPos.x + vec.dx, y: attackerPos.y + vec.dy };
 }
 
 /** Build a uuid → {name, teamId} lookup from a RawGameState. */
@@ -333,14 +348,13 @@ export function buildUnifiedSteps(
 
   for (const cmd of sortedCmds) {
     // Failed attacks — preview + fizzle label
-    if (!cmd.success && cmd.command.type === "attack") {
-      const uuid = cmd.command.vellymonUuid;
-      const cur = workingPos.get(uuid);
-      const dir = cmd.command.direction as Dir | undefined;
-      const offset = dir ? DIR_OFFSETS[dir] : null;
-      if (cur && offset) {
-        const tx = cur.x + offset.dx;
-        const ty = cur.y + offset.dy;
+      if (!cmd.success && cmd.command.type === "attack") {
+        const uuid = cmd.command.vellymonUuid;
+        const cur = workingPos.get(uuid);
+        const offset = normalizeVec(cmd);
+        if (cur && offset) {
+          const tx = cur.x + offset.dx;
+          const ty = cur.y + offset.dy;
         const from = snapshot();
         steps.push({
           key: String(stepIdx++),
@@ -361,11 +375,10 @@ export function buildUnifiedSteps(
     }
 
     // Failed harvests — preview + blocked label
-    if (!cmd.success && cmd.command.type === "harvest") {
-      const uuid = cmd.command.vellymonUuid;
-      const cur = workingPos.get(uuid);
-      const dir = cmd.command.direction as Dir | undefined;
-      const offset = dir ? DIR_OFFSETS[dir] : null;
+      if (!cmd.success && cmd.command.type === "harvest") {
+        const uuid = cmd.command.vellymonUuid;
+        const cur = workingPos.get(uuid);
+        const offset = normalizeVec(cmd);
       if (cur && offset) {
         const tx = cur.x + offset.dx;
         const ty = cur.y + offset.dy;
@@ -389,11 +402,10 @@ export function buildUnifiedSteps(
     }
 
     // Failed moves — preview arrow + bump-and-return tween + "Blocked" label
-    if (!cmd.success && cmd.command.type === "move") {
-      const uuid = cmd.command.vellymonUuid;
-      const cur = workingPos.get(uuid);
-      const dir = cmd.command.direction as Dir | undefined;
-      const offset = dir ? DIR_OFFSETS[dir] : null;
+      if (!cmd.success && cmd.command.type === "move") {
+        const uuid = cmd.command.vellymonUuid;
+        const cur = workingPos.get(uuid);
+        const offset = normalizeVec(cmd);
       if (cur && offset) {
         const tx = cur.x + offset.dx;
         const ty = cur.y + offset.dy;
@@ -444,8 +456,7 @@ export function buildUnifiedSteps(
     const cur = workingPos.get(uuid);
     if (!cur) continue;
 
-    const dir = cmd.command.direction as Dir | undefined;
-    const offset = dir ? DIR_OFFSETS[dir] : null;
+    const offset = normalizeVec(cmd);
 
     if (cmd.command.type === "move" && offset) {
       const from = snapshot();
@@ -466,7 +477,7 @@ export function buildUnifiedSteps(
         impactMs: 0,
       });
     } else if (cmd.command.type === "attack" && offset) {
-      const targetTile = findAttackTargetTile(cmd, cur, dir!, fromSnap);
+      const targetTile = findAttackTargetTile(cmd, cur, offset, fromSnap);
 
       // Resolve attack key + name
       let attackKey = "strike";

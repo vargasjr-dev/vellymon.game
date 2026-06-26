@@ -4,11 +4,14 @@ import { useState } from "react";
 
 // ─── Types (matches TurnSnapshot from gameEngine.server.ts) ──────────────────
 
+type Vec2 = { dx: number; dy: number };
+
 type CommandResult = {
   command: {
     type: "move" | "attack" | "harvest";
     vellymonUuid: string;
-    direction?: string;
+    /** Game-space cardinal unit vector. Old DB rows may still have direction string (compat handled at read time). */
+    vec?: Vec2;
   };
   success: boolean;
   reason?: string;
@@ -85,52 +88,28 @@ export type TurnSnapshot = {
 
 // ─── Direction helpers ────────────────────────────────────────────────────────
 
-type Dir = "up" | "down" | "left" | "right";
-
 /**
- * Convert a game-space direction to a screen-space label.
- * In portrait mode the board is rotated: team 1 gets row = boardWidth-1-gx
- * (so increasing gx = decreasing row = moving UP on screen), team 2 gets
- * row = gx (increasing gx = moving DOWN on screen).
- * In landscape or when direction is absent, returns the raw direction string.
+ * Convert a game-space Vec2 to a screen-space direction label.
  *
- * Derived from gridToScreen in BattleCanvas.tsx — must stay in sync.
+ * Portrait: Team1 col=gy row=bw-1-gx → game +x = screen up
+ *           Team2 col=gy row=gx       → game +x = screen down
+ * Landscape: game axes = screen axes.
+ * Returns empty string when vec is absent.
  */
-function gameDirToScreenLabel(
-  gameDir: string | undefined,
+function vecToScreenLabel(
+  vec: Vec2 | undefined,
   isPortrait: boolean,
   teamId: 1 | 2,
 ): string {
-  if (!gameDir) return "";
-  if (!isPortrait) return ` ${gameDir}`;
-
-  const labels: Record<Dir, string> = {
-    up: " up",
-    down: " down",
-    left: " left",
-    right: " right",
-  };
-
+  if (!vec) return "";
+  const { dx, dy } = vec;
+  if (!isPortrait) {
+    return dx === 1 ? " right" : dx === -1 ? " left" : dy === 1 ? " down" : " up";
+  }
   if (teamId === 1) {
-    // row = boardWidth-1-gx → gx+ = row- = pixel y- = screen UP
-    // col = gy            → gy+ = col+ = pixel x+ = screen RIGHT
-    const map: Record<Dir, string> = {
-      right: " up",
-      left: " down",
-      up: " left",
-      down: " right",
-    };
-    return map[gameDir as Dir] ?? labels[gameDir as Dir] ?? ` ${gameDir}`;
+    return dx === 1 ? " up" : dx === -1 ? " down" : dy === 1 ? " right" : " left";
   } else {
-    // row = gx → gx+ = row+ = pixel y+ = screen DOWN
-    // col = gy → gy+ = col+ = pixel x+ = screen RIGHT
-    const map: Record<Dir, string> = {
-      right: " down",
-      left: " up",
-      up: " right",
-      down: " left",
-    };
-    return map[gameDir as Dir] ?? labels[gameDir as Dir] ?? ` ${gameDir}`;
+    return dx === 1 ? " down" : dx === -1 ? " up" : dy === 1 ? " right" : " left";
   }
 }
 
@@ -204,7 +183,7 @@ function formatResult(
   const name = findName(teams, r.command.vellymonUuid);
   // Determine which team this mon belongs to so we use their perspective
   const monTeamId = teams.find((t) => t.active.some((v) => v.uuid === r.command.vellymonUuid))?.id ?? yourTeamId;
-  const dir = gameDirToScreenLabel(r.command.direction, isPortrait, monTeamId);
+    const dir = vecToScreenLabel(r.command.vec, isPortrait, monTeamId);
 
   if (!r.success) {
     return `${name} ${r.command.type}${dir} — failed${r.reason ? `: ${r.reason}` : ""}`;

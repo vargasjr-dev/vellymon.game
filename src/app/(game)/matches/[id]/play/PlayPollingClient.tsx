@@ -31,76 +31,58 @@ import {
 import { useTurnAnimation } from "./useTurnAnimation";
 import VellymonDrawer from "./VellymonDrawer";
 
-type Dir = "up" | "down" | "left" | "right";
+type Vec2 = { dx: number; dy: number };
 
 // ─── Raw state type alias (re-exports from turnAnimation used locally) ─────────
 // RawGameState + RawTurnLog are imported from turnAnimation.ts for animation.
 
 /**
- * Translate a screen-space direction to a game-space direction.
+ * Convert a screen-space Vec2 to a game-space Vec2.
  *
- * In landscape, screen = game (no transform).
- * In portrait the board is rotated so:
- *   Team 1 (x=0 spawns at bottom): screen↑ = game right, screen← = game up
- *   Team 2 (x=8 spawns at bottom): screen↑ = game left, screen← = game down
+ * In landscape, screen axes = game axes (no transform).
+ * In portrait the board is rotated:
+ *   Team 1 col=gy, row=boardWidth-1-gx → screen +dy maps to game +dx
+ *   Team 2 col=gy, row=gx             → screen +dy maps to game -dx
+ *
+ * Screen convention: {dx:-1,dy:0}=←, {dx:1,dy:0}=→, {dx:0,dy:-1}=↑, {dx:0,dy:1}=↓
  */
-function screenToGameDir(
-  screenDir: Dir,
+function screenVecToGameVec(
+  screenVec: Vec2,
   isPortrait: boolean,
   teamId: 1 | 2,
-): Dir {
-  if (!isPortrait) return screenDir;
-
+): Vec2 {
+  if (!isPortrait) return screenVec;
+  const { dx, dy } = screenVec;
   if (teamId === 1) {
-    const map: Record<Dir, Dir> = {
-      up: "right",
-      down: "left",
-      left: "up",
-      right: "down",
-    };
-    return map[screenDir];
+    // screen↑(dy-1)→game right(dx+1), screen↓(dy+1)→game left(dx-1)
+    // screen←(dx-1)→game up(dy-1),   screen→(dx+1)→game down(dy+1)
+    return { dx: dy, dy: dx };
   } else {
-    const map: Record<Dir, Dir> = {
-      up: "left",
-      down: "right",
-      left: "down",
-      right: "up",
-    };
-    return map[screenDir];
+    // screen↑(dy-1)→game left(dx-1), screen↓(dy+1)→game right(dx+1)
+    // screen←(dx-1)→game down(dy+1), screen→(dx+1)→game up(dy-1)
+    return { dx: -dy, dy: -dx };
   }
 }
 
-/** Reverse: game-space direction → screen arrow symbol for display */
-function gameDirToScreenArrow(
-  gameDir: Dir,
+/**
+ * Convert a game-space Vec2 to the screen arrow symbol the player sees.
+ * Portrait: Team1 col=gy row=bw-1-gx → game +x = screen up
+ *           Team2 col=gy row=gx       → game +x = screen down
+ * Landscape: game axes = screen axes.
+ */
+function gameVecToScreenArrow(
+  vec: Vec2,
   isPortrait: boolean,
   teamId: 1 | 2,
 ): string {
-  const arrows: Record<Dir, string> = {
-    up: "↑",
-    down: "↓",
-    left: "←",
-    right: "→",
-  };
-  if (!isPortrait) return arrows[gameDir];
-
-  // Invert the screen→game mapping
+  const { dx, dy } = vec;
+  if (!isPortrait) {
+    return dx === 1 ? "→" : dx === -1 ? "←" : dy === 1 ? "↓" : "↑";
+  }
   if (teamId === 1) {
-    const map: Record<Dir, Dir> = {
-      right: "up",
-      left: "down",
-      up: "left",
-      down: "right",
-    };
-    return arrows[map[gameDir]];
+    return dx === 1 ? "↑" : dx === -1 ? "↓" : dy === 1 ? "→" : "←";
   } else {
-    const map: Record<Dir, Dir> = {
-      left: "up",
-      right: "down",
-      down: "left",
-      up: "right",
-    };
-    return arrows[map[gameDir]];
+    return dx === 1 ? "↓" : dx === -1 ? "↑" : dy === 1 ? "→" : "←";
   }
 }
 
@@ -460,16 +442,16 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
     play("blip");
   }, [play]);
 
-  // Wrap addCommand with screen→game direction translation — all commands are directional now
+  // Wrap addCommand with screen→game vec translation
   const addDirectionalCommand = useCallback(
     (
       type: "move" | "attack" | "harvest",
       vellymonUuid: string,
-      screenDir: Dir,
+      screenVec: Vec2,
       attackIndex?: number,
     ) => {
-      const gameDir = screenToGameDir(screenDir, isPortrait, yourTeam?.id ?? 1);
-      addCommand({ type, vellymonUuid, direction: gameDir, attackIndex });
+      const gameVec = screenVecToGameVec(screenVec, isPortrait, yourTeam?.id ?? 1);
+      addCommand({ type, vellymonUuid, vec: gameVec, attackIndex });
     },
     [addCommand, isPortrait, yourTeam?.id],
   );
@@ -666,7 +648,7 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
       pendingCommands.map((c) => ({
         vellymonUuid: c.vellymonUuid,
         type: c.type,
-        direction: c.direction,
+        vec: c.vec,
       })),
     [pendingCommands],
   );
@@ -808,14 +790,14 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                     : (yourTeam?.energy ?? 0)
                 }
                 pendingCommand={isOpponentVm ? null : (pendingForSelected ?? null)}
-                dirToArrow={(dir) =>
-                  gameDirToScreenArrow(dir, isPortrait, yourTeam?.id ?? 1)
+                vecToArrow={(gameVec) =>
+                  gameVecToScreenArrow(gameVec, isPortrait, yourTeam?.id ?? 1)
                 }
                 onAction={
                   isOpponentVm
                     ? undefined
-                    : (type, dir, attackIndex) =>
-                        addDirectionalCommand(type, selectedVm.uuid, dir, attackIndex)
+                    : (type, screenVec, attackIndex) =>
+                        addDirectionalCommand(type, selectedVm.uuid, screenVec, attackIndex)
                 }
                 onClose={() => setSelectedVellymon(null)}
                 readOnly={isOpponentVm}

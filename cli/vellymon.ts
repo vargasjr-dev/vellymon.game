@@ -39,7 +39,7 @@ import {
 import { GAME_CONFIG } from "../server/config";
 
 import type { GameState, VellymonState, TeamState } from "../server/types";
-import type { Command, MoveCommand, AttackCommand, HarvestCommand } from "../server/commands";
+import type { Command } from "../server/commands";
 
 // ─── State Storage ───────────────────────────────────────────────────────────
 
@@ -292,6 +292,17 @@ function cmdCmd(matchId: string, teamIdStr: string, vellymonId: string, action: 
   }
 
   // Build the command
+  /** Convert CLI direction string to game-space Vec2 */
+  function dirToVec(dir: string): { dx: number; dy: number } {
+    switch (dir) {
+      case "up":    return { dx: 0, dy: -1 };
+      case "down":  return { dx: 0, dy:  1 };
+      case "left":  return { dx: -1, dy: 0 };
+      case "right": return { dx:  1, dy: 0 };
+      default: throw new Error(`Unknown direction: ${dir}`);
+    }
+  }
+
   let cmd: Command;
   switch (action.toLowerCase()) {
     case "move": {
@@ -299,7 +310,7 @@ function cmdCmd(matchId: string, teamIdStr: string, vellymonId: string, action: 
         console.error("Move requires a direction: up, down, left, right");
         process.exit(1);
       }
-      cmd = { type: "move", vellymonUuid: vm.uuid, direction: direction as MoveCommand["direction"] };
+      cmd = { type: "move", vellymonUuid: vm.uuid, vec: dirToVec(direction) };
       break;
     }
     case "attack": {
@@ -312,7 +323,7 @@ function cmdCmd(matchId: string, teamIdStr: string, vellymonId: string, action: 
         type: "attack",
         vellymonUuid: vm.uuid,
         attackIndex: 0,
-        direction: direction as AttackCommand["direction"],
+        vec: dirToVec(direction),
       };
       break;
     }
@@ -321,7 +332,7 @@ function cmdCmd(matchId: string, teamIdStr: string, vellymonId: string, action: 
         console.error("Harvest requires a direction: up, down, left, right");
         process.exit(1);
       }
-      cmd = { type: "harvest", vellymonUuid: vm.uuid, direction: direction as HarvestCommand["direction"] };
+      cmd = { type: "harvest", vellymonUuid: vm.uuid, vec: dirToVec(direction) };
       break;
     }
     default: {

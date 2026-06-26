@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type Dir = "up" | "down" | "left" | "right";
+type Vec2 = { dx: number; dy: number };
 
 type AttackDisplay = {
   name: string;
@@ -27,7 +27,8 @@ type VellymonData = {
 type PendingCmd = {
   type: "move" | "attack" | "harvest";
   vellymonUuid: string;
-  direction?: Dir;
+  /** Cardinal unit vector in game space */
+  vec?: Vec2;
   attackIndex?: number;
 };
 
@@ -42,9 +43,17 @@ type Props = {
   info?: VellymonInfo;
   teamEnergy: number;
   pendingCommand: PendingCmd | null;
-  dirToArrow: (dir: Dir) => string;
-  /** Unified callback: (actionType, screenDirection, attackIndex?) */
-  onAction?: (type: "move" | "attack" | "harvest", dir: Dir, attackIndex?: number) => void;
+  /**
+   * Convert a game-space Vec2 to the screen arrow string (↑↓←→) for display.
+   * PlayPollingClient supplies this since it knows isPortrait + teamId.
+   */
+  vecToArrow: (vec: Vec2) => string;
+  /**
+   * Called when the user commits an action + screen-space direction.
+   * `screenVec` is in screen coordinates (↑ = {dx:0,dy:-1}, etc.).
+   * PlayPollingClient converts it to game space before submitting.
+   */
+  onAction?: (type: "move" | "attack" | "harvest", screenVec: Vec2, attackIndex?: number) => void;
   onClose: () => void;
   /** When true, shows stats only — no action buttons (used for opponent mons). */
   readOnly?: boolean;
@@ -60,13 +69,14 @@ type Props = {
  *   [↑] [↓] [←] [→]
  *
  * Both screens show vellymon stats. Picking a direction dispatches the command.
+ * Directions are emitted as screen-space Vec2s — PlayPollingClient converts to game space.
  */
 export default function VellymonDrawer({
   vellymon,
   info,
   teamEnergy,
   pendingCommand,
-  dirToArrow,
+  vecToArrow,
   onAction,
   onClose,
   readOnly = false,
@@ -86,9 +96,18 @@ export default function VellymonDrawer({
   const canAfford1 = attack1 ? teamEnergy >= attack1.energyCost : false;
   const canAfford2 = attack2 ? teamEnergy >= attack2.energyCost : false;
 
-  const handleDirectionPick = (dir: Dir) => {
+  // Screen-space direction buttons — always the 4 cardinal screen directions.
+  // PlayPollingClient is responsible for converting these to game-space Vec2.
+  const SCREEN_DIRS: Array<{ vec: Vec2; arrow: string }> = [
+    { vec: { dx: -1, dy: 0 }, arrow: "←" },
+    { vec: { dx: 1, dy: 0 }, arrow: "→" },
+    { vec: { dx: 0, dy: 1 }, arrow: "↓" },
+    { vec: { dx: 0, dy: -1 }, arrow: "↑" },
+  ];
+
+  const handleDirectionPick = (screenVec: Vec2) => {
     if (!selectedAction || !onAction) return;
-    onAction(selectedAction.type, dir, selectedAction.attackIndex);
+    onAction(selectedAction.type, screenVec, selectedAction.attackIndex);
   };
 
   const goBack = () => setSelectedAction(null);
@@ -164,7 +183,7 @@ export default function VellymonDrawer({
               <span className="text-yellow-400 text-xs">📋 Queued:</span>
               <span className="text-yellow-300 text-xs font-medium">
                 {pendingCommand.type}
-                {pendingCommand.direction ? ` ${dirToArrow(pendingCommand.direction)}` : ""}
+                {pendingCommand.vec ? ` ${vecToArrow(pendingCommand.vec)}` : ""}
                 {pendingCommand.type === "attack" && pendingCommand.attackIndex !== undefined
                   ? ` (${vellymon.attacks[pendingCommand.attackIndex]?.name ?? "?"})`
                   : ""}
@@ -284,29 +303,23 @@ export default function VellymonDrawer({
                 </span>
               </div>
 
-              {/* Directional pad — 4 screen-space direction buttons.
-                  We iterate screen directions and display their raw arrow symbols.
-                  dirToArrow (game→screen) is only used for the pending-command badge
-                  above; using it here would double-convert in portrait mode. */}
+              {/* Directional pad — 4 screen-space direction buttons */}
               <div className="grid grid-cols-4 gap-2">
-                {(["left", "right", "down", "up"] as Dir[]).map((screenDir) => {
-                  const ARROWS: Record<Dir, string> = { left: "←", right: "→", down: "↓", up: "↑" };
-                  return (
-                    <button
-                      key={screenDir}
-                      onClick={() => handleDirectionPick(screenDir)}
-                      className={`h-14 rounded-xl text-xl font-bold transition active:scale-95 ${
-                        selectedAction.type === "move"
-                          ? "bg-gray-700/60 hover:bg-gray-600/60 border border-gray-600/40 text-white"
-                          : selectedAction.type === "attack"
-                            ? "bg-red-900/50 hover:bg-red-800/50 border border-red-700/40 text-red-200"
-                            : "bg-yellow-900/50 hover:bg-yellow-800/50 border border-yellow-700/40 text-yellow-200"
-                      }`}
-                    >
-                      {ARROWS[screenDir]}
-                    </button>
-                  );
-                })}
+                {SCREEN_DIRS.map(({ vec, arrow }) => (
+                  <button
+                    key={arrow}
+                    onClick={() => handleDirectionPick(vec)}
+                    className={`h-14 rounded-xl text-xl font-bold transition active:scale-95 ${
+                      selectedAction.type === "move"
+                        ? "bg-gray-700/60 hover:bg-gray-600/60 border border-gray-600/40 text-white"
+                        : selectedAction.type === "attack"
+                          ? "bg-red-900/50 hover:bg-red-800/50 border border-red-700/40 text-red-200"
+                          : "bg-yellow-900/50 hover:bg-yellow-800/50 border border-yellow-700/40 text-yellow-200"
+                    }`}
+                  >
+                    {arrow}
+                  </button>
+                ))}
               </div>
             </div>
           )}

@@ -14,6 +14,12 @@ export type Position = {
   y: number;
 };
 
+/** A directional delta — orientation-agnostic. Always one of the four cardinal unit vectors. */
+export type Vec2 = {
+  dx: number;
+  dy: number;
+};
+
 export type BoardSpace = {
   position: Position;
   type: SpaceType;

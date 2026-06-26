@@ -5,10 +5,8 @@
  * Command[] for each of its active vellymons each turn.
  */
 
-import type { GameState, TeamState, VellymonState, Position } from "./types";
-import type { Command, Direction, MoveCommand, AttackCommand, HarvestCommand } from "./commands";
-import { directionToOffset } from "./commands";
-import { hasEnergy } from "./energy";
+import type { GameState, TeamState, VellymonState, Position, Vec2 } from "./types";
+import type { Command, MoveCommand, AttackCommand, HarvestCommand } from "./commands";
 import { GAME_CONFIG } from "./config";
 
 // ─── Core AI ─────────────────────────────────────────────────────────────────
@@ -45,13 +43,13 @@ function generateMediumCommand(
     for (let i = 0; i < vellymon.attacks.length; i++) {
       const atk = vellymon.attacks[i];
       if (atk && aiTeam.energy >= atk.energyCost) {
-        for (const dir of DIRECTIONS) {
-          if (findTarget(vellymon, dir, atk.range, enemyTeam, aiTeam)) {
+        for (const vec of VECS) {
+          if (findTarget(vellymon, vec, atk.range, enemyTeam, aiTeam)) {
             return {
               type: "attack",
               vellymonUuid: vellymon.uuid,
               attackIndex: i,
-              direction: dir,
+              vec,
             };
           }
         }
@@ -61,9 +59,9 @@ function generateMediumCommand(
 
   // Priority 2: Harvest if low energy
   if (aiTeam.energy < 3) {
-    for (const dir of DIRECTIONS) {
-      if (canHarvest(vellymon, dir, state)) {
-        return { type: "harvest", vellymonUuid: vellymon.uuid, direction: dir };
+    for (const vec of VECS) {
+      if (canHarvest(vellymon, vec, state)) {
+        return { type: "harvest", vellymonUuid: vellymon.uuid, vec };
       }
     }
   }
@@ -71,35 +69,40 @@ function generateMediumCommand(
   // Priority 3: Move toward nearest enemy
   const nearestEnemy = findNearestEnemy(vellymon, enemyTeam);
   if (nearestEnemy) {
-    const dir = directionToward(vellymon.position!, nearestEnemy);
-    if (dir && canMove(vellymon, dir, state)) {
-      return { type: "move", vellymonUuid: vellymon.uuid, direction: dir };
+    const vec = vecToward(vellymon.position!, nearestEnemy);
+    if (vec && canMove(vellymon, vec, state)) {
+      return { type: "move", vellymonUuid: vellymon.uuid, vec };
     }
   }
 
   // Fallback: random valid move
-  for (const dir of DIRECTIONS) {
-    if (canMove(vellymon, dir, state)) {
-      return { type: "move", vellymonUuid: vellymon.uuid, direction: dir };
+  for (const vec of VECS) {
+    if (canMove(vellymon, vec, state)) {
+      return { type: "move", vellymonUuid: vellymon.uuid, vec };
     }
   }
-  return { type: "move", vellymonUuid: vellymon.uuid, direction: "up" };
+  // No valid move — move up (will be blocked and logged as failed)
+  return { type: "move", vellymonUuid: vellymon.uuid, vec: { dx: 0, dy: -1 } };
 }
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
 
-const DIRECTIONS: Direction[] = ["up", "down", "left", "right"];
+const VECS: Vec2[] = [
+  { dx: 0, dy: -1 }, // up
+  { dx: 0, dy: 1 },  // down
+  { dx: -1, dy: 0 }, // left
+  { dx: 1, dy: 0 },  // right
+];
 
 function canMove(
   vellymon: VellymonState,
-  direction: Direction,
+  vec: Vec2,
   state: GameState,
 ): boolean {
   if (!vellymon.position) return false;
-  const offset = directionToOffset(direction);
   const target = {
-    x: vellymon.position.x + offset.x,
-    y: vellymon.position.y + offset.y,
+    x: vellymon.position.x + vec.dx,
+    y: vellymon.position.y + vec.dy,
   };
 
   // Check bounds
@@ -129,14 +132,13 @@ function canMove(
 
 function canHarvest(
   vellymon: VellymonState,
-  direction: Direction,
+  vec: Vec2,
   state: GameState,
 ): boolean {
   if (!vellymon.position) return false;
-  const offset = directionToOffset(direction);
   const target = {
-    x: vellymon.position.x + offset.x,
-    y: vellymon.position.y + offset.y,
+    x: vellymon.position.x + vec.dx,
+    y: vellymon.position.y + vec.dy,
   };
 
   const board = state.board;
@@ -150,18 +152,17 @@ function canHarvest(
 
 function findTarget(
   vellymon: VellymonState,
-  direction: Direction,
+  vec: Vec2,
   range: number,
   enemyTeam: TeamState,
   ownTeam?: TeamState,
 ): VellymonState | null {
   if (!vellymon.position) return null;
-  const offset = directionToOffset(direction);
 
   for (let r = 1; r <= range; r++) {
     const checkPos = {
-      x: vellymon.position.x + offset.x * r,
-      y: vellymon.position.y + offset.y * r,
+      x: vellymon.position.x + vec.dx * r,
+      y: vellymon.position.y + vec.dy * r,
     };
 
     // Stop if a friendly unit blocks the line of sight (mirrors engine scanForTarget)
@@ -214,13 +215,18 @@ function findNearestEnemy(
   return nearest;
 }
 
-function directionToward(from: Position, to: Position): Direction | null {
+/** Return the cardinal Vec2 pointing most directly from `from` toward `to`. */
+function vecToward(from: Position, to: Position): Vec2 | null {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
 
   if (Math.abs(dx) >= Math.abs(dy)) {
-    return dx > 0 ? "right" : dx < 0 ? "left" : null;
+    if (dx > 0) return { dx: 1, dy: 0 };
+    if (dx < 0) return { dx: -1, dy: 0 };
+    return null;
   } else {
-    return dy > 0 ? "down" : dy < 0 ? "up" : null;
+    if (dy > 0) return { dx: 0, dy: 1 };
+    if (dy < 0) return { dx: 0, dy: -1 };
+    return null;
   }
 }

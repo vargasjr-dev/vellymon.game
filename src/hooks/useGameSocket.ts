@@ -22,11 +22,12 @@ export type ClientMessage =
   | { type: "submit_commands"; commands: CommandPayload[] }
   | { type: "request_state" };
 
-/** Simplified command for the wire — all actions are directional */
+/** Simplified command for the wire — direction as orientation-agnostic Vec2 */
 export type CommandPayload = {
   type: "move" | "attack" | "harvest";
   vellymonUuid: string;
-  direction: "up" | "down" | "left" | "right";
+  /** Cardinal unit vector in game space, e.g. {dx:1,dy:0} for right */
+  vec: { dx: number; dy: number };
   attackIndex?: number;
 };
 

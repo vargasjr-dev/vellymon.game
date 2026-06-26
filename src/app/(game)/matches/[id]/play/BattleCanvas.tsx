@@ -89,7 +89,8 @@ export type TweenTarget = {
 export type PendingCommandDisplay = {
   vellymonUuid: string;
   type: "move" | "attack" | "harvest";
-  direction?: string;
+  /** Cardinal unit vector in game space — orientation-agnostic */
+  vec?: { dx: number; dy: number };
 };
 
 type Props = {
@@ -540,23 +541,22 @@ export default function BattleCanvas({
             : pendingCmd.type === "attack"
               ? "⚔️"
               : "🌱";
-        // Convert game-space direction to the screen arrow the player sees.
-        // Mirrors the gameDirToScreenArrow logic in PlayPollingClient.
-        const gameDir = pendingCmd.direction as "up" | "down" | "left" | "right" | undefined;
-        let screenDir = gameDir;
-        if (gameDir && isPortrait) {
-          const t1Map: Record<string, "up" | "down" | "left" | "right"> = {
-            right: "up", left: "down", up: "left", down: "right",
-          };
-          const t2Map: Record<string, "up" | "down" | "left" | "right"> = {
-            left: "up", right: "down", down: "left", up: "right",
-          };
-          screenDir = myTeam === 1 ? t1Map[gameDir] : t2Map[gameDir];
-        }
-        const arrowMap: Record<string, string> = {
-          up: "↑", down: "↓", left: "←", right: "→",
-        };
-        const dirArrow = screenDir ? ` ${arrowMap[screenDir]}` : "";
+        // Convert game-space Vec2 to the screen arrow the player sees.
+          // Portrait: Team1 col=gy row=bw-1-gx → game +x = screen up
+          //           Team2 col=gy row=gx       → game +x = screen down
+          // Landscape: game axes = screen axes.
+          const vec = pendingCmd.vec;
+          let dirArrow = "";
+          if (vec) {
+            const { dx, dy } = vec;
+            if (!isPortrait) {
+              dirArrow = dx === 1 ? " →" : dx === -1 ? " ←" : dy === 1 ? " ↓" : " ↑";
+            } else if (myTeam === 1) {
+              dirArrow = dx === 1 ? " ↑" : dx === -1 ? " ↓" : dy === 1 ? " →" : " ←";
+            } else {
+              dirArrow = dx === 1 ? " ↓" : dx === -1 ? " ↑" : dy === 1 ? " →" : " ←";
+            }
+          }
         const badgeFontSize = Math.min(tileSize * 0.3, 18);
         const badgeText = new Text({
           text: `${typeIcon}${dirArrow}`,

@@ -24,12 +24,14 @@ type CommandInputProps = {
 
 type CommandMode = "select" | "move" | "attack" | "harvest";
 
-const DIRECTION_LABELS: Record<string, { label: string; dx: number; dy: number }> = {
-  up: { label: "↑ Up", dx: 0, dy: -1 },
-  down: { label: "↓ Down", dx: 0, dy: 1 },
-  left: { label: "← Left", dx: -1, dy: 0 },
-  right: { label: "→ Right", dx: 1, dy: 0 },
-};
+type Vec2 = { dx: number; dy: number };
+
+const DIRECTION_LABELS: Array<{ label: string; vec: Vec2; arrow: string }> = [
+  { label: "↑ Up",    vec: { dx: 0, dy: -1 }, arrow: "up" },
+  { label: "↓ Down",  vec: { dx: 0, dy:  1 }, arrow: "down" },
+  { label: "← Left",  vec: { dx: -1, dy: 0 }, arrow: "left" },
+  { label: "→ Right", vec: { dx:  1, dy: 0 }, arrow: "right" },
+];
 
 export default function CommandInput({
   vellymon,
@@ -136,7 +138,7 @@ export default function CommandInput({
               onSubmitCommand({
                 type: "harvest",
                 vellymonUuid: vellymon.uuid,
-                direction: "down",
+                vec: { dx: 0, dy: 1 }, // default: harvest tile below
               });
             }}
             color="green"
@@ -152,57 +154,37 @@ export default function CommandInput({
           <div className="grid grid-cols-3 gap-1">
             <div /> {/* empty top-left */}
             <DirectionButton
-              direction="up"
+              vec={{ dx: 0, dy: -1 }}
+              label="↑ Up"
               vellymon={vellymon}
               board={board}
-              onSelect={(dir) => {
-                onSubmitCommand({
-                  type: "move",
-                  vellymonUuid: vellymon.uuid,
-                  direction: dir,
-                });
-              }}
+              onSelect={(v) => onSubmitCommand({ type: "move", vellymonUuid: vellymon.uuid, vec: v })}
             />
             <div /> {/* empty top-right */}
             <DirectionButton
-              direction="left"
+              vec={{ dx: -1, dy: 0 }}
+              label="← Left"
               vellymon={vellymon}
               board={board}
-              onSelect={(dir) => {
-                onSubmitCommand({
-                  type: "move",
-                  vellymonUuid: vellymon.uuid,
-                  direction: dir,
-                });
-              }}
+              onSelect={(v) => onSubmitCommand({ type: "move", vellymonUuid: vellymon.uuid, vec: v })}
             />
             <div className="flex items-center justify-center text-gray-500 text-[10px]">
               {vellymon.x},{vellymon.y}
             </div>
             <DirectionButton
-              direction="right"
+              vec={{ dx: 1, dy: 0 }}
+              label="→ Right"
               vellymon={vellymon}
               board={board}
-              onSelect={(dir) => {
-                onSubmitCommand({
-                  type: "move",
-                  vellymonUuid: vellymon.uuid,
-                  direction: dir,
-                });
-              }}
+              onSelect={(v) => onSubmitCommand({ type: "move", vellymonUuid: vellymon.uuid, vec: v })}
             />
             <div /> {/* empty bottom-left */}
             <DirectionButton
-              direction="down"
+              vec={{ dx: 0, dy: 1 }}
+              label="↓ Down"
               vellymon={vellymon}
               board={board}
-              onSelect={(dir) => {
-                onSubmitCommand({
-                  type: "move",
-                  vellymonUuid: vellymon.uuid,
-                  direction: dir,
-                });
-              }}
+              onSelect={(v) => onSubmitCommand({ type: "move", vellymonUuid: vellymon.uuid, vec: v })}
             />
             <div /> {/* empty bottom-right */}
           </div>
@@ -309,19 +291,20 @@ function CommandButton({
 }
 
 function DirectionButton({
-  direction,
+  vec,
+  label,
   vellymon,
   board,
   onSelect,
 }: {
-  direction: "up" | "down" | "left" | "right";
+  vec: Vec2;
+  label: string;
   vellymon: VellymonPayload;
   board: BoardPayload;
-  onSelect: (dir: "up" | "down" | "left" | "right") => void;
+  onSelect: (vec: Vec2) => void;
 }) {
-  const { label, dx, dy } = DIRECTION_LABELS[direction];
-  const targetX = vellymon.x + dx;
-  const targetY = vellymon.y + dy;
+  const targetX = vellymon.x + vec.dx;
+  const targetY = vellymon.y + vec.dy;
 
   // Check bounds
   const inBounds = targetX >= 0 && targetX < board.width && targetY >= 0 && targetY < board.height;
@@ -334,7 +317,7 @@ function DirectionButton({
 
   return (
     <button
-      onClick={() => canMove && onSelect(direction)}
+      onClick={() => canMove && onSelect(vec)}
       disabled={!canMove}
       className={`px-1.5 py-1 rounded text-xs font-mono transition-all
         ${canMove

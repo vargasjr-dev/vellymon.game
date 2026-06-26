@@ -14,11 +14,12 @@ import { eq, and, desc, gte, lt, count } from "drizzle-orm";
 import { getQuestsCompletedAroundMatch } from "../../../../../../lib/questService";
 import type { QuestWithProgress } from "../../../../../../lib/questService";
 
-// Command type for the play page — all actions are directional
+// Command type for the play page — direction as orientation-agnostic Vec2
 export type PlayCommand = {
   type: "move" | "attack" | "harvest";
   vellymonUuid: string;
-  direction: "up" | "down" | "left" | "right";
+  /** Cardinal unit vector in game space, e.g. {dx:1,dy:0} for right */
+  vec: { dx: number; dy: number };
   attackIndex?: number;
 };
 
@@ -34,11 +35,11 @@ export async function submitCommandsAction(
   const headersList = await headers();
   const session = (await auth.api.getSession({ headers: headersList }))!;
 
-  // Map to engine Command type — all commands are directional now
+  // Map to engine Command type
   const engineCommands = commands.map((c) => ({
     type: c.type,
     vellymonUuid: c.vellymonUuid,
-    direction: c.direction,
+    vec: c.vec,
     attackIndex: c.attackIndex,
   }));
 

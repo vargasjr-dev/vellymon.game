@@ -7,9 +7,10 @@
  * - Attack 2 — use second attack in a direction (costs energy)
  * - Harvest — gather energy from adjacent space in a direction (free, must be harvestable)
  *
- * All actions are directional — player picks an action, then a direction.
- * Attacks scan along the direction for the first enemy within range.
- * Harvest targets the adjacent tile; blocked if an enemy occupies it.
+ * All actions are directional — player picks an action, then a direction vector.
+ * Direction is stored as {dx, dy} — a unit cardinal Vec2 — so it is
+ * orientation-agnostic. Clients translate screen directions to Vec2 before
+ * sending; TurnHistory labels them based on the viewer's orientation.
  *
  * One command per vellymon per turn.
  * At 0 team energy, Attacks are unavailable.
@@ -23,29 +24,31 @@ import type {
   VellymonState,
   BoardSpace,
   Position,
+  Vec2,
 } from "./types";
 
 // ─── Command Types ───────────────────────────────────────────────────────────
 
-export type Direction = "up" | "down" | "left" | "right";
-
 export type MoveCommand = {
   type: "move";
   vellymonUuid: string;
-  direction: Direction;
+  /** Cardinal unit vector in game space: {dx:1,dy:0} = right, {dx:0,dy:-1} = up, etc. */
+  vec: Vec2;
 };
 
 export type AttackCommand = {
   type: "attack";
   vellymonUuid: string;
   attackIndex: number;
-  direction: Direction;
+  /** Cardinal unit vector in game space. */
+  vec: Vec2;
 };
 
 export type HarvestCommand = {
   type: "harvest";
   vellymonUuid: string;
-  direction: Direction;
+  /** Cardinal unit vector in game space. */
+  vec: Vec2;
 };
 
 export type Command = MoveCommand | AttackCommand | HarvestCommand;
@@ -83,19 +86,6 @@ export type CommandResult = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-export function directionToOffset(direction: Direction): Position {
-  switch (direction) {
-    case "up":
-      return { x: 0, y: -1 };
-    case "down":
-      return { x: 0, y: 1 };
-    case "left":
-      return { x: -1, y: 0 };
-    case "right":
-      return { x: 1, y: 0 };
-  }
-}
 
 function getSpace(
   board: BoardSpace[],
@@ -147,7 +137,7 @@ function getVellymonAtPositionFromSnapshot(
 }
 
 /**
- * Scan along a direction from a position for the first enemy within range.
+ * Scan along a Vec2 direction from a position for the first enemy within range.
  * Returns the position of the first enemy found, or null if none.
  *
  * When `positionSnapshot` is provided, occupancy is checked against
@@ -157,18 +147,16 @@ function getVellymonAtPositionFromSnapshot(
 function scanForTarget(
   state: GameState,
   from: Position,
-  direction: Direction,
+  vec: Vec2,
   range: number,
   ownTeam: TeamState,
   positionSnapshot?: Map<string, Position | null>,
   arcOver?: boolean,
 ): { position: Position; target: VellymonState } | null {
-  const offset = directionToOffset(direction);
-
   for (let dist = 1; dist <= range; dist++) {
     const pos: Position = {
-      x: from.x + offset.x * dist,
-      y: from.y + offset.y * dist,
+      x: from.x + vec.dx * dist,
+      y: from.y + vec.dy * dist,
     };
 
     // Out of bounds — stop scanning
@@ -228,10 +216,9 @@ export function validateCommand(
 
   switch (command.type) {
     case "move": {
-      const offset = directionToOffset(command.direction);
       const target: Position = {
-        x: vellymon.position.x + offset.x,
-        y: vellymon.position.y + offset.y,
+        x: vellymon.position.x + command.vec.dx,
+        y: vellymon.position.y + command.vec.dy,
       };
 
       // Bounds check
@@ -273,10 +260,9 @@ export function validateCommand(
     }
 
     case "harvest": {
-      const offset = directionToOffset(command.direction);
       const targetPos: Position = {
-        x: vellymon.position.x + offset.x,
-        y: vellymon.position.y + offset.y,
+        x: vellymon.position.x + command.vec.dx,
+        y: vellymon.position.y + command.vec.dy,
       };
 
       // Bounds check
@@ -351,10 +337,9 @@ export function resolveMove(
     return { command, success: false, reason: "Vellymon not found" };
   }
 
-  const offset = directionToOffset(command.direction);
   const target: Position = {
-    x: vellymon.position.x + offset.x,
-    y: vellymon.position.y + offset.y,
+    x: vellymon.position.x + command.vec.dx,
+    y: vellymon.position.y + command.vec.dy,
   };
 
   const space = getSpace(state.board, target);
@@ -381,7 +366,7 @@ export function resolveMove(
 
 /**
  * Resolve a single Attack command.
- * Scans along the direction for the first enemy within the attack's range.
+ * Scans along the vec for the first enemy within the attack's range.
  */
 export function resolveAttack(
   command: AttackCommand,
@@ -410,12 +395,12 @@ export function resolveAttack(
   }
 
   // Scan for first enemy in direction within range.
-  // Use start-of-turn snapshot so that a mon which moved INTO the attack path
-  // during this same turn doesn't get erroneously hit.
+  // Use live positions — commands resolve in speed order, so by the time a
+  // slower attacker fires, faster mons have already moved to their correct spots.
   const hit = scanForTarget(
     state,
     vellymon.position,
-    command.direction,
+    command.vec,
     attack.range,
     team,
     positionSnapshot,
@@ -456,7 +441,7 @@ export function resolveAttack(
 
 /**
  * Resolve a single Harvest command.
- * Harvests the adjacent tile in the given direction.
+ * Harvests the adjacent tile in the given vec direction.
  * Fails if blocked by an enemy or target isn't harvestable.
  */
 export function resolveHarvest(
@@ -471,10 +456,9 @@ export function resolveHarvest(
     return { command, success: false, reason: "Vellymon not found" };
   }
 
-  const offset = directionToOffset(command.direction);
   const targetPos: Position = {
-    x: vellymon.position.x + offset.x,
-    y: vellymon.position.y + offset.y,
+    x: vellymon.position.x + command.vec.dx,
+    y: vellymon.position.y + command.vec.dy,
   };
 
   const space = getSpace(state.board, targetPos);

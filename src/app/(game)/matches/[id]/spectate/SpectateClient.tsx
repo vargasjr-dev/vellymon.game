@@ -10,7 +10,8 @@ import {
   type RawGameState,
   type RawTeam,
   type RawTurnLog,
-  type Dir,
+  type Vec2,
+  normalizeVec,
   buildUnifiedSteps,
   buildVellymonLookup,
 } from "../play/turnAnimation";
@@ -133,24 +134,18 @@ function parseGameState(gs: RawGameState) {
 // ─── Direction helpers ────────────────────────────────────────────────────────
 
 /**
- * Convert game-space direction to a screen-space label for display in logs.
- *
- * Spectate always renders with yourTeamId=1, so the portrait transform is
- * uniform for all mons: col=gy, row=bw-1-gx.
+ * Convert a game-space Vec2 to a screen-space label for display in spectate logs.
+ * Spectate always renders with yourTeamId=1 in portrait:
+ *   Team1 col=gy, row=bw-1-gx → game +x = screen up.
  */
-function gameDirToScreenLabel(
-  gameDir: string | undefined,
-  isPortrait: boolean,
-): string {
-  if (!gameDir) return "";
-  if (!isPortrait) return ` ${gameDir}`;
-  const map: Record<Dir, string> = {
-    right: " up",
-    left: " down",
-    up: " left",
-    down: " right",
-  };
-  return map[gameDir as Dir] ?? ` ${gameDir}`;
+function vecToScreenLabel(vec: Vec2 | undefined, isPortrait: boolean): string {
+  if (!vec) return "";
+  const { dx, dy } = vec;
+  if (!isPortrait) {
+    return dx === 1 ? " right" : dx === -1 ? " left" : dy === 1 ? " down" : " up";
+  }
+  // Spectate uses team1 perspective
+  return dx === 1 ? " up" : dx === -1 ? " down" : dy === 1 ? " right" : " left";
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -614,7 +609,7 @@ function TurnLogDrawer({
               : r.command.type === "harvest"
                 ? "🌿"
                 : "👟";
-          const dirStr = gameDirToScreenLabel(r.command.direction, true);
+          const dirStr = vecToScreenLabel(normalizeVec(r), true);
           const targetInfo = r.targetUuid ? lookup.get(r.targetUuid) : null;
           const victimStr = targetInfo ? ` → ${targetInfo.name}` : "";
           const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";

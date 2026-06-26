@@ -20,14 +20,15 @@
  *   - Powers are optional — vellymons without one are still valid
  */
 
-import type { VellymonState, Position, GameState } from "./types";
+import type { VellymonState, Position, GameState, Vec2 } from "./types";
 
 /** Minimal command reference for hooks */
 export type CommandRef = {
   type: "move" | "attack" | "harvest";
   /** UUID of the vellymon executing this command (matches Command.vellymonUuid) */
   vellymonUuid: string;
-  direction?: number;
+  /** Cardinal unit vector in game space. Absent for some legacy hook contexts. */
+  vec?: Vec2;
 };
 
 // ─── Effect Types ────────────────────────────────────────────────────────────
