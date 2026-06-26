@@ -813,42 +813,38 @@ export default function PlayPollingClient({ matchUuid, userId }: Props) {
                   Switching to Team {activeTeamId}...
                 </p>
               </div>
-            ) : (
-              <div className="mb-2">
-                {/* Command hints — commands are shown as badges on the board */}
-                <p className="text-center text-sm text-gray-500">
-                  {pendingCommands.length > 0
-                    ? `${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""} queued`
-                    : "Tap a vellymon to issue commands"}
-                </p>
-              </div>
-            )}
+            ) : null}
 
-            {/* Submit button — always visible */}
-            {!waitingForSwitch && (
-              <button
-                onClick={handleSubmitTurn}
-                disabled={submitting}
-                className={`w-full py-3 rounded-xl font-semibold transition text-base mt-1 ${
-                  submitting
-                    ? "bg-gray-600 cursor-not-allowed opacity-70"
-                    : pendingCommands.length > 0
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
-                      : "bg-gray-700 hover:bg-gray-600"
-                }`}
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Submitting…
-                  </span>
-                ) : pendingCommands.length > 0 ? (
-                  `Submit Turn (${pendingCommands.length} command${pendingCommands.length > 1 ? "s" : ""})`
-                ) : (
-                  "End Turn (skip all)"
-                )}
-              </button>
-            )}
+            {/* Submit button — disabled until every active mon has a command */}
+            {!waitingForSwitch && (() => {
+              const activeMonCount = yourTeam?.active.filter((v) => !v.isKO).length ?? 0;
+              const allCommandsQueued = pendingCommands.length >= activeMonCount && activeMonCount > 0;
+              const isDisabled = submitting || !allCommandsQueued;
+              return (
+                <button
+                  onClick={handleSubmitTurn}
+                  disabled={isDisabled}
+                  className={`w-full py-3 rounded-xl font-semibold transition text-base mt-1 ${
+                    submitting
+                      ? "bg-gray-600 cursor-not-allowed opacity-70"
+                      : allCommandsQueued
+                        ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
+                        : "bg-gray-700 text-gray-500 cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  {submitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Submitting…
+                    </span>
+                  ) : allCommandsQueued ? (
+                    "Submit Turn"
+                  ) : (
+                    `${pendingCommands.length}/${activeMonCount} commands queued`
+                  )}
+                </button>
+              );
+            })()}
           </div>
         </>
       )}
