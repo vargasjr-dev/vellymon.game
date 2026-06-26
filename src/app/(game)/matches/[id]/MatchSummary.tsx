@@ -223,11 +223,11 @@ export default function MatchSummary({ summary, currentUserId }: MatchSummaryPro
               <div className="flex flex-wrap gap-2">
                 <StatPill label="KOs Dealt" value={row.enemyKOs} />
                 <StatPill label="KOs Taken" value={row.ownKOs} />
-                {isMe && !row.isSparring && (
-                  <>
-                    <StatPill label="⚡️" value={`+${row.xpAwarded}`} />
-                    <StatPill label="💰 Credits" value={`+${row.creditsAwarded}`} />
-                  </>
+                {isMe && !row.isSparring && row.xpAwarded > 0 && (
+                  <StatPill label="⚡️ XP" value={`+${row.xpAwarded}`} />
+                )}
+                {isMe && !row.isSparring && row.creditsAwarded > 0 && (
+                  <StatPill label="💰 Credits" value={`+${row.creditsAwarded}`} />
                 )}
               </div>
             </div>

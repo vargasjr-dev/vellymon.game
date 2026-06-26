@@ -232,20 +232,20 @@ export default function VictoryModal({
           <div className="mb-6 animate-fade-in">
             {/* XP / Credits / Rank / Sparring badges */}
             <div className="flex justify-center gap-3 flex-wrap">
-              {/* XP — hidden for practice/sparring matches */}
-              {!rewards.isSparring && (
+              {/* XP — hidden for practice/sparring matches or when zero */}
+              {!rewards.isSparring && rewards.xpAwarded > 0 && (
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
                   <span className="text-lg">⚡️</span>
                   <div className="text-left">
-                    <p className="text-xs text-gray-400 leading-none">⚡️</p>
+                    <p className="text-xs text-gray-400 leading-none">XP</p>
                     <p className="text-sm font-bold text-yellow-300">
                       +{rewards.xpAwarded}
                     </p>
                   </div>
                 </div>
               )}
-              {/* Credits — hidden for practice/sparring matches */}
-              {!rewards.isSparring && (
+              {/* Credits — hidden for practice/sparring matches or when zero */}
+              {!rewards.isSparring && rewards.creditsAwarded > 0 && (
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
                   <span className="text-lg">💰</span>
                   <div className="text-left">
