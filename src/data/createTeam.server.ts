@@ -8,7 +8,8 @@ export type SlotInput = {
   isActive: boolean;
 };
 
-export const TEAM_NAME_MAX_LENGTH = 30;
+import { TEAM_NAME_MAX_LENGTH } from "./teamConstants";
+export { TEAM_NAME_MAX_LENGTH };
 
 const createTeam = async ({
   name,

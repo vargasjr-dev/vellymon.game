@@ -6,7 +6,7 @@ import { useToast } from "~/components/Toast";
 import VellymonCard from "~/components/VellymonCard";
 import { createTeamAction, updateTeamAction } from "./actions";
 import type { SlotInput } from "~/data/createTeam.server";
-import { TEAM_NAME_MAX_LENGTH } from "~/data/createTeam.server";
+import { TEAM_NAME_MAX_LENGTH } from "~/data/teamConstants";
 
 type RosterVellymon = {
   uuid: string;
