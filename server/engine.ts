@@ -451,14 +451,35 @@ export function resolveTurn(
           applyEffects(effects, state);
           // Collect energy deltas for display in the action log
           const energyDeltas: Partial<Record<1 | 2, number>> = {};
+          const actorEffects: NonNullable<typeof result.actorPowerEffects> = [];
+          const powerName = getPower(attacker.specialPowerId)?.name ?? attacker.specialPowerId;
           for (const effect of effects) {
             if (effect.type === "energy") {
               const e = effect as EnergyEffect;
               energyDeltas[e.team] = (energyDeltas[e.team] ?? 0) + e.amount;
+            } else if (effect.type === "heal" || effect.type === "bonus_damage") {
+              // Resolve target name from state
+              let targetName = attacker.name;
+              let targetUuid = attacker.uuid;
+              const targetId = effect.type === "heal" ? effect.targetId : effect.targetId;
+              for (const t of state.teams) {
+                const found = t.active.find((v) => v.uuid === targetId);
+                if (found) { targetName = found.name; targetUuid = found.uuid; break; }
+              }
+              actorEffects.push({
+                type: effect.type,
+                targetName,
+                targetUuid,
+                amount: effect.amount,
+                powerName,
+              });
             }
           }
           if (Object.keys(energyDeltas).length > 0) {
             result.powerEnergyDeltas = energyDeltas;
+          }
+          if (actorEffects.length > 0) {
+            result.actorPowerEffects = actorEffects;
           }
         }
       }

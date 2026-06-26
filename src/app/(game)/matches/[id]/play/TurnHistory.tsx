@@ -27,6 +27,13 @@ type CommandResult = {
     amount: number;
     powerName: string;
   }>;
+  actorPowerEffects?: Array<{
+    type: "bonus_damage" | "heal";
+    targetName: string;
+    targetUuid: string;
+    amount: number;
+    powerName: string;
+  }>;
 };
 
 type BenchEntry = {
@@ -371,6 +378,17 @@ export default function TurnHistory({ history, isOpen, onToggle, isPortrait = fa
                                 {formatResult(r, snap.teamsBefore, isPortrait, yourTeamId)}
                               </span>
                             </div>
+                            {r.actorPowerEffects?.map((e, ei) => (
+                              <div key={`ap-${ei}`} className="flex items-start gap-1.5 text-xs ml-4">
+                                <span className="shrink-0">{e.type === "heal" ? "💚" : "💥"}</span>
+                                <span className="text-green-400">
+                                  {e.powerName}:{" "}
+                                  {e.type === "bonus_damage"
+                                    ? `${e.targetName} −${e.amount} HP`
+                                    : `${e.targetName} +${e.amount} HP`}
+                                </span>
+                              </div>
+                            ))}
                             {r.defenderPowerEffects?.map((e, ei) => (
                               <div key={`dp-${ei}`} className="flex items-start gap-1.5 text-xs ml-4">
                                 <span className="shrink-0">{e.type === "heal" ? "💚" : "🔄"}</span>

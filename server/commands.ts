@@ -83,6 +83,17 @@ export type CommandResult = {
     amount: number;
     powerName: string;
   }>;
+  /**
+   * Heal/damage effects triggered by the actor's own special power (onAfterCommand hook).
+   * e.g. Sproutail Regrowth Tail: +3 HP heal to self after harvest.
+   */
+  actorPowerEffects?: Array<{
+    type: "bonus_damage" | "heal";
+    targetName: string;
+    targetUuid: string;
+    amount: number;
+    powerName: string;
+  }>;
 };
 
 // ─── Legacy compat ───────────────────────────────────────────────────────────

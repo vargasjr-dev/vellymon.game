@@ -72,6 +72,19 @@ export type RawCommandResult = {
   targetUuid?: string;
   attackName?: string;
   powerEnergyDeltas?: Partial<Record<1 | 2, number>>;
+  defenderPowerEffects?: Array<{
+    type: "bonus_damage" | "heal";
+    targetName: string;
+    amount: number;
+    powerName: string;
+  }>;
+  actorPowerEffects?: Array<{
+    type: "bonus_damage" | "heal";
+    targetName: string;
+    targetUuid: string;
+    amount: number;
+    powerName: string;
+  }>;
 };
 
 export type RawBenchEntry = {
@@ -571,6 +584,20 @@ export function buildUnifiedSteps(
       const from = snapshot();
       const energyLabel = cmd.energyDelta && cmd.energyDelta > 0 ? `+${cmd.energyDelta}⚡` : "+⚡";
 
+      // Collect actor-power heal labels (e.g. Sproutail Regrowth Tail +3 HP)
+      const impactLabels: Array<{ x: number; y: number; text: string; color: number; alpha: number }> = [
+        { x: tx, y: ty, text: energyLabel, color: 0x4ade80, alpha: 1 },
+      ];
+      if (cmd.actorPowerEffects) {
+        for (const e of cmd.actorPowerEffects) {
+          if (e.type === "heal") {
+            impactLabels.push({ x: cur.x, y: cur.y, text: `+${e.amount} 💚`, color: 0x86efac, alpha: 1 });
+          } else if (e.type === "bonus_damage") {
+            impactLabels.push({ x: cur.x, y: cur.y, text: `-${e.amount} 💥`, color: 0xf87171, alpha: 1 });
+          }
+        }
+      }
+
       steps.push({
         key: String(stepIdx++),
         previewOverlay: {
@@ -580,9 +607,7 @@ export function buildUnifiedSteps(
         tweenFrom: from,
         tweenTo: from,
         tweenMs: 60,
-        impactOverlay: {
-          labels: [{ x: tx, y: ty, text: energyLabel, color: 0x4ade80, alpha: 1 }],
-        },
+        impactOverlay: { labels: impactLabels },
         impactMs: 400,
       });
     }
