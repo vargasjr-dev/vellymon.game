@@ -562,8 +562,11 @@ async function writeMatchStats(
       const enemyTeam = gameState.teams[teamIndex === 0 ? 1 : 0];
 
       const isWinner = result.winner === myTeam.id;
-      const ownKOs = myTeam.knocked.length;
-      const enemyKOs = enemyTeam.knocked.length;
+      // Count all KO'd mons across active + knocked (bench mons never enter play so aren't KO'd)
+      const countKOs = (t: (typeof gameState.teams)[0]) =>
+        t.active.filter((v) => v.isKO).length + t.knocked.length;
+      const ownKOs = countKOs(myTeam);
+      const enemyKOs = countKOs(enemyTeam);
 
       return {
         gameSessionUuid: matchUuid,
