@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createProfileSparringMatchAction } from "./actions";
+import { createProfileSparringMatchAction, createProfileFromPracticeAction } from "./actions";
 import { MAP_OPTIONS } from "~/lib/matchSettings";
 import VellymonPremiumLogo from "~/components/VellymonPremiumLogo";
+import MonTeamSelector, { type VellymonData } from "../admin/profiles/MonTeamSelector";
 
 type TeamOption = { uuid: string; name: string };
 type ProfileOption = { id: string; name: string; description: string };
@@ -14,6 +15,7 @@ interface PracticeSetupProps {
   teams: TeamOption[];
   subscribed: boolean;
   profiles: ProfileOption[];
+  vellymons: VellymonData[];
 }
 
 // ── Paywall ───────────────────────────────────────────────────────────────────
@@ -347,9 +349,160 @@ function WatchTab({ profiles }: { profiles: ProfileOption[] }) {
   );
 }
 
+// ── Profiles tab ──────────────────────────────────────────────────────────────
+function ProfilesTab({
+  profiles,
+  vellymons,
+}: {
+  profiles: ProfileOption[];
+  vellymons: VellymonData[];
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [slots, setSlots] = useState<string[]>(["", "", "", "", "", "", "", ""]);
+  const [randomness, setRandomness] = useState(0.5);
+  const [showForm, setShowForm] = useState(profiles.length === 0);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+
+    const fd = new FormData(e.currentTarget);
+    fd.set("teamNames", slots.filter(Boolean).join(","));
+    fd.set("randomness", String(randomness));
+
+    startTransition(async () => {
+      try {
+        await createProfileFromPracticeAction(fd);
+        setSuccess(true);
+        setSlots(["", "", "", "", "", "", "", ""]);
+        setRandomness(0.5);
+        (e.target as HTMLFormElement).reset();
+        setShowForm(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create profile");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Existing profiles list */}
+      {profiles.length > 0 && (
+        <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+          {profiles.map((p) => (
+            <div key={p.id} className="px-4 py-3 bg-white">
+              <p className="font-semibold text-sm text-gray-900">{p.name}</p>
+              {p.description && (
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{p.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Toggle create form */}
+      {!showForm ? (
+        <button
+          onClick={() => setShowForm(true)}
+          className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-300 hover:text-blue-600 transition"
+        >
+          + Create new profile
+        </button>
+      ) : (
+        <div className="border border-gray-200 rounded-xl p-5 space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900 text-sm">New Profile</h3>
+            {profiles.length > 0 && (
+              <button
+                onClick={() => { setShowForm(false); setError(null); }}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+              <input
+                name="name"
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                placeholder="Aggro Hard"
+              />
+            </div>
+
+            {/* Prompt */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Prompt <span className="text-gray-400 font-normal">(shapes every AI decision)</span>
+              </label>
+              <textarea
+                name="description"
+                required
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="You are an aggressive vellymon player. Always push forward and attack the nearest enemy…"
+              />
+            </div>
+
+            {/* Randomness */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-700">Randomness</label>
+                <span className="text-xs font-mono text-gray-600">{randomness.toFixed(2)}</span>
+              </div>
+              <input
+                type="range" min="0" max="1" step="0.01"
+                value={randomness}
+                onChange={(e) => setRandomness(parseFloat(e.target.value))}
+                className="w-full accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                <span>0.0 — Deterministic</span>
+                <span>1.0 — Very random</span>
+              </div>
+            </div>
+
+            {/* Mon selector */}
+            <MonTeamSelector vellymons={vellymons} slots={slots} onChange={setSlots} />
+            {slots.filter(Boolean).length === 0 && (
+              <p className="text-xs text-gray-400">
+                ✨ Leave empty and a team will be auto-picked based on your prompt.
+              </p>
+            )}
+
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>
+            )}
+            {success && (
+              <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                ✅ Profile created!
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={pending}
+              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition"
+            >
+              {pending ? "Creating…" : "Create Profile"}
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
-export default function PracticeSetup({ teams, subscribed, profiles }: PracticeSetupProps) {
-  const [tab, setTab] = useState<"play" | "watch">("play");
+export default function PracticeSetup({ teams, subscribed, profiles, vellymons }: PracticeSetupProps) {
+  const [tab, setTab] = useState<"play" | "watch" | "profiles">("play");
 
   if (!subscribed) return <PremiumGate />;
   if (tab === "play" && teams.length === 0) return <NoTeamsGate />;
@@ -378,12 +531,24 @@ export default function PracticeSetup({ teams, subscribed, profiles }: PracticeS
         >
           👁 Watch
         </button>
+        <button
+          onClick={() => setTab("profiles")}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${
+            tab === "profiles"
+              ? "bg-white shadow text-gray-900"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          🧠 Profiles
+        </button>
       </div>
 
       {tab === "play" ? (
         <PlayTab teams={teams} profiles={profiles} />
-      ) : (
+      ) : tab === "watch" ? (
         <WatchTab profiles={profiles} />
+      ) : (
+        <ProfilesTab profiles={profiles} vellymons={vellymons} />
       )}
     </div>
   );

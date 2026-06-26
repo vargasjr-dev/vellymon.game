@@ -7,6 +7,9 @@ import { team } from "../../../../data/schema";
 import { eq } from "drizzle-orm";
 import { listAiProfiles } from "~/data/aiProfiles.server";
 import type { AiProfile } from "~/data/aiProfiles.server";
+import { VELLYMON_LIBRARY } from "../../../../server/vellymonLibrary";
+import "../../../../server/powers";
+import { getPower } from "../../../../server/specialPowers";
 import PracticeSetup from "./PracticeSetup";
 
 export default async function PracticePage() {
@@ -28,6 +31,23 @@ export default async function PracticePage() {
     description: p.description,
   }));
 
+  const vellymons = VELLYMON_LIBRARY.map((v) => ({
+    name: v.name,
+    hp: v.hp,
+    attack: v.attack,
+    speed: v.speed,
+    flavor: v.flavor,
+    imageUrl: v.imageUrl,
+    powerName: v.specialPowerId ? getPower(v.specialPowerId)?.name : undefined,
+    powerDescription: v.specialPowerId ? getPower(v.specialPowerId)?.description : undefined,
+    attacks: v.attacks.map((atk) => ({
+      name: atk.name,
+      damage: atk.damage,
+      energyCost: atk.energyCost,
+      range: atk.range,
+    })),
+  }));
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-8">
@@ -39,7 +59,7 @@ export default async function PracticePage() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-xl p-6">
-        <PracticeSetup teams={teams} subscribed={subscribed} profiles={profiles} />
+        <PracticeSetup teams={teams} subscribed={subscribed} profiles={profiles} vellymons={vellymons} />
       </div>
 
       <div className="mt-4 text-center">

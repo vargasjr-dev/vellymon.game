@@ -1,12 +1,14 @@
 "use server";
 
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { auth } from "~/lib/auth.server";
 import { requireSubscriber } from "../../../../lib/subscription";
 import { db } from "../../../../data/db";
 import { gameSession, gamePlayer, team } from "../../../../data/schema";
 import { eq } from "drizzle-orm";
-import { listAiProfiles, getAiProfile } from "~/data/aiProfiles.server";
+import { listAiProfiles, getAiProfile, createAiProfile } from "~/data/aiProfiles.server";
+import { VELLYMON_LIBRARY } from "../../../../server/vellymonLibrary";
 
 /**
  * Create a sparring match against a named AI profile.
@@ -72,6 +74,112 @@ export async function createProfileSparringMatchAction(
   });
 
   return { success: true, matchUuid: match.uuid };
+}
+
+/** Convert a display name to a URL-safe slug */
+function nameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Auto-select vellymons using Claude Haiku based on the profile description.
+ * Falls back to random picks if ANTHROPIC_API_KEY is not set.
+ */
+async function autoSelectMons(
+  description: string,
+  existing: string[],
+  count: number,
+): Promise<string[]> {
+  const available = VELLYMON_LIBRARY.filter((v) => !existing.includes(v.name));
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return available.sort(() => Math.random() - 0.5).slice(0, count).map((v) => v.name);
+  }
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const client = new Anthropic({ apiKey });
+  const fullRoster = VELLYMON_LIBRARY.map(
+    (v) => `- ${v.name} (HP ${v.hp}, ATK ${v.attack}, SPD ${v.speed}) — "${v.flavor}"`,
+  ).join("\n");
+  const systemPrompt = `You are a vellymon team-builder. Select vellymons whose stats best match an AI player profile's described playstyle.\n\nFull vellymon roster:\n${fullRoster}\n\nCall select_mons with exactly the number of picks requested.`;
+  const existingNote = existing.length > 0 ? `\nAlready on team (do not pick): ${existing.join(", ")}` : "";
+  const selectTool = {
+    name: "select_mons",
+    description: `Select exactly ${count} vellymon${count > 1 ? "s" : ""} for the team.`,
+    input_schema: {
+      type: "object" as const,
+      properties: { selections: { type: "array" as const, items: { type: "string" as const } } },
+      required: ["selections"],
+    },
+  };
+  const msg = await client.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 256,
+    system: systemPrompt,
+    tools: [selectTool],
+    tool_choice: { type: "tool", name: "select_mons" },
+    messages: [{ role: "user", content: `Profile: "${description}"${existingNote}\nPick ${count} vellymon${count > 1 ? "s" : ""}.` }],
+  });
+  const toolUse = msg.content.find((b) => b.type === "tool_use");
+  let picked: string[] = [];
+  if (toolUse?.type === "tool_use") {
+    const input = toolUse.input as { selections?: string[] };
+    picked = Array.isArray(input.selections) ? input.selections : [];
+  }
+  const valid = picked.filter((n) =>
+    VELLYMON_LIBRARY.some((v) => v.name.toLowerCase() === n.toLowerCase() && !existing.includes(v.name)),
+  );
+  if (valid.length < count) {
+    const remaining = available
+      .filter((v) => !valid.includes(v.name))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, count - valid.length)
+      .map((v) => v.name);
+    return [...valid, ...remaining];
+  }
+  return valid.slice(0, count);
+}
+
+/**
+ * Create an AI profile from the practice page — subscriber-gated (not admin-only).
+ */
+export async function createProfileFromPracticeAction(formData: FormData) {
+  const headersList = await headers();
+  const session = (await auth.api.getSession({ headers: headersList }))!;
+  await requireSubscriber(session.user.id);
+
+  const name = (formData.get("name") as string).trim();
+  const description = (formData.get("description") as string | null)?.trim() ?? "";
+  const randomnessRaw = formData.get("randomness") as string | null;
+  const randomness = randomnessRaw ? Math.max(0, Math.min(1, parseFloat(randomnessRaw))) : 0.5;
+
+  if (!name) throw new Error("Name is required");
+  if (!description) throw new Error("Description (prompt) is required");
+
+  const id = nameToSlug(name);
+  if (!id) throw new Error("Name must contain at least one letter or digit");
+
+  const teamNamesRaw = (formData.get("teamNames") as string | null) ?? "";
+  let teamNames = teamNamesRaw.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const unknown = teamNames.filter(
+    (n) => !VELLYMON_LIBRARY.some((v) => v.name.toLowerCase() === n.toLowerCase()),
+  );
+  if (unknown.length > 0) throw new Error(`Unknown vellymon names: ${unknown.join(", ")}`);
+
+  if (teamNames.length < 8) {
+    const autoPicked = await autoSelectMons(description, teamNames, 8 - teamNames.length);
+    teamNames = [...teamNames, ...autoPicked];
+  }
+  if (teamNames.length !== 8) throw new Error("Could not build an 8-vellymon team");
+
+  await createAiProfile({ id, name, teamNames, randomness, description });
+  revalidatePath("/practice");
 }
 
 /**
