@@ -42,22 +42,6 @@ export default async function AdminPage() {
         </Link>
       </div>
 
-      {/* New Match */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">⚔️ New Match</h2>
-        <p className="text-gray-600 mb-4">
-          Pick two participants — AI profiles or random teams. Profile vs profile
-          runs a full simulation and saves a spectatable replay. Mixed or
-          random matches are live games you play.
-        </p>
-        <Link
-          href="/admin/matches/new"
-          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
-        >
-          New Match →
-        </Link>
-      </div>
-
       {/* Impersonate free / pro */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-bold text-gray-900 mb-2">🎭 Impersonate Subscription</h2>
@@ -66,21 +50,6 @@ export default async function AdminPage() {
           to the DB — does not touch Stripe.
         </p>
         <ImpersonatePanel currentStatus={currentStatus} />
-      </div>
-
-      {/* AI Player Profiles */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">🤖 AI Player Profiles</h2>
-        <p className="text-gray-600 mb-4">
-          Create named LLM-driven AI personas with fixed teams and a prompt that
-          shapes their playstyle. Run profile matches from New Match above.
-        </p>
-        <Link
-          href="/admin/profiles"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-        >
-          Manage Profiles →
-        </Link>
       </div>
 
       {/* Stripe Configuration */}
