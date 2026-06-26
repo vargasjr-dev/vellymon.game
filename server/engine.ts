@@ -397,9 +397,12 @@ export function resolveTurn(
   resolveArrowTies(allCommands, state);
 
   // Snapshot all vellymon positions BEFORE any commands execute.
-  // NOTE: attacks intentionally do NOT use this snapshot (see resolveCommand) —
-  // speed-ordered resolution means live positions are already correct when each
-  // attack fires. The snapshot is retained for potential future use (e.g. moves).
+  // This snapshot is passed to resolveAttack via resolveCommand so that
+  // scanForTarget can use "was-there-and-still-there" targeting: a mon is only
+  // a valid hit at a tile if it was there at turn start AND hasn't since moved.
+  // This correctly handles equal-speed phase ordering (moves resolve before
+  // attacks) and faster-mon-moves-first cases — any mon that moved before an
+  // attack resolved is treated as having dodged.
   const positionSnapshot = new Map<string, Position | null>();
   for (const team of state.teams) {
     for (const v of team.active) {

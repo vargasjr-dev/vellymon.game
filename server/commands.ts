@@ -151,9 +151,14 @@ function getVellymonAtPositionFromSnapshot(
  * Scan along a Vec2 direction from a position for the first enemy within range.
  * Returns the position of the first enemy found, or null if none.
  *
- * When `positionSnapshot` is provided, occupancy is checked against
- * start-of-turn positions instead of live positions — this prevents a mon that
- * moved INTO the attack path during the same turn from being erroneously hit.
+ * When `positionSnapshot` is provided, occupancy uses a "was-there-and-still-there"
+ * rule: a mon is only a valid target at a tile if it was there at turn start AND
+ * has not since moved. This handles two dodge cases correctly:
+ *   • A mon that moved AWAY from a tile this turn is NOT hit (they dodged).
+ *   • A mon that moved INTO a tile this turn is NOT hit (don't punish repositioning).
+ * In both cases the tile is treated as empty and scanning continues.
+ *
+ * When no snapshot is provided, live positions are used (legacy / no-snapshot paths).
  */
 function scanForTarget(
   state: GameState,
@@ -184,10 +189,22 @@ function scanForTarget(
     const space = getSpace(state.board, pos);
     if (!space || space.type === "void") break;
 
-    // Check for any vellymon at this position (snapshot-aware when provided)
-    const occupant = positionSnapshot
-      ? getVellymonAtPositionFromSnapshot(state, pos, positionSnapshot)
-      : getVellymonAtPosition(state, pos);
+    // Determine who (if anyone) is a valid occupant at this tile.
+    // With snapshot: "was-there-and-still-there" — the same mon must appear in
+    // both the start-of-turn snapshot and the current live state.  If the snapshot
+    // mon moved away, liveOccupant will be null or a different uuid → tile is empty.
+    // If a different mon moved in, the snapshot shows no one → tile is empty.
+    let occupant: VellymonState | undefined;
+    if (positionSnapshot) {
+      const snapOccupant = getVellymonAtPositionFromSnapshot(state, pos, positionSnapshot);
+      const liveOccupant = getVellymonAtPosition(state, pos);
+      if (snapOccupant && liveOccupant?.uuid === snapOccupant.uuid) {
+        occupant = snapOccupant;
+      }
+      // else: mon moved away or moved in — treat tile as empty, keep scanning
+    } else {
+      occupant = getVellymonAtPosition(state, pos);
+    }
 
     if (occupant) {
       const isOwnTeam = ownTeam.active.some((v) => v.uuid === occupant.uuid);
@@ -406,8 +423,9 @@ export function resolveAttack(
   }
 
   // Scan for first enemy in direction within range.
-  // Use live positions — commands resolve in speed order, so by the time a
-  // slower attacker fires, faster mons have already moved to their correct spots.
+  // When positionSnapshot is provided, scanForTarget uses "was-there-and-still-there"
+  // logic: a mon must have been at the scanned tile at turn start AND still be
+  // there now to count as a valid hit.  Mons that moved are treated as having dodged.
   const hit = scanForTarget(
     state,
     vellymon.position,
@@ -513,12 +531,11 @@ export function resolveCommand(
     case "move":
       return resolveMove(command, team, state);
     case "attack":
-      // Use live positions, not the start-of-turn snapshot.
-      // Commands resolve in speed order, so by the time a slower attacker fires,
-      // faster mons have already moved — their live positions correctly reflect
-      // where they are. Passing the snapshot here would make mons that moved
-      // out of range still get hit (the reported lob-through-dodge bug).
-      return resolveAttack(command, team, state);
+      // Pass the snapshot so scanForTarget uses "was-there-and-still-there"
+      // targeting: a mon is only hit if it occupied the scanned tile at turn
+      // start AND is still there now.  Mons that moved (whether faster or tied
+      // on speed/phase) are treated as having dodged.
+      return resolveAttack(command, team, state, positionSnapshot);
     case "harvest":
       return resolveHarvest(command, team, state);
   }
