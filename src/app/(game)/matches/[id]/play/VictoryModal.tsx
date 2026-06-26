@@ -232,26 +232,30 @@ export default function VictoryModal({
           <div className="mb-6 animate-fade-in">
             {/* XP / Credits / Rank / Sparring badges */}
             <div className="flex justify-center gap-3 flex-wrap">
-              {/* XP */}
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-lg">⚡️</span>
-                <div className="text-left">
-                  <p className="text-xs text-gray-400 leading-none">⚡️</p>
-                  <p className="text-sm font-bold text-yellow-300">
-                    +{rewards.xpAwarded}
-                  </p>
+              {/* XP — hidden for practice/sparring matches */}
+              {!rewards.isSparring && (
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                  <span className="text-lg">⚡️</span>
+                  <div className="text-left">
+                    <p className="text-xs text-gray-400 leading-none">⚡️</p>
+                    <p className="text-sm font-bold text-yellow-300">
+                      +{rewards.xpAwarded}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              {/* Credits */}
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-lg">💰</span>
-                <div className="text-left">
-                  <p className="text-xs text-gray-400 leading-none">Credits</p>
-                  <p className="text-sm font-bold text-yellow-300">
-                    +{rewards.creditsAwarded}
-                  </p>
+              )}
+              {/* Credits — hidden for practice/sparring matches */}
+              {!rewards.isSparring && (
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                  <span className="text-lg">💰</span>
+                  <div className="text-left">
+                    <p className="text-xs text-gray-400 leading-none">Credits</p>
+                    <p className="text-sm font-bold text-yellow-300">
+                      +{rewards.creditsAwarded}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               {/* Rank change (future) */}
               {rewards.rankChange && (
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">

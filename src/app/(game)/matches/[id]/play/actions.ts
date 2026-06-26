@@ -133,16 +133,16 @@ export async function getMatchRewardsAction(
   const won = row.result === "win";
   const isSparring = row.isSparring;
 
-  // Currency awarded: 10 participation + 25 win bonus (PvP only)
-  const creditsAwarded = 10 + (won && !isSparring ? 25 : 0);
+  // Currency awarded: 10 participation + 25 win bonus (PvP only; nothing for sparring)
+  const creditsAwarded = isSparring ? 0 : 10 + (won ? 25 : 0);
 
-  // XP awarded: mirrors calculateMatchXP logic including first-win daily bonus
+  // XP awarded: 0 for sparring; 1.5x for ranked PvP
   const baseXp = won ? 100 : 50;
-  const rankedMultiplier = !isSparring ? 1.5 : 1;
-  let xpAwarded = Math.round(baseXp * rankedMultiplier);
+  let xpAwarded = isSparring ? 0 : Math.round(baseXp * 1.5);
 
   // Detect first-win-today: if exactly 1 win exists in matchStats today, this was it
-  if (won) {
+  // Only applies to ranked PvP matches, not sparring
+  if (won && !isSparring) {
     const now = new Date();
     const todayStart = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
