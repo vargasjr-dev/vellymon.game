@@ -6,6 +6,7 @@ import { useToast } from "~/components/Toast";
 import VellymonCard from "~/components/VellymonCard";
 import { createTeamAction, updateTeamAction } from "./actions";
 import type { SlotInput } from "~/data/createTeam.server";
+import { TEAM_NAME_MAX_LENGTH } from "~/data/createTeam.server";
 
 type RosterVellymon = {
   uuid: string;
@@ -90,6 +91,10 @@ export default function TeamBuilder({
       addToast("Team name is required", "error");
       return;
     }
+    if (name.trim().length > TEAM_NAME_MAX_LENGTH) {
+      addToast(`Team name must be ${TEAM_NAME_MAX_LENGTH} characters or fewer`, "error");
+      return;
+    }
 
     setSaving(true);
 
@@ -141,15 +146,22 @@ export default function TeamBuilder({
           className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
             !name.trim() && slots.length > 0
               ? "border-amber-400 bg-amber-50"
-              : "border-gray-300"
+              : name.length > TEAM_NAME_MAX_LENGTH
+                ? "border-red-400 bg-red-50"
+                : "border-gray-300"
           }`}
-          maxLength={64}
+          maxLength={TEAM_NAME_MAX_LENGTH}
         />
-        {!name.trim() && slots.length > 0 && (
-          <p className="text-xs text-amber-600 mt-1">
-            ⚠️ Team name required to save
+        <div className="flex justify-between mt-1">
+          <div>
+            {!name.trim() && slots.length > 0 && (
+              <p className="text-xs text-amber-600">⚠️ Team name required to save</p>
+            )}
+          </div>
+          <p className={`text-xs ${name.length >= TEAM_NAME_MAX_LENGTH ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+            {name.length}/{TEAM_NAME_MAX_LENGTH}
           </p>
-        )}
+        </div>
       </div>
 
       {/* Team Slots */}

@@ -2,6 +2,7 @@ import { db } from "../../data/db";
 import { team, teamSlot } from "../../data/schema";
 import { eq, and } from "drizzle-orm";
 import type { SlotInput } from "./createTeam.server";
+import { TEAM_NAME_MAX_LENGTH } from "./createTeam.server";
 import validateTeamSlots from "./validateTeamSlots.server";
 
 const updateTeam = async ({
@@ -28,6 +29,12 @@ const updateTeam = async ({
 
     // Update name if provided
     if (name !== undefined) {
+      if (name.trim().length > TEAM_NAME_MAX_LENGTH) {
+        return {
+          success: false,
+          message: `Team name must be ${TEAM_NAME_MAX_LENGTH} characters or fewer`,
+        };
+      }
       await db
         .update(team)
         .set({ name })

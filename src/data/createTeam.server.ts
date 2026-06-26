@@ -8,6 +8,8 @@ export type SlotInput = {
   isActive: boolean;
 };
 
+export const TEAM_NAME_MAX_LENGTH = 30;
+
 const createTeam = async ({
   name,
   userId,
@@ -18,6 +20,14 @@ const createTeam = async ({
   slots: SlotInput[];
 }) => {
   try {
+    // Validate name length
+    if (name.trim().length > TEAM_NAME_MAX_LENGTH) {
+      return {
+        success: false,
+        message: `Team name must be ${TEAM_NAME_MAX_LENGTH} characters or fewer`,
+      };
+    }
+
     // Validate slots before creating
     const validation = await validateTeamSlots(slots, userId);
     if (!validation.valid) {
