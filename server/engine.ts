@@ -413,6 +413,13 @@ export function resolveTurn(
   // Resolve commands in speed order — invalid ones get logged as failures
   const commandResults: CommandResult[] = [];
   for (const { command, team, validationError } of allCommands) {
+    // Silently drop commands for mons that are already KO'd at resolution time.
+    // A mon can be KO'd before the loop starts (e.g. Blood Rush onTurnStart self-damage)
+    // or by an earlier command this same turn.  In either case we emit no entry in
+    // commandResults so the animation and turn history stay clean.
+    const commandMon = team.active.find((v) => v.uuid === command.vellymonUuid);
+    if (commandMon?.isKO) continue;
+
     if (validationError) {
       commandResults.push({
         command,
