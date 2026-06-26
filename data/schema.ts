@@ -673,6 +673,36 @@ export const userLoginStreakRelations = relations(
  * and never stored. Only the SHA-256 hash is persisted for verification.
  * The keyPrefix (first 12 chars) is stored for display/identification.
  */
+// ─── LLM Request Log ─────────────────────────────────────────────────────────
+
+/**
+ * One row per AI team per turn, storing the full LLM request and raw response.
+ * Used to debug AI decisions in spectate/watch mode.
+ * Rows older than 7 days are pruned automatically on each insert.
+ */
+export const llmRequest = pgTable("llmRequest", {
+  id: text("id").primaryKey(),
+  matchId: text("matchId").notNull(),
+  turn: integer("turn").notNull(),
+  /** Which team (1 or 2) generated this request. */
+  teamId: integer("teamId").notNull(),
+  /** AI profile that drove this call, if any. */
+  profileId: text("profileId"),
+  /** Model used (e.g. "claude-haiku-4-5"). */
+  model: text("model").notNull(),
+  /** Full system prompt sent to the model. */
+  systemPrompt: text("systemPrompt").notNull(),
+  /** Full user message (game state description) sent to the model. */
+  userMessage: text("userMessage").notNull(),
+  /** Raw text response from the model. */
+  rawResponse: text("rawResponse").notNull(),
+  /** Parsed Command[] that resulted from the response, or null if parse failed. */
+  commands: json("commands"),
+  /** Error message if the LLM call or parse failed. */
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const adminApiKey = pgTable(
   "adminApiKey",
   {

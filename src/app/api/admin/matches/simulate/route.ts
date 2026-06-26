@@ -37,7 +37,7 @@ import {
   type TurnLog,
 } from "../../../../../../server/engine";
 import { submitCommands } from "../../../../../../server/turnTimer";
-import { generateAICommands } from "../../../../../../server/ai-opponent";
+import { generateLlmAICommands, buildSystemPrompt } from "../../../../../../server/ai-llm";
 import type { GameState } from "../../../../../../server/types";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -168,11 +168,32 @@ export async function POST(req: Request) {
           JSON.parse(JSON.stringify(gs)) as GameState,
         ];
 
+        // Build system prompts for each team (includes match rules + profile strategy)
+        const p1SystemPrompt = p1Info.systemPrompt
+          ? buildSystemPrompt(p1Info.systemPrompt, buildMatchRulesContext())
+          : undefined;
+        const p2SystemPrompt = p2Info.systemPrompt
+          ? buildSystemPrompt(p2Info.systemPrompt, buildMatchRulesContext())
+          : undefined;
+
         while (isGameActive(gs) && gs.turn < maxTurns) {
           const timer = startTurn(gs);
-          // TODO: replace with LLM runner once profile.description → board state → Haiku
-          submitCommands(timer, 1, generateAICommands(gs, 1));
-          submitCommands(timer, 2, generateAICommands(gs, 2));
+          const [cmd1, cmd2] = await Promise.all([
+            generateLlmAICommands(gs, 1, {
+              matchId,
+              turn: gs.turn,
+              profileId: p1Info.profileId,
+              systemPrompt: p1SystemPrompt,
+            }),
+            generateLlmAICommands(gs, 2, {
+              matchId,
+              turn: gs.turn,
+              profileId: p2Info.profileId,
+              systemPrompt: p2SystemPrompt,
+            }),
+          ]);
+          submitCommands(timer, 1, cmd1);
+          submitCommands(timer, 2, cmd2);
 
           const turnLog = resolveTurn(gs, timer);
           turnLogs.push(turnLog);

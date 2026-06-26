@@ -9,6 +9,7 @@ import { gameSession, gamePlayer, team } from "../../../../data/schema";
 import { eq } from "drizzle-orm";
 import { listAiProfiles, getAiProfile, createAiProfile } from "~/data/aiProfiles.server";
 import { VELLYMON_LIBRARY } from "../../../../server/vellymonLibrary";
+import { buildSystemPrompt } from "../../../../server/ai-llm";
 
 /**
  * Create a sparring match against a named AI profile.
@@ -63,6 +64,9 @@ export async function createProfileSparringMatchAction(
         aiProfileId: profile.id,
         aiProfileTeamNames: profile.teamNames as string[],
         aiProfileName: profile.name,
+        aiSystemPrompt: profile.description
+          ? buildSystemPrompt(profile.description, "")
+          : undefined,
       },
     })
     .returning();

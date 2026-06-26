@@ -155,6 +155,9 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // AI team tracking — which team IDs are AI-driven (have LLM logs)
+  const [aiTeamIds, setAiTeamIds] = useState<Set<1 | 2>>(new Set());
+
   // Replay mode
   const [turnSnapshots, setTurnSnapshots] = useState<RawGameState[] | null>(
     null,
@@ -195,6 +198,8 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
           turnLogs?: RawTurnLog[];
           status: string;
           turnHistory?: TurnSnapshot[];
+          p1ProfileId?: string | null;
+          p2ProfileId?: string | null;
         };
         if (!active) return;
 
@@ -204,6 +209,11 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
           setTurnSnapshots(snapshots);
           setTurnLogs(data.turnLogs ?? []);
           setReplayIndex(Math.min(initialTurn, snapshots.length - 1));
+          // Determine which teams are AI-driven (have profileIds)
+          const ids = new Set<1 | 2>();
+          if (data.p1ProfileId) ids.add(1);
+          if (data.p2ProfileId) ids.add(2);
+          setAiTeamIds(ids);
           setLoading(false);
           return;
         }
@@ -498,7 +508,12 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
         {/* Turn log drawer (replay mode) */}
         {isReplay && logOpen && currentLog && (
           <div className="absolute top-0 left-0 right-0 z-10">
-            <TurnLogDrawer log={currentLog} lookup={vellymonLookup} />
+            <TurnLogDrawer
+              log={currentLog}
+              lookup={vellymonLookup}
+              aiTeamIds={aiTeamIds}
+              matchId={matchId}
+            />
           </div>
         )}
         {t1 && <CompactTeamHUD team={t1} color="blue" position="bottom-left" />}
@@ -537,15 +552,132 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
   );
 }
 
+// ─── LLM Debug Modal ─────────────────────────────────────────────────────────
+
+type LlmLog = {
+  turn: number;
+  teamId: number;
+  model: string;
+  systemPrompt: string;
+  userMessage: string;
+  rawResponse: string;
+  commands: unknown;
+  errorMessage: string | null;
+};
+
+function LlmDebugModal({
+  matchId,
+  turn,
+  teamId,
+  onClose,
+}: {
+  matchId: string;
+  turn: number;
+  teamId: 1 | 2;
+  onClose: () => void;
+}) {
+  const [log, setLog] = useState<LlmLog | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"prompt" | "message" | "response">("message");
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/llm-requests?matchId=${encodeURIComponent(matchId)}&turn=${turn}&teamId=${teamId}`,
+        );
+        if (res.status === 404) {
+          setError("No LLM log found — this turn may have used rule-based AI.");
+        } else if (!res.ok) {
+          setError(`Error ${res.status}`);
+        } else {
+          setLog((await res.json()) as LlmLog);
+        }
+      } catch {
+        setError("Failed to load LLM log.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [matchId, turn, teamId]);
+
+  const teamColor = teamId === 1 ? "border-blue-500/60 bg-blue-900/20" : "border-red-500/60 bg-red-900/20";
+  const tabBase = "px-3 py-1 text-xs rounded-md transition-colors";
+  const tabActive = "bg-gray-700 text-white";
+  const tabInactive = "text-gray-400 hover:text-white";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      onClick={onClose}
+    >
+      <div
+        className={`bg-[#0d1520] border ${teamColor} rounded-2xl p-4 mx-4 w-full max-w-2xl max-h-[80vh] flex flex-col`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <span className="text-white font-bold text-sm">🤖 AI Debug — Turn {turn}, Team {teamId}</span>
+            {log && <span className="text-gray-400 text-xs ml-2">({log.model})</span>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none">✕</button>
+        </div>
+
+        {loading && <p className="text-gray-400 text-sm text-center py-8">Loading…</p>}
+        {error && <p className="text-red-400 text-sm text-center py-8">{error}</p>}
+
+        {log && (
+          <>
+            {log.errorMessage && (
+              <div className="mb-3 px-3 py-2 bg-red-900/30 border border-red-700/40 rounded-lg text-red-300 text-xs">
+                ⚠️ LLM error (fell back to rule-based AI): {log.errorMessage}
+              </div>
+            )}
+
+            {/* Tabs */}
+            <div className="flex gap-1 mb-3 bg-gray-900/60 p-1 rounded-lg w-fit">
+              <button className={`${tabBase} ${tab === "message" ? tabActive : tabInactive}`} onClick={() => setTab("message")}>
+                Game State
+              </button>
+              <button className={`${tabBase} ${tab === "prompt" ? tabActive : tabInactive}`} onClick={() => setTab("prompt")}>
+                System Prompt
+              </button>
+              <button className={`${tabBase} ${tab === "response" ? tabActive : tabInactive}`} onClick={() => setTab("response")}>
+                Response
+              </button>
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed bg-gray-900/50 rounded-lg p-3">
+                {tab === "prompt" && log.systemPrompt}
+                {tab === "message" && log.userMessage}
+                {tab === "response" && log.rawResponse}
+              </pre>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Turn Log Drawer ──────────────────────────────────────────────────────────
 
 function TurnLogDrawer({
   log,
   lookup,
+  aiTeamIds,
+  matchId,
 }: {
   log: RawTurnLog;
   lookup: Map<string, { name: string; teamId: 1 | 2 }>;
+  aiTeamIds: Set<1 | 2>;
+  matchId: string;
 }) {
+  const [debugModal, setDebugModal] = useState<{ turn: number; teamId: 1 | 2 } | null>(null);
   const bench1 = log.benchEntries?.team1 ?? [];
   const bench2 = log.benchEntries?.team2 ?? [];
   const allBench = [...bench1, ...bench2];
@@ -652,9 +784,29 @@ function TurnLogDrawer({
               {failStr && (
                 <span className="text-gray-600 italic">{failStr}</span>
               )}
+              {/* 🤖 debug button — only shown for AI team commands */}
+              {aiTeamIds.has(teamId) && (
+                <button
+                  className="ml-auto text-gray-600 hover:text-purple-400 transition-colors leading-none text-xs"
+                  title="View AI decision log"
+                  onClick={() => setDebugModal({ turn: log.turn, teamId })}
+                >
+                  🤖
+                </button>
+              )}
             </div>
           );
         })}
+
+        {/* LLM debug modal */}
+        {debugModal && (
+          <LlmDebugModal
+            matchId={matchId}
+            turn={debugModal.turn}
+            teamId={debugModal.teamId}
+            onClose={() => setDebugModal(null)}
+          />
+        )}
 
         {allBench.length > 0 && (
           <div className="pt-1 border-t border-gray-800/60 mt-1">

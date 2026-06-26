@@ -62,6 +62,8 @@ export async function GET(
         turnSnapshots: (row.turnSnapshots as unknown[]) ?? [],
         turnLogs: (row.turnLogs as unknown[]) ?? [],
         turnHistory: [],
+        p1ProfileId: row.p1ProfileId ?? null,
+        p2ProfileId: row.p2ProfileId ?? null,
       });
     }
   } catch {
@@ -209,6 +211,8 @@ export async function GET(
           turnSnapshots: [...turnSnapshots, finalSnapshot],
           turnLogs: history.map((snap) => snap.log),
           turnHistory: [],
+          p1ProfileId: null,
+          p2ProfileId: null,
         });
       }
 
@@ -219,6 +223,8 @@ export async function GET(
         turnSnapshots: [],
         turnLogs: [],
         turnHistory: history,
+        p1ProfileId: null,
+        p2ProfileId: null,
       });
     }
   } catch {

@@ -50,7 +50,7 @@ import {
 import type { GameState } from "../../server/types";
 import type { Command } from "../../server/commands";
 import type { MatchSettings } from "../lib/matchSettings";
-import { generateAICommands } from "../../server/ai-opponent";
+import { generateLlmAICommands } from "../../server/ai-llm";
 
 // ─── Vellymon lookup ─────────────────────────────────────────────────────────
 
@@ -119,6 +119,14 @@ type MatchMetadata = {
   aiTeamId?: 1 | 2;
   /** The human player's team UUID — used to build the human team setup. */
   playerTeamUuid?: string;
+  /** AI profile ID (for LLM logging). */
+  aiProfileId?: string;
+  /** AI profile team names (for profile-based sparring). */
+  aiProfileTeamNames?: string[];
+  /** AI profile display name. */
+  aiProfileName?: string;
+  /** Pre-built system prompt for the LLM AI (set at match creation). */
+  aiSystemPrompt?: string;
 };
 
 // ─── Initialize ──────────────────────────────────────────────────────────────
@@ -218,15 +226,7 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
     .where(eq(gameSession.uuid, matchUuid));
 
   if (!row?.metadata) throw new Error("Sparring match not found");
-  const meta = row.metadata as Partial<MatchMetadata> & {
-    sparring?: boolean;
-    aiTeamId?: 1 | 2;
-    playerTeamUuid?: string;
-    matchSettings?: MatchSettings;
-    /** Profile-based sparring: use these specific mons for the AI team. */
-    aiProfileTeamNames?: string[];
-    aiProfileName?: string;
-  };
+  const meta = row.metadata as Partial<MatchMetadata>;
 
   if (!meta.sparring) throw new Error("Not a sparring match");
   if (!meta.playerTeamUuid)
@@ -637,7 +637,12 @@ export async function submitMatchCommands(
   // generate and submit AI commands so the turn resolves without a second poll.
   if (meta.sparring && meta.aiTeamId && meta.aiTeamId !== teamId) {
     const aiTeamId = meta.aiTeamId;
-    const aiCommands = generateAICommands(gameState, aiTeamId);
+    const aiCommands = await generateLlmAICommands(gameState, aiTeamId, {
+      matchId: matchUuid,
+      turn: gameState.turn,
+      profileId: meta.aiProfileId,
+      systemPrompt: meta.aiSystemPrompt,
+    });
     submitTimerCommands(timer, aiTeamId, aiCommands);
     meta.pendingCommands[String(aiTeamId)] = aiCommands;
   }
