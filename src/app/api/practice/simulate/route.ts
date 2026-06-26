@@ -171,7 +171,7 @@ export async function POST(req: Request) {
       JSON.parse(JSON.stringify(gs)) as GameState,
     ];
 
-    const MAX_TURNS = 15;
+    const MAX_TURNS = 50;
     while (isGameActive(gs) && gs.turn < MAX_TURNS) {
       const timer = startTurn(gs);
       submitCommands(timer, 1, generateAICommands(gs, 1));

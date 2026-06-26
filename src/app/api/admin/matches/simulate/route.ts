@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const maxTurns = Math.min(50, Math.max(1, body.maxTurns ?? 15));
+  const maxTurns = Math.min(50, Math.max(1, body.maxTurns ?? 50));
   const startingEnergy = body.startingEnergy !== undefined
     ? Math.min(500, Math.max(1, body.startingEnergy))
     : undefined;
