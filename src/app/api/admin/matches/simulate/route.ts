@@ -26,6 +26,7 @@ import { aiProfile, matchSnapshot } from "../../../../../../data/schema";
 import { eq } from "drizzle-orm";
 import { VELLYMON_LIBRARY } from "../../../../../../server/vellymonLibrary";
 import { buildTeamSetup } from "../../../../../../server/matchSetup";
+import { getMapById, parseBoardFromMap } from "../../../../../../server/maps";
 import "../../../../../../server/powers"; // register all special powers
 import {
   initializeGame,
@@ -159,7 +160,9 @@ export async function POST(req: Request) {
       }
 
       try {
-        const gs = initializeGame(matchId, setup1, setup2, undefined, { startingEnergy, winningEnergy });
+        const standardMap = getMapById("standard");
+        const board = parseBoardFromMap(standardMap);
+        const gs = initializeGame(matchId, setup1, setup2, { board, width: standardMap.width, height: standardMap.height }, { startingEnergy, winningEnergy });
         const turnLogs: TurnLog[] = [];
         const turnSnapshots: GameState[] = [
           JSON.parse(JSON.stringify(gs)) as GameState,

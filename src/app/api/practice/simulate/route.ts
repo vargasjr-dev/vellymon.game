@@ -20,6 +20,7 @@ import { aiProfile, matchSnapshot } from "../../../../../data/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { VELLYMON_LIBRARY } from "../../../../../server/vellymonLibrary";
 import { buildTeamSetup } from "../../../../../server/matchSetup";
+import { getMapById, parseBoardFromMap } from "../../../../../server/maps";
 import "../../../../../server/powers";
 import {
   initializeGame,
@@ -162,7 +163,9 @@ export async function POST(req: Request) {
   const simStart = Date.now();
 
   try {
-    const gs = initializeGame(matchId, setup1, setup2);
+    const standardMap = getMapById("standard");
+    const board = parseBoardFromMap(standardMap);
+    const gs = initializeGame(matchId, setup1, setup2, { board, width: standardMap.width, height: standardMap.height });
     const turnLogs: TurnLog[] = [];
     const turnSnapshots: GameState[] = [
       JSON.parse(JSON.stringify(gs)) as GameState,
