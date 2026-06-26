@@ -31,6 +31,7 @@ import {
   type CommandResult,
   validateCommand,
   resolveCommand,
+  normalizeCommand,
 } from "./commands";
 import { checkWinConditions, updateOccupationCounters, type OccupationEvent } from "./winConditions";
 import { processAllBenchEntries, type BenchEntry } from "./bench";
@@ -366,14 +367,17 @@ export function resolveTurn(
   };
 
   const tagCommands = (cmds: Command[], team: TeamState): TaggedCommand[] =>
-    cmds.map((cmd) => ({
-      command: cmd,
-      team,
-      speed: getVellymonSpeed(team, cmd.vellymonUuid),
-      phase: getPhasePriority(cmd),
-      baseDamage: getAttackBaseDamage(cmd, team),
-      validationError: validateCommand(cmd, team, state),
-    }));
+    cmds.map((rawCmd) => {
+      const cmd = normalizeCommand(rawCmd); // compat: old DB rows may have direction string
+      return {
+        command: cmd,
+        team,
+        speed: getVellymonSpeed(team, cmd.vellymonUuid),
+        phase: getPhasePriority(cmd),
+        baseDamage: getAttackBaseDamage(cmd, team),
+        validationError: validateCommand(cmd, team, state),
+      };
+    });
 
   const allCommands: TaggedCommand[] = [
     ...tagCommands(t1Commands, team1),
