@@ -250,6 +250,11 @@ export function applyEffects(
         if (target) {
           target.hp = Math.max(0, target.hp - effect.amount);
           summary.damaged.push(effect.targetId);
+          // KO check — must mirror resolveAttack so self-damage can knock out a vellymon
+          if (target.hp === 0 && !target.isKO) {
+            target.isKO = true;
+            target.position = null;
+          }
         }
         break;
       }
