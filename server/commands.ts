@@ -96,30 +96,6 @@ export type CommandResult = {
   }>;
 };
 
-// ─── Legacy compat ───────────────────────────────────────────────────────────
-
-/**
- * Normalize a command from the DB.
- *
- * Pre-Vec2 commands stored in the DB have `direction: "up"|"down"|"left"|"right"`
- * instead of `vec: Vec2`. This function converts them transparently so the
- * engine always sees Vec2 commands regardless of when the match was created.
- */
-export function normalizeCommand(cmd: Command): Command {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = cmd as any;
-  if (raw.vec) return cmd; // already Vec2 — nothing to do
-
-  const dirMap: Record<string, Vec2> = {
-    up:    { dx: 0, dy: -1 },
-    down:  { dx: 0, dy:  1 },
-    left:  { dx: -1, dy: 0 },
-    right: { dx:  1, dy: 0 },
-  };
-  const vec: Vec2 = dirMap[raw.direction as string] ?? { dx: 0, dy: 1 };
-  return { ...cmd, vec } as Command;
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getSpace(

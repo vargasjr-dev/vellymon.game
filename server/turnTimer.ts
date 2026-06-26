@@ -12,7 +12,7 @@
 
 import { GAME_CONFIG } from "./config";
 import type { Command } from "./commands";
-import { normalizeCommand } from "./commands";
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -169,11 +169,9 @@ export function getFinalCommands(
   team1ActiveUuids: string[],
   team2ActiveUuids: string[],
 ): { team1: Command[]; team2: Command[] } {
-  // normalizeCommand converts legacy `direction` string commands (pre-Vec2 refactor)
-  // to the current Vec2 format. This handles in-flight matches created before the refactor.
   return {
-    team1: (timer.team1Commands ?? generateDefaultCommands(team1ActiveUuids)).map(normalizeCommand),
-    team2: (timer.team2Commands ?? generateDefaultCommands(team2ActiveUuids)).map(normalizeCommand),
+    team1: timer.team1Commands ?? generateDefaultCommands(team1ActiveUuids),
+    team2: timer.team2Commands ?? generateDefaultCommands(team2ActiveUuids),
   };
 }
 

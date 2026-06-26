@@ -43,7 +43,6 @@ export {
   validateCommand,
   resolveCommand,
   getAvailableCommands,
-  normalizeCommand,
 } from "./commands";
 
 // Energy

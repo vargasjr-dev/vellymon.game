@@ -60,7 +60,7 @@ export type RawCommandResult = {
   command: {
     type: "move" | "attack" | "harvest";
     vellymonUuid: string;
-    /** Game-space cardinal unit vector. Old DB rows may still carry direction string — normalizeVec handles compat. */
+    /** Game-space cardinal unit vector. */
     vec?: Vec2;
     attackIndex?: number;
   };
@@ -144,29 +144,6 @@ export type UnifiedStep = {
   impactOverlay: Overlays | null;
   impactMs: number;
 };
-
-// ─── Compat: old DB turns store direction as a string; new turns use vec ──────
-
-/**
- * Extract a Vec2 from a raw command result.
- * New turns: `cmd.command.vec` is already present.
- * Old DB turns (pre-dx/dy refactor): `cmd.command` may still have a `direction` string.
- * Converts "up"→{dx:0,dy:-1}, etc. at read time so the rest of the animation
- * pipeline is always Vec2-clean.
- */
-export function normalizeVec(cmd: RawCommandResult): Vec2 | undefined {
-  if (cmd.command.vec) return cmd.command.vec;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const legacyDir = (cmd.command as any).direction as string | undefined;
-  if (!legacyDir) return undefined;
-  switch (legacyDir) {
-    case "up":    return { dx: 0, dy: -1 };
-    case "down":  return { dx: 0, dy:  1 };
-    case "left":  return { dx: -1, dy: 0 };
-    case "right": return { dx:  1, dy: 0 };
-    default:      return undefined;
-  }
-}
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 
@@ -364,7 +341,7 @@ export function buildUnifiedSteps(
       if (!cmd.success && cmd.command.type === "attack") {
         const uuid = cmd.command.vellymonUuid;
         const cur = workingPos.get(uuid);
-        const offset = normalizeVec(cmd);
+        const offset = cmd.command.vec;
         if (cur && offset) {
           const tx = cur.x + offset.dx;
           const ty = cur.y + offset.dy;
@@ -391,7 +368,7 @@ export function buildUnifiedSteps(
       if (!cmd.success && cmd.command.type === "harvest") {
         const uuid = cmd.command.vellymonUuid;
         const cur = workingPos.get(uuid);
-        const offset = normalizeVec(cmd);
+        const offset = cmd.command.vec;
       if (cur && offset) {
         const tx = cur.x + offset.dx;
         const ty = cur.y + offset.dy;
@@ -418,7 +395,7 @@ export function buildUnifiedSteps(
       if (!cmd.success && cmd.command.type === "move") {
         const uuid = cmd.command.vellymonUuid;
         const cur = workingPos.get(uuid);
-        const offset = normalizeVec(cmd);
+        const offset = cmd.command.vec;
       if (cur && offset) {
         const tx = cur.x + offset.dx;
         const ty = cur.y + offset.dy;
@@ -469,7 +446,7 @@ export function buildUnifiedSteps(
     const cur = workingPos.get(uuid);
     if (!cur) continue;
 
-    const offset = normalizeVec(cmd);
+    const offset = cmd.command.vec;
 
     if (cmd.command.type === "move" && offset) {
       const from = snapshot();

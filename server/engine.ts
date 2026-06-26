@@ -31,7 +31,6 @@ import {
   type CommandResult,
   validateCommand,
   resolveCommand,
-  normalizeCommand,
 } from "./commands";
 import { checkWinConditions, updateOccupationCounters, type OccupationEvent } from "./winConditions";
 import { processAllBenchEntries, type BenchEntry } from "./bench";
@@ -367,8 +366,7 @@ export function resolveTurn(
   };
 
   const tagCommands = (cmds: Command[], team: TeamState): TaggedCommand[] =>
-    cmds.map((rawCmd) => {
-      const cmd = normalizeCommand(rawCmd); // compat: old DB rows may have direction string
+    cmds.map((cmd) => {
       return {
         command: cmd,
         team,

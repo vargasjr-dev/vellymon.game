@@ -25,7 +25,7 @@ import {
 } from "../specialPowers";
 
 registerPower({
-  id: "first_strike",
+  id: "blood_rush",
   name: "Blood Rush",
   description:
     "Zipfang loses 2 HP at the start of each turn, burning through its own body to move at blinding speed.",

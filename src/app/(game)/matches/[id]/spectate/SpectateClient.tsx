@@ -11,7 +11,6 @@ import {
   type RawTeam,
   type RawTurnLog,
   type Vec2,
-  normalizeVec,
   buildUnifiedSteps,
   buildVellymonLookup,
 } from "../play/turnAnimation";
@@ -609,7 +608,7 @@ function TurnLogDrawer({
               : r.command.type === "harvest"
                 ? "🌿"
                 : "👟";
-          const dirStr = vecToScreenLabel(normalizeVec(r), true);
+          const dirStr = vecToScreenLabel(r.command.vec, true);
           const targetInfo = r.targetUuid ? lookup.get(r.targetUuid) : null;
           const victimStr = targetInfo ? ` → ${targetInfo.name}` : "";
           const dmgStr = r.damageDealt ? ` −${r.damageDealt} HP` : "";
