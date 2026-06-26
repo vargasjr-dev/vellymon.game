@@ -1,11 +1,16 @@
 /**
- * Buldrok — "Stone Skin"
+ * Buldrok — "Earthen Bulwark"
  *
- * Buldrok heals 2 HP whenever it takes damage (tough stone armor).
- * Minimum damage still applies — it can't fully negate attacks.
+ * All incoming damage is reduced by 3 (minimum 1). A stone golem
+ * that simply absorbs hits — no regen, just a wall that chips don't dent.
  *
  * Hook: onDamaged
- * Effect: heal self 2 HP
+ * Effect: bonus_damage -3 to self (net damage reduction of 3)
+ *
+ * Design: Buldrok is the tankiest mon in the game (HP 120, SPD 1).
+ * Earthen Bulwark makes chip attacks almost meaningless against it
+ * while preserving vulnerability to big slams. Pairs poorly with
+ * fast-attack mons and punishes teams that rely on poke/snipe range.
  */
 
 import {
@@ -15,14 +20,15 @@ import {
 } from "../specialPowers";
 
 registerPower({
-  id: "stone-skin",
-  name: "Stone Skin",
-  description:
-    "Heals 2 HP whenever hit.",
+  id: "earthen-bulwark",
+  name: "Earthen Bulwark",
+  description: "All incoming damage reduced by 3 (minimum 1).",
   hooks: {
     onDamaged: (ctx: DamagedHookContext): PowerEffect[] => {
-      if (ctx.damage <= 0) return [];
-      return [{ type: "heal", targetId: ctx.self.uuid, amount: 2 }];
+      // Reduce damage by healing back 3 HP, capped so total damage never goes below 1
+      const reduction = Math.min(3, ctx.damage - 1);
+      if (reduction <= 0) return [];
+      return [{ type: "heal", targetId: ctx.self.uuid, amount: reduction }];
     },
   },
 });

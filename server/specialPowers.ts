@@ -123,6 +123,8 @@ export type CommandHookContext = HookContext & {
     success: boolean;
     damageDealt?: number;
     targetUuid?: string;
+    /** Energy gained or spent by the command (positive = gained, negative = spent). */
+    energyDelta?: number;
   };
 };
 

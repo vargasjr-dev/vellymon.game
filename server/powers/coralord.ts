@@ -1,25 +1,35 @@
 /**
- * Coralord — "Reef Armor"
+ * Coralord — "Tide Harvest"
  *
- * Heals 2 HP at the end of each turn. Coral slowly regenerates.
+ * When Coralord harvests, the energy gained is doubled. The reef
+ * pulls resources from the ocean floor that others can't reach.
  *
- * Hook: onTurnEnd
- * Effect: self-heal 2 HP
+ * Hook: onAfterCommand (harvest)
+ * Effect: energy +N to own team (where N = energy already gained this harvest)
+ *
+ * Design: Coralord is a mid-tank (HP 95, ATK 11, SPD 3). Tide Harvest
+ * rewards positioning near harvestable spaces — a single harvest becomes
+ * a power play. Forces opponents to contest Coralord's harvest tiles
+ * aggressively or fall behind on energy economy.
  */
 
 import {
   registerPower,
-  type HookContext,
+  type CommandHookContext,
   type PowerEffect,
 } from "../specialPowers";
 
 registerPower({
-  id: "reef-armor",
-  name: "Reef Armor",
-  description: "Heals 2 HP at the end of each turn.",
+  id: "tide-harvest",
+  name: "Tide Harvest",
+  description: "Harvesting doubles the energy received.",
   hooks: {
-    onTurnEnd: (ctx: HookContext): PowerEffect[] => {
-      return [{ type: "heal", targetId: ctx.self.uuid, amount: 2 }];
+    onAfterCommand: (ctx: CommandHookContext): PowerEffect[] => {
+      if (ctx.command.type !== "harvest") return [];
+      if (!ctx.commandResult?.success) return [];
+      const gained = ctx.commandResult.energyDelta ?? 0;
+      if (gained <= 0) return [];
+      return [{ type: "energy", team: ctx.team, amount: gained }];
     },
   },
 });

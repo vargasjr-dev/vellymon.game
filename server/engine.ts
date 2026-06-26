@@ -439,6 +439,7 @@ export function resolveTurn(
             success: result.success,
             damageDealt: result.damageDealt,
             targetUuid: result.targetUuid,
+            energyDelta: result.energyDelta,
           },
         };
         const effects = runHook("onAfterCommand", attacker.specialPowerId, ctx);
