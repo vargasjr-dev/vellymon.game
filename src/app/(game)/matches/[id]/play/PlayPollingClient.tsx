@@ -54,13 +54,19 @@ function screenVecToGameVec(
   if (!isPortrait) return screenVec;
   const { dx, dy } = screenVec;
   if (teamId === 1) {
-    // screen↑(dy-1)→game right(dx+1), screen↓(dy+1)→game left(dx-1)
-    // screen←(dx-1)→game up(dy-1),   screen→(dx+1)→game down(dy+1)
-    return { dx: dy, dy: dx };
+    // Team 1 renders portrait as: col=gy, row=bw-1-gx
+    // screen↑(dy-1) → decreasing row → increasing gx → game right (dx+1)
+    // screen↓(dy+1) → increasing row → decreasing gx → game left  (dx-1)
+    // screen←(dx-1) → decreasing col → decreasing gy → game up    (dy-1)
+    // screen→(dx+1) → increasing col → increasing gy → game down  (dy+1)
+    return { dx: -dy, dy: dx };
   } else {
-    // screen↑(dy-1)→game left(dx-1), screen↓(dy+1)→game right(dx+1)
-    // screen←(dx-1)→game down(dy+1), screen→(dx+1)→game up(dy-1)
-    return { dx: -dy, dy: -dx };
+    // Team 2 renders portrait as: col=gy, row=gx
+    // screen↑(dy-1) → decreasing row → decreasing gx → game left  (dx-1)
+    // screen↓(dy+1) → increasing row → increasing gx → game right (dx+1)
+    // screen←(dx-1) → decreasing col → decreasing gy → game up    (dy-1)
+    // screen→(dx+1) → increasing col → increasing gy → game down  (dy+1)
+    return { dx: dy, dy: dx };
   }
 }
 
