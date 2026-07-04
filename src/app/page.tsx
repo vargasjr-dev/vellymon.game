@@ -4,16 +4,64 @@ import { auth } from "../lib/auth.server";
 import { headers } from "next/headers";
 
 const FLOATING_MONS = [
-  { emoji: "🐲", anim: "animate-float-a", delay: "0s",   top: "8%",  left: "5%"  },
-  { emoji: "⚡",  anim: "animate-float-b", delay: "1s",   top: "15%", left: "88%" },
-  { emoji: "🔥", anim: "animate-float-c", delay: "2s",   top: "70%", left: "7%"  },
-  { emoji: "💎", anim: "animate-float-a", delay: "3s",   top: "80%", left: "91%" },
-  { emoji: "🌊", anim: "animate-float-b", delay: "0.5s", top: "40%", left: "3%"  },
-  { emoji: "⚔️", anim: "animate-float-c", delay: "1.5s", top: "55%", left: "93%" },
-  { emoji: "🛡️", anim: "animate-float-a", delay: "2.5s", top: "25%", left: "12%" },
-  { emoji: "💀", anim: "animate-float-b", delay: "4s",   top: "85%", left: "50%" },
-  { emoji: "✨", anim: "animate-float-c", delay: "0.8s", top: "12%", left: "45%" },
-  { emoji: "🌟", anim: "animate-float-a", delay: "3.5s", top: "60%", left: "80%" },
+  { emoji: "🐲", anim: "animate-float-a", delay: "0s", top: "8%", left: "5%" },
+  {
+    emoji: "⚡",
+    anim: "animate-float-b",
+    delay: "1s",
+    top: "15%",
+    left: "88%",
+  },
+  { emoji: "🔥", anim: "animate-float-c", delay: "2s", top: "70%", left: "7%" },
+  {
+    emoji: "💎",
+    anim: "animate-float-a",
+    delay: "3s",
+    top: "80%",
+    left: "91%",
+  },
+  {
+    emoji: "🌊",
+    anim: "animate-float-b",
+    delay: "0.5s",
+    top: "40%",
+    left: "3%",
+  },
+  {
+    emoji: "⚔️",
+    anim: "animate-float-c",
+    delay: "1.5s",
+    top: "55%",
+    left: "93%",
+  },
+  {
+    emoji: "🛡️",
+    anim: "animate-float-a",
+    delay: "2.5s",
+    top: "25%",
+    left: "12%",
+  },
+  {
+    emoji: "💀",
+    anim: "animate-float-b",
+    delay: "4s",
+    top: "85%",
+    left: "50%",
+  },
+  {
+    emoji: "✨",
+    anim: "animate-float-c",
+    delay: "0.8s",
+    top: "12%",
+    left: "45%",
+  },
+  {
+    emoji: "🌟",
+    anim: "animate-float-a",
+    delay: "3.5s",
+    top: "60%",
+    left: "80%",
+  },
 ];
 
 const MONS = [
@@ -21,7 +69,9 @@ const MONS = [
     name: "Voidclaw",
     power: "Void Rend",
     powerDesc: "Drains 2 energy from enemies after every attack",
-    hp: 37, atk: 17, spd: 5,
+    hp: 37,
+    atk: 17,
+    spd: 5,
     gradient: "from-purple-900/60 to-slate-900/60",
     border: "border-purple-500/40",
     accent: "text-purple-400",
@@ -30,7 +80,9 @@ const MONS = [
     name: "Aerobolt",
     power: "Shockwave Trail",
     powerDesc: "Leaves a damaging shockwave on every tile it moves through",
-    hp: 65, atk: 8, spd: 8,
+    hp: 65,
+    atk: 8,
+    spd: 8,
     gradient: "from-yellow-900/60 to-slate-900/60",
     border: "border-yellow-500/40",
     accent: "text-yellow-400",
@@ -39,7 +91,9 @@ const MONS = [
     name: "Barrikade",
     power: "Iron Curtain",
     powerDesc: "Attackers lose 2 SPD the turn after they strike",
-    hp: 102, atk: 11, spd: 2,
+    hp: 102,
+    atk: 11,
+    spd: 2,
     gradient: "from-sky-900/60 to-slate-900/60",
     border: "border-sky-500/40",
     accent: "text-sky-400",
@@ -48,7 +102,9 @@ const MONS = [
     name: "Dewdrop",
     power: "Cleansing Mist",
     powerDesc: "Heals the lowest-HP ally at the start of every turn",
-    hp: 70, atk: 7, spd: 4,
+    hp: 70,
+    atk: 7,
+    spd: 4,
     gradient: "from-green-900/60 to-slate-900/60",
     border: "border-green-500/40",
     accent: "text-green-400",
@@ -58,9 +114,27 @@ const MONS = [
 // 5-wide x 3-tall mini arena preview
 type ArenaCell = null | { team: "a" | "b"; sprite: string; name: string };
 const ARENA: ArenaCell[][] = [
-  [{ team: "a", sprite: "barrikade", name: "Barrikade" }, { team: "a", sprite: "voidclaw",  name: "Voidclaw"  }, null, null,                                         { team: "b", sprite: "aerobolt",  name: "Aerobolt"  }],
-  [null,                                                   { team: "a", sprite: "dewdrop",   name: "Dewdrop"   }, null, { team: "b", sprite: "barrikade", name: "Barrikade" }, null                                            ],
-  [{ team: "a", sprite: "aerobolt", name: "Aerobolt"  }, null,                                                   null, null,                                         { team: "b", sprite: "voidclaw",  name: "Voidclaw"  }],
+  [
+    { team: "a", sprite: "barrikade", name: "Barrikade" },
+    { team: "a", sprite: "voidclaw", name: "Voidclaw" },
+    null,
+    null,
+    { team: "b", sprite: "aerobolt", name: "Aerobolt" },
+  ],
+  [
+    null,
+    { team: "a", sprite: "dewdrop", name: "Dewdrop" },
+    null,
+    { team: "b", sprite: "barrikade", name: "Barrikade" },
+    null,
+  ],
+  [
+    { team: "a", sprite: "aerobolt", name: "Aerobolt" },
+    null,
+    null,
+    null,
+    { team: "b", sprite: "voidclaw", name: "Voidclaw" },
+  ],
 ];
 
 export default async function HomePage() {
@@ -73,10 +147,8 @@ export default async function HomePage() {
 
   return (
     <main className="bg-slate-950 text-white overflow-x-hidden">
-
       {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-arena-grid">
-
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-sky-600/5 blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-orange-500/6 blur-2xl pointer-events-none" />
@@ -136,7 +208,9 @@ export default async function HomePage() {
       {/* Three Win Conditions */}
       <section className="py-24 px-4">
         <div className="max-w-5xl mx-auto">
-          <p className="text-center text-slate-500 text-sm font-semibold tracking-widest uppercase mb-8">Three paths to victory</p>
+          <p className="text-center text-slate-500 text-sm font-semibold tracking-widest uppercase mb-8">
+            Three paths to victory
+          </p>
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
@@ -163,7 +237,9 @@ export default async function HomePage() {
                   {p.icon}
                 </div>
                 <h3 className="text-xl font-bold mb-2">{p.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{p.desc}</p>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  {p.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -194,8 +270,8 @@ export default async function HomePage() {
                         cell === null
                           ? "bg-slate-800/40 border-slate-700/40"
                           : cell.team === "a"
-                          ? "bg-orange-500/20 border-orange-500/50 shadow-lg shadow-orange-500/10"
-                          : "bg-sky-500/20 border-sky-500/50 shadow-lg shadow-sky-500/10"
+                            ? "bg-orange-500/20 border-orange-500/50 shadow-lg shadow-orange-500/10"
+                            : "bg-sky-500/20 border-sky-500/50 shadow-lg shadow-sky-500/10"
                       }`}
                     >
                       {cell && (
@@ -221,9 +297,12 @@ export default async function HomePage() {
       <section className="py-24 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-black mb-3">Meet the Roster</h2>
+            <h2 className="text-3xl sm:text-4xl font-black mb-3">
+              Meet the Roster
+            </h2>
             <p className="text-slate-400 max-w-xl mx-auto">
-              64 vellymons. Each with a unique passive power. No two squads play alike.
+              64 vellymons. Each with a unique passive power. No two squads play
+              alike.
             </p>
           </div>
 
@@ -243,8 +322,12 @@ export default async function HomePage() {
                   />
                 </div>
                 <h3 className="text-xl font-black mb-1">{mon.name}</h3>
-                <div className="text-xs text-slate-300 font-semibold mb-1">✦ {mon.power}</div>
-                <p className="text-xs text-slate-400 leading-relaxed mb-4">{mon.powerDesc}</p>
+                <div className="text-xs text-slate-300 font-semibold mb-1">
+                  ✦ {mon.power}
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  {mon.powerDesc}
+                </p>
                 <div className="flex gap-3 text-xs text-slate-500">
                   <span>❤️ {mon.hp}</span>
                   <span>⚔️ {mon.atk}</span>
@@ -270,7 +353,8 @@ export default async function HomePage() {
             Ready to build your squad?
           </h2>
           <p className="text-slate-400 mb-10 text-lg">
-            Free to play. Jump in and start collecting, battling, and climbing the ranks.
+            Free to play. Jump in and start collecting, battling, and climbing
+            the ranks.
           </p>
           <a
             href="/signup"
@@ -289,6 +373,10 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Footer */}
+      <footer className="px-6 py-8 text-center text-slate-500 text-xs">
+        © 2026 VargasJR LLC. All rights reserved.
+      </footer>
     </main>
   );
 }
