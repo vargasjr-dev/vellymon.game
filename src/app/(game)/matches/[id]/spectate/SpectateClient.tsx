@@ -408,7 +408,7 @@ export default function SpectateClient({ matchId, initialTurn = 0 }: Props) {
       {/* ── Top bar ── */}
       <div className="flex justify-between items-center px-4 py-2 shrink-0 border-b border-gray-800">
         <Link
-          href={`/matches/${matchId}`}
+          href="/matches"
           className="text-gray-400 text-sm hover:text-white bg-black/40 px-3 py-1.5 rounded-lg"
         >
           ← Back
