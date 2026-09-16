@@ -77,6 +77,24 @@ export default function ProfileCreateForm({
         </p>
       </div>
 
+      {/* Player model */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Player Model
+        </label>
+        <select
+          name="model"
+          defaultValue="claude"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+        >
+          <option value="claude">Claude Haiku — generates JSON commands</option>
+          <option value="jev">Jev (TypeSafe System One) — typed decisions</option>
+        </select>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Jev picks from each vellymon&apos;s legal actions via Choice questions; Claude writes the full command list. Randomness applies to Claude only.
+        </p>
+      </div>
+
       {/* Randomness slider */}
       <div>
         <div className="flex items-center justify-between mb-1">
