@@ -25,6 +25,8 @@ import {
 } from "../server/engine";
 import { submitCommands } from "../server/turnTimer";
 import { generateAICommands } from "../server/ai-opponent";
+import { generateAIPlayerCommands, isAIPlayerModel, type AIPlayerModel } from "../server/ai-player";
+import { buildSystemPrompt } from "../server/ai-llm";
 import { db } from "../data/db";
 import { aiProfile, matchSnapshot } from "../data/schema";
 import { eq } from "drizzle-orm";
@@ -101,7 +103,10 @@ type ProfileConfig = {
   name: string;
   teamNames: string[];
   randomness: number;
-  // TODO: replace generateAICommands with LLM runner using profile.description + board state
+  /** Player model driving this profile ("claude" default, or "jev"). Absent = rule-based. */
+  model?: AIPlayerModel;
+  /** Profile strategy/prompt text, used by the claude and jev player models. */
+  description?: string;
 };
 
 let p1Config: ProfileConfig;
@@ -127,12 +132,16 @@ if (!isRandom && p1Flag !== -1 && p2Flag !== -1) {
     name: p1Row.name,
     teamNames: p1Row.teamNames as string[],
     randomness: (p1Row.randomness as number | null) ?? 0.5,
+    model: isAIPlayerModel(p1Row.model) ? p1Row.model : "claude",
+    description: (p1Row.description as string | null) ?? "",
   };
   p2Config = {
     id: p2Row.id,
     name: p2Row.name,
     teamNames: p2Row.teamNames as string[],
     randomness: (p2Row.randomness as number | null) ?? 0.5,
+    model: isAIPlayerModel(p2Row.model) ? p2Row.model : "claude",
+    description: (p2Row.description as string | null) ?? "",
   };
 } else {
   // --random or no args: pick random teams from the library
@@ -172,9 +181,28 @@ setup2.teamName = p2Config.name;
 const MAX_TURNS = 20;
 const id = shortId();
 
+/** Profile-driven command generation (claude / jev); rule-based for random mode. */
+function playerCommands(
+  config: ProfileConfig,
+  gs: GameState,
+  teamId: 1 | 2,
+): Promise<Command[]> {
+  if (config.model) {
+    return generateAIPlayerCommands(gs, teamId, {
+      matchId: id,
+      turn: gs.turn,
+      profileId: config.id,
+      model: config.model,
+      systemPrompt: buildSystemPrompt(config.description ?? "", ""),
+      strategy: config.description,
+    });
+  }
+  return Promise.resolve(generateAICommands(gs, teamId));
+}
+
 console.log(`\n⚔️  Auto-match ${id}`);
-console.log(`   P1: ${p1Config.name} (randomness=${p1Config.randomness.toFixed(2)})`);
-console.log(`   P2: ${p2Config.name} (randomness=${p2Config.randomness.toFixed(2)})`);
+console.log(`   P1: ${p1Config.name}${p1Config.model ? ` [${p1Config.model}]` : ""} (randomness=${p1Config.randomness.toFixed(2)})`);
+console.log(`   P2: ${p2Config.name}${p2Config.model ? ` [${p2Config.model}]` : ""} (randomness=${p2Config.randomness.toFixed(2)})`);
 console.log();
 
 const gs = initializeGame(id, setup1, setup2);
@@ -193,9 +221,12 @@ const match: MatchFile = {
 
 while (isGameActive(gs) && gs.turn < MAX_TURNS) {
   const timer = startTurn(gs);
-  // TODO: Replace with LLM runner — use profile description + board state description as user message
-  submitCommands(timer, 1, generateAICommands(gs, 1));
-  submitCommands(timer, 2, generateAICommands(gs, 2));
+  const [cmds1, cmds2] = await Promise.all([
+    playerCommands(p1Config, gs, 1),
+    playerCommands(p2Config, gs, 2),
+  ]);
+  submitCommands(timer, 1, cmds1);
+  submitCommands(timer, 2, cmds2);
 
   const turnLog = resolveTurn(gs, timer);
   match.turnLogs.push(turnLog);

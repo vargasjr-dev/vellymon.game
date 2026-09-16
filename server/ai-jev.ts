@@ -33,6 +33,9 @@ import {
 const JEV_MODEL = "jev-latest";
 const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 
+/** Warn once per process about a missing TypeSafe key (CLI runs without env). */
+let warnedNoKey = false;
+
 export type JevOptions = {
   matchId: string;
   turn: number;
@@ -126,7 +129,14 @@ export async function generateJevAICommands(
       rawResponse = JSON.stringify(data.answers ?? data);
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
-      console.error(`[ai-jev] Jev call failed (match ${opts.matchId} turn ${opts.turn}):`, err);
+      if (errorMessage.includes("not configured")) {
+        if (!warnedNoKey) {
+          warnedNoKey = true;
+          console.error(`[ai-jev] ${errorMessage} — falling back to rule-based commands`);
+        }
+      } else {
+        console.error(`[ai-jev] Jev call failed (match ${opts.matchId} turn ${opts.turn}):`, err);
+      }
     }
   }
 
@@ -160,8 +170,10 @@ export async function generateJevAICommands(
     commands.push(fallbackCommandFor(state, aiTeamId, v.uuid));
   }
 
-  // Persist the request/response log (same table + debug UI as the Claude path)
-  void persistLog({
+  // Persist the request/response log (same table + debug UI as the Claude path).
+  // Skip when the key was never configured — there's nothing to inspect.
+  const skipLog = errorMessage?.includes("not configured") ?? false;
+  if (!skipLog) void persistLog({
     matchId: opts.matchId,
     turn: opts.turn,
     teamId: aiTeamId,

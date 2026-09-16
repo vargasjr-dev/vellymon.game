@@ -31,6 +31,9 @@ export type LlmAiOptions = {
   systemPrompt?: string;
 };
 
+/** Warn once per process about a missing Anthropic key (CLI runs without env). */
+let warnedNoKey = false;
+
 /**
  * Generate commands for the AI team. Uses the LLM when systemPrompt is provided,
  * otherwise delegates to the rule-based generateAICommands.
@@ -58,6 +61,9 @@ export async function generateLlmAICommands(
   let errorMessage: string | undefined;
 
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
+    }
     const client = new Anthropic();
     const message = await client.messages.create({
       model: MODEL,
@@ -72,6 +78,16 @@ export async function generateLlmAICommands(
   } catch (err) {
     errorMessage = err instanceof Error ? err.message : String(err);
     rawResponse = "";
+    // Single-line message for expected conditions (e.g. missing key in local
+    // CLI runs); full stack only for unexpected API failures. Don't persist a
+    // debug row for a missing key — there's nothing to inspect.
+    if (errorMessage.includes("not configured")) {
+      if (!warnedNoKey) {
+        warnedNoKey = true;
+        console.error(`[ai-llm] ${errorMessage} — falling back to rule-based commands`);
+      }
+      return generateAICommands(state, aiTeamId);
+    }
     console.error(`[ai-llm] LLM call failed (match ${opts.matchId} turn ${opts.turn}):`, err);
   }
 
