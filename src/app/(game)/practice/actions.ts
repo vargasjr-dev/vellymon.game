@@ -62,11 +62,13 @@ export async function createProfileSparringMatchAction(
         aiTeamId: 2,
         playerTeamUuid,
         aiProfileId: profile.id,
+        aiModel: profile.model === "jev" ? "jev" : "claude",
         aiProfileTeamNames: profile.teamNames as string[],
         aiProfileName: profile.name,
         aiSystemPrompt: profile.description
           ? buildSystemPrompt(profile.description, "")
           : undefined,
+        aiProfileStrategy: profile.description || undefined,
       },
     })
     .returning();

@@ -490,6 +490,11 @@ export const aiProfile = pgTable("aiProfile", {
    * Required — this is what differentiates LLM profiles from each other.
    */
   description: text("description").notNull().default(""),
+  /**
+   * Which player model drives this profile: "claude" (Anthropic Haiku, generates
+   * JSON commands) or "jev" (TypeSafe System One, typed Choice decisions).
+   */
+  model: varchar("model", { length: 32 }).notNull().default("claude"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   /** Soft-delete: non-null means archived. Archived profiles are hidden from all views. */
   archivedAt: timestamp("archivedAt"),

@@ -37,7 +37,8 @@ import {
   type TurnLog,
 } from "../../../../../../server/engine";
 import { submitCommands } from "../../../../../../server/turnTimer";
-import { generateLlmAICommands, buildSystemPrompt } from "../../../../../../server/ai-llm";
+import { buildSystemPrompt } from "../../../../../../server/ai-llm";
+import { generateAIPlayerCommands, type AIPlayerModel } from "../../../../../../server/ai-player";
 import type { GameState } from "../../../../../../server/types";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
   // ── Resolve participant teams ─────────────────────────────────────────────
   async function resolveTeamNames(
     config: ParticipantConfig,
-  ): Promise<{ name: string; teamNames: string[]; profileId?: string; systemPrompt?: string }> {
+  ): Promise<{ name: string; teamNames: string[]; profileId?: string; systemPrompt?: string; strategy?: string; model?: AIPlayerModel }> {
     if (config.type === "random") {
       const picked = shuffle(VELLYMON_LIBRARY).slice(0, 8);
       return { name: "Random Team", teamNames: picked.map((v) => v.name) };
@@ -115,6 +116,8 @@ export async function POST(req: Request) {
       teamNames: row.teamNames as string[],
       profileId: row.id,
       systemPrompt,
+      strategy: row.description,
+      model: row.model === "jev" ? "jev" : "claude",
     };
   }
 
@@ -179,17 +182,21 @@ export async function POST(req: Request) {
         while (isGameActive(gs) && gs.turn < maxTurns) {
           const timer = startTurn(gs);
           const [cmd1, cmd2] = await Promise.all([
-            generateLlmAICommands(gs, 1, {
+            generateAIPlayerCommands(gs, 1, {
               matchId,
               turn: gs.turn,
               profileId: p1Info.profileId,
+              model: p1Info.model,
               systemPrompt: p1SystemPrompt,
+              strategy: p1Info.strategy,
             }),
-            generateLlmAICommands(gs, 2, {
+            generateAIPlayerCommands(gs, 2, {
               matchId,
               turn: gs.turn,
               profileId: p2Info.profileId,
+              model: p2Info.model,
               systemPrompt: p2SystemPrompt,
+              strategy: p2Info.strategy,
             }),
           ]);
           submitCommands(timer, 1, cmd1);

@@ -137,6 +137,8 @@ export async function createProfileAction(formData: FormData) {
   const description = (formData.get("description") as string | null)?.trim() ?? "";
   const randomnessRaw = formData.get("randomness") as string | null;
   const randomness = randomnessRaw ? Math.max(0, Math.min(1, parseFloat(randomnessRaw))) : 0.5;
+  const modelRaw = formData.get("model") as string | null;
+  const model = modelRaw === "jev" ? "jev" : "claude";
 
   if (!name) throw new Error("Name is required");
   if (!description) throw new Error("Description (prompt) is required");
@@ -171,7 +173,7 @@ export async function createProfileAction(formData: FormData) {
     throw new Error("Could not build an 8-vellymon team");
   }
 
-  await createAiProfile({ id, name, teamNames, randomness, description });
+  await createAiProfile({ id, name, teamNames, randomness, description, model });
   revalidatePath("/admin/profiles");
 }
 

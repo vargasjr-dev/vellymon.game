@@ -50,7 +50,7 @@ import {
 import type { GameState } from "../../server/types";
 import type { Command } from "../../server/commands";
 import type { MatchSettings } from "../lib/matchSettings";
-import { generateLlmAICommands } from "../../server/ai-llm";
+import { generateAIPlayerCommands } from "../../server/ai-player";
 
 // ─── Vellymon lookup ─────────────────────────────────────────────────────────
 
@@ -121,12 +121,16 @@ type MatchMetadata = {
   playerTeamUuid?: string;
   /** AI profile ID (for LLM logging). */
   aiProfileId?: string;
+  /** Which player model drives the AI: "claude" (default) or "jev". */
+  aiModel?: "claude" | "jev";
   /** AI profile team names (for profile-based sparring). */
   aiProfileTeamNames?: string[];
   /** AI profile display name. */
   aiProfileName?: string;
-  /** Pre-built system prompt for the LLM AI (set at match creation). */
+  /** Pre-built system prompt for the Claude player model (set at match creation). */
   aiSystemPrompt?: string;
+  /** Profile strategy text for the Jev player model (set at match creation). */
+  aiProfileStrategy?: string;
 };
 
 // ─── Initialize ──────────────────────────────────────────────────────────────
@@ -637,11 +641,13 @@ export async function submitMatchCommands(
   // generate and submit AI commands so the turn resolves without a second poll.
   if (meta.sparring && meta.aiTeamId && meta.aiTeamId !== teamId) {
     const aiTeamId = meta.aiTeamId;
-    const aiCommands = await generateLlmAICommands(gameState, aiTeamId, {
+    const aiCommands = await generateAIPlayerCommands(gameState, aiTeamId, {
       matchId: matchUuid,
       turn: gameState.turn,
       profileId: meta.aiProfileId,
+      model: meta.aiModel,
       systemPrompt: meta.aiSystemPrompt,
+      strategy: meta.aiProfileStrategy,
     });
     submitTimerCommands(timer, aiTeamId, aiCommands);
     meta.pendingCommands[String(aiTeamId)] = aiCommands;

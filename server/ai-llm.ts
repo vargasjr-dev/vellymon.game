@@ -17,6 +17,7 @@ import { lt } from "drizzle-orm";
 import type { GameState, TeamState, VellymonState, BoardSpace } from "./types";
 import type { Command } from "./commands";
 import { generateAICommands } from "./ai-opponent";
+import { describeGameState } from "./ai-shared";
 
 const MODEL = "claude-haiku-4-5";
 
@@ -126,124 +127,7 @@ export function buildSystemPrompt(profileDescription: string, matchRulesContext:
 
 function buildUserMessage(state: GameState, aiTeam: TeamState, aiTeamId: 1 | 2): string {
   const enemyTeam = state.teams[aiTeamId === 1 ? 1 : 0];
-  const harvestables = state.board
-    .filter((s) => s.type === "harvestable")
-    .map((s) => `(${s.position.x},${s.position.y})`)
-    .join(", ");
-
-  const lines: string[] = [
-    `TURN ${state.turn} — YOUR TEAM: Team ${aiTeamId} "${aiTeam.name}" (energy: ${aiTeam.energy})`,
-    "",
-    "YOUR VELLYMONS:",
-  ];
-
-  const activeVellymons = aiTeam.active.filter((v) => !v.isKO && v.position != null);
-  for (const v of activeVellymons) {
-    const pos = v.position!;
-    const attacks = v.attacks
-      .map((a, i) => `[${i}] ${a.name} (cost:${a.energyCost}, dmg:${a.damage}, range:${a.range})`)
-      .join(", ");
-    const validActions = describeValidActions(v, aiTeam, enemyTeam, state);
-    lines.push(
-      `  ${v.name} (uuid: ${v.uuid}) at (${pos.x},${pos.y}) HP:${v.hp}/${v.maxHp} SPD:${v.speed}`,
-      `    Attacks: ${attacks}`,
-      `    Valid actions: ${validActions}`,
-    );
-  }
-
-  lines.push("", `ENEMY TEAM: Team ${enemyTeam.id} "${enemyTeam.name}" (energy: ${enemyTeam.energy})`);
-  const enemyActive = enemyTeam.active.filter((v) => !v.isKO && v.position != null);
-  if (enemyActive.length === 0) {
-    lines.push("  (no active vellymons)");
-  }
-  for (const v of enemyActive) {
-    const pos = v.position!;
-    lines.push(`  ${v.name} at (${pos.x},${pos.y}) HP:${v.hp}/${v.maxHp}`);
-  }
-
-  const koCount = enemyTeam.knocked.length + enemyTeam.active.filter((v) => v.isKO).length;
-  if (koCount > 0) lines.push(`  (${koCount} KO'd)`);
-
-  if (harvestables) {
-    lines.push("", `HARVESTABLE TILES: ${harvestables}`);
-  }
-
-  lines.push("", "Output your JSON commands now:");
-  return lines.join("\n");
-}
-
-const VECS = [
-  { dx: 0, dy: -1 },
-  { dx: 0, dy: 1 },
-  { dx: -1, dy: 0 },
-  { dx: 1, dy: 0 },
-] as const;
-
-function describeValidActions(
-  v: VellymonState,
-  aiTeam: TeamState,
-  enemyTeam: TeamState,
-  state: GameState,
-): string {
-  const pos = v.position!;
-  const actions: string[] = [];
-
-  // Attacks
-  for (let i = 0; i < v.attacks.length; i++) {
-    const atk = v.attacks[i];
-    if (!atk || aiTeam.energy < atk.energyCost) continue;
-    for (const vec of VECS) {
-      const dir = vecName(vec);
-      // Scan for enemy in range
-      let found = false;
-      for (let r = 1; r <= atk.range; r++) {
-        const tx = pos.x + vec.dx * r;
-        const ty = pos.y + vec.dy * r;
-        const space = state.board.find((s) => s.position.x === tx && s.position.y === ty);
-        if (!space || space.type === "void") break;
-        const enemy = enemyTeam.active.find(
-          (e) => !e.isKO && e.position?.x === tx && e.position?.y === ty,
-        );
-        if (enemy) { found = true; break; }
-        // Check friendly blocker (stops non-arc attacks)
-        const friendly = aiTeam.active.find(
-          (f) => f.uuid !== v.uuid && !f.isKO && f.position?.x === tx && f.position?.y === ty,
-        );
-        if (friendly && !atk.arcOver) break;
-      }
-      if (found) actions.push(`attack[${i}] ${dir} (${atk.name})`);
-    }
-  }
-
-  // Moves
-  for (const vec of VECS) {
-    const tx = pos.x + vec.dx;
-    const ty = pos.y + vec.dy;
-    const space = state.board.find((s) => s.position.x === tx && s.position.y === ty);
-    if (!space || space.type === "void") continue;
-    const occupied = state.teams.some((t) =>
-      t.active.some((a) => !a.isKO && a.position?.x === tx && a.position?.y === ty),
-    );
-    if (!occupied) actions.push(`move ${vecName(vec)}`);
-  }
-
-  // Harvest
-  for (const vec of VECS) {
-    const tx = pos.x + vec.dx;
-    const ty = pos.y + vec.dy;
-    const space = state.board.find((s) => s.position.x === tx && s.position.y === ty);
-    if (space?.type === "harvestable") actions.push(`harvest ${vecName(vec)}`);
-  }
-
-  return actions.length > 0 ? actions.join(", ") : "none (will use fallback move)";
-}
-
-function vecName(vec: { dx: number; dy: number }): string {
-  if (vec.dx === 1) return "right";
-  if (vec.dx === -1) return "left";
-  if (vec.dy === 1) return "down";
-  if (vec.dy === -1) return "up";
-  return `(${vec.dx},${vec.dy})`;
+  return `${describeGameState(state, aiTeam, aiTeamId, enemyTeam)}\n\nOutput your JSON commands now:`;
 }
 
 // ─── Response parsing ─────────────────────────────────────────────────────────

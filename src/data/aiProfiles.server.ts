@@ -29,10 +29,12 @@ export async function createAiProfile(data: {
   teamNames: string[];
   randomness: number;
   description: string;
+  /** Player model: "claude" (default) or "jev". */
+  model?: string;
 }): Promise<AiProfile> {
   const [row] = await db
     .insert(aiProfile)
-    .values(data)
+    .values({ ...data, model: data.model ?? "claude" })
     .returning();
   return row;
 }
