@@ -26,6 +26,7 @@ import {
 import { submitCommands } from "../server/turnTimer";
 import { generateAICommands } from "../server/ai-opponent";
 import { generateAIPlayerCommands, isAIPlayerModel, type AIPlayerModel } from "../server/ai-player";
+import { getMapById, parseBoardFromMap } from "../server/maps";
 import { buildSystemPrompt } from "../server/ai-llm";
 import { db } from "../data/db";
 import { aiProfile, matchSnapshot } from "../data/schema";
@@ -205,7 +206,13 @@ console.log(`   P1: ${p1Config.name}${p1Config.model ? ` [${p1Config.model}]` : 
 console.log(`   P2: ${p2Config.name}${p2Config.model ? ` [${p2Config.model}]` : ""} (randomness=${p2Config.randomness.toFixed(2)})`);
 console.log();
 
-const gs = initializeGame(id, setup1, setup2);
+const standardMap = getMapById("standard");
+const mapBoard = parseBoardFromMap(standardMap);
+const gs = initializeGame(id, setup1, setup2, {
+  board: mapBoard,
+  width: standardMap.width,
+  height: standardMap.height,
+});
 
 const match: MatchFile = {
   id,
