@@ -179,7 +179,7 @@ setup2.teamName = p2Config.name;
 
 // ─── Run match ────────────────────────────────────────────────────────────────
 
-const MAX_TURNS = 20;
+const MAX_TURNS = 50;
 const id = shortId();
 
 /** Profile-driven command generation (claude / jev); rule-based for random mode. */
