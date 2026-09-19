@@ -18,64 +18,6 @@ import type { SpaceType } from "./config";
 
 // ─── Board Generation ────────────────────────────────────────────────────────
 
-/**
- * Get default spawn positions for a team.
- * Team 1: left column (x=0), distributed vertically
- * Team 2: right column (x=width-1), distributed vertically
- */
-export function getDefaultSpawnPositions(
-  teamId: 1 | 2,
-  width: number,
-  height: number,
-): Position[] {
-  const spawnsPerTeam = GAME_CONFIG.board.spawnsPerTeam;
-  const x = teamId === 1 ? 0 : width - 1;
-  const positions: Position[] = [];
-
-  // Distribute spawns evenly along the column
-  if (spawnsPerTeam >= height) {
-    // More spawns than rows — fill entire column
-    for (let y = 0; y < height; y++) {
-      positions.push({ x, y });
-    }
-  } else {
-    // Space spawns evenly
-    const gap = (height - 1) / (spawnsPerTeam - 1);
-    for (let i = 0; i < spawnsPerTeam; i++) {
-      positions.push({ x, y: Math.round(i * gap) });
-    }
-  }
-
-  return positions;
-}
-
-/**
- * Get default occupation point positions.
- * 3 points spread asymmetrically between the two teams:
- * - One closer to team 1 (left side)
- * - One in the center
- * - One closer to team 2 (right side)
- *
- * For the default 9×5 board:
- *   Team 1 spawns at x=0, Team 2 at x=8
- *   Center column at x=4 (true center with odd width)
- *   Occupation at x=2 (near T1), x=4 (center), x=6 (near T2)
- *   Spread across y for diagonal interest
- */
-function getDefaultOccupationPositions(
-  width: number,
-  height: number,
-): Position[] {
-  const centerX = Math.floor(width / 2);
-  const centerY = Math.floor(height / 2);
-
-  return [
-    { x: centerX - 2, y: 1 },           // near team 1 side, upper
-    { x: centerX, y: centerY },          // true center
-    { x: centerX + 2, y: height - 2 },   // near team 2 side, lower
-  ];
-}
-
 // ─── Board Queries ───────────────────────────────────────────────────────────
 
 /**

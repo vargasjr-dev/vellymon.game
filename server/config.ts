@@ -58,6 +58,8 @@ export type GameConfig = {
     maxPlayers: number;
     /** Match format label */
     format: string;
+    /** Hard turn cap — match ends with no winner if reached */
+    maxTurns: number;
   };
 
   /** Elimination win condition */
@@ -108,6 +110,7 @@ export const GAME_CONFIG: GameConfig = {
   match: {
     maxPlayers: 2,
     format: "1v1",
+    maxTurns: 50,
   },
 
   elimination: {
@@ -125,12 +128,6 @@ export const GAME_CONFIG: GameConfig = {
 /** Number of bench slots per team */
 export const BENCH_SLOTS =
   GAME_CONFIG.teams.rosterSize - GAME_CONFIG.teams.activeSlots;
-
-/** Total board spaces */
-export const TOTAL_SPACES = GAME_CONFIG.board.width * GAME_CONFIG.board.height;
-
-/** Total spawn spaces on the board (both teams) */
-export const TOTAL_SPAWNS = GAME_CONFIG.board.spawnsPerTeam * 2;
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
@@ -160,8 +157,8 @@ function validateConfig(config: GameConfig): void {
   }
 
   const nonVoidSpaces =
-    TOTAL_SPACES -
-    TOTAL_SPAWNS -
+    config.board.width * config.board.height -
+    config.board.spawnsPerTeam * 2 -
     config.occupation.pointCount;
   if (nonVoidSpaces < 1) {
     errors.push("Board too small — no room for harvestable spaces");

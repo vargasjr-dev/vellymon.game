@@ -37,6 +37,7 @@ import {
   type TurnLog,
 } from "../../../../../../server/engine";
 import { submitCommands } from "../../../../../../server/turnTimer";
+import { GAME_CONFIG } from "../../../../../../server/config";
 import { buildSystemPrompt } from "../../../../../../server/ai-llm";
 import { generateAIPlayerCommands, type AIPlayerModel } from "../../../../../../server/ai-player";
 import type { GameState } from "../../../../../../server/types";
@@ -74,7 +75,10 @@ export async function POST(req: Request) {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const maxTurns = Math.min(50, Math.max(1, body.maxTurns ?? 50));
+  const maxTurns = Math.min(
+    GAME_CONFIG.match.maxTurns,
+    Math.max(1, body.maxTurns ?? GAME_CONFIG.match.maxTurns),
+  );
   const startingEnergy = body.startingEnergy !== undefined
     ? Math.min(500, Math.max(1, body.startingEnergy))
     : undefined;
@@ -85,8 +89,9 @@ export async function POST(req: Request) {
   // ── Match rules context (surfaced in AI profile system prompts) ──────────
   // Describes the custom match parameters so LLM-driven profiles know the rules.
   function buildMatchRulesContext(): string {
-    const effectiveStarting = startingEnergy ?? 20;
-    const effectiveWinning = winningEnergy ?? 120;
+    const effectiveStarting = startingEnergy ?? GAME_CONFIG.energy.starting;
+    const effectiveWinning =
+      winningEnergy ?? GAME_CONFIG.energy.accumulationWinThreshold;
     return [
       `Match rules:`,
       `- Max turns: ${maxTurns}`,
@@ -146,9 +151,10 @@ export async function POST(req: Request) {
     });
   }
 
-  const setup1 = buildTeamSetup(resolveTemplates(p1Info.teamNames), 1);
+  const standardMap = getMapById("standard");
+  const setup1 = buildTeamSetup(resolveTemplates(p1Info.teamNames), 1, standardMap);
   setup1.teamName = p1Info.name;
-  const setup2 = buildTeamSetup(resolveTemplates(p2Info.teamNames), 2);
+  const setup2 = buildTeamSetup(resolveTemplates(p2Info.teamNames), 2, standardMap);
   setup2.teamName = p2Info.name;
 
   // ── SSE Stream ────────────────────────────────────────────────────────────
@@ -163,7 +169,6 @@ export async function POST(req: Request) {
       }
 
       try {
-        const standardMap = getMapById("standard");
         const board = parseBoardFromMap(standardMap);
         const gs = initializeGame(matchId, setup1, setup2, { board, width: standardMap.width, height: standardMap.height }, { startingEnergy, winningEnergy });
         const turnLogs: TurnLog[] = [];

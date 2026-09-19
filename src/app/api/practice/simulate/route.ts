@@ -31,6 +31,7 @@ import {
   type TurnLog,
 } from "../../../../../server/engine";
 import { submitCommands } from "../../../../../server/turnTimer";
+import { GAME_CONFIG } from "../../../../../server/config";
 import { generateAICommands } from "../../../../../server/ai-opponent";
 import type { GameState } from "../../../../../server/types";
 
@@ -138,17 +139,20 @@ export async function POST(req: Request) {
     });
   }
 
+  const standardMap = getMapById("standard");
   let setup1: ReturnType<typeof buildTeamSetup>;
   let setup2: ReturnType<typeof buildTeamSetup>;
   try {
     setup1 = buildTeamSetup(
       resolveTemplates(shuffle(p1Row.teamNames as string[]).slice(0, 6)),
       1,
+      standardMap,
     );
     setup1.teamName = p1Row.name;
     setup2 = buildTeamSetup(
       resolveTemplates(shuffle(p2Row.teamNames as string[]).slice(0, 6)),
       2,
+      standardMap,
     );
     setup2.teamName = p2Row.name;
   } catch (e) {
@@ -163,7 +167,6 @@ export async function POST(req: Request) {
   const simStart = Date.now();
 
   try {
-    const standardMap = getMapById("standard");
     const board = parseBoardFromMap(standardMap);
     const gs = initializeGame(matchId, setup1, setup2, { board, width: standardMap.width, height: standardMap.height });
     const turnLogs: TurnLog[] = [];
@@ -171,7 +174,7 @@ export async function POST(req: Request) {
       JSON.parse(JSON.stringify(gs)) as GameState,
     ];
 
-    const MAX_TURNS = 50;
+    const MAX_TURNS = GAME_CONFIG.match.maxTurns;
     while (isGameActive(gs) && gs.turn < MAX_TURNS) {
       const timer = startTurn(gs);
       submitCommands(timer, 1, generateAICommands(gs, 1));

@@ -27,6 +27,7 @@ import { submitCommands } from "../server/turnTimer";
 import { generateAICommands } from "../server/ai-opponent";
 import { generateAIPlayerCommands, isAIPlayerModel, type AIPlayerModel } from "../server/ai-player";
 import { getMapById, parseBoardFromMap } from "../server/maps";
+import { GAME_CONFIG } from "../server/config";
 import { buildSystemPrompt } from "../server/ai-llm";
 import { db } from "../data/db";
 import { aiProfile, matchSnapshot } from "../data/schema";
@@ -171,15 +172,20 @@ function resolveTeamTemplates(names: string[]) {
   });
 }
 
-const setup1 = buildTeamSetup(resolveTeamTemplates(p1Config.teamNames), 1);
+// ─── Map (single source: server/maps.ts) ─────────────────────────────────────
+
+const standardMap = getMapById("standard");
+const mapBoard = parseBoardFromMap(standardMap);
+
+const setup1 = buildTeamSetup(resolveTeamTemplates(p1Config.teamNames), 1, standardMap);
 setup1.teamName = p1Config.name;
 
-const setup2 = buildTeamSetup(resolveTeamTemplates(p2Config.teamNames), 2);
+const setup2 = buildTeamSetup(resolveTeamTemplates(p2Config.teamNames), 2, standardMap);
 setup2.teamName = p2Config.name;
 
 // ─── Run match ────────────────────────────────────────────────────────────────
 
-const MAX_TURNS = 50;
+const MAX_TURNS = GAME_CONFIG.match.maxTurns;
 const id = shortId();
 
 /** Profile-driven command generation (claude / jev); rule-based for random mode. */
@@ -206,8 +212,6 @@ console.log(`   P1: ${p1Config.name}${p1Config.model ? ` [${p1Config.model}]` : 
 console.log(`   P2: ${p2Config.name}${p2Config.model ? ` [${p2Config.model}]` : ""} (randomness=${p2Config.randomness.toFixed(2)})`);
 console.log();
 
-const standardMap = getMapById("standard");
-const mapBoard = parseBoardFromMap(standardMap);
 const gs = initializeGame(id, setup1, setup2, {
   board: mapBoard,
   width: standardMap.width,

@@ -2,11 +2,12 @@
  * matchSetup.ts — shared team setup builder for CLI matches and scripts.
  *
  * Lives in server/ so both cli/vellymon.ts and scripts/auto-match.ts
- * use the same logic with no duplication.
+ * use the same logic with no duplication. Spawn positions always come
+ * from the map — the same map the board is built from.
  */
 
 import { GAME_CONFIG } from "./config";
-import { getDefaultSpawnPositions } from "./board";
+import { getMapSpawnPositions, type MapConfig } from "./maps";
 
 import type { VellymonTemplate } from "./vellymonLibrary";
 import type { TeamSetup, VellymonSetup } from "./engine";
@@ -16,17 +17,14 @@ import type { TeamSetup, VellymonSetup } from "./engine";
  *
  * - First `activeSlots` templates become active starters on correct spawn positions.
  * - Remaining templates go to bench.
- * - Spawn positions come from getDefaultSpawnPositions (engine-authoritative).
+ * - Spawn positions come from the map layout (getMapSpawnPositions).
  */
 export function buildTeamSetup(
   templates: VellymonTemplate[],
   teamId: 1 | 2,
+  map: MapConfig,
 ): TeamSetup {
-  const spawns = getDefaultSpawnPositions(
-    teamId,
-    GAME_CONFIG.board.width,
-    GAME_CONFIG.board.height,
-  );
+  const spawns = getMapSpawnPositions(map, teamId);
 
   const vellymons: VellymonSetup[] = templates.map((t, i) => ({
     uuid: `${teamId}-${i}`,

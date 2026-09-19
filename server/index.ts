@@ -76,7 +76,6 @@ export {
 
 // Board
 export {
-  getDefaultSpawnPositions,
   getSpaceAt,
   getSpacesByType,
   getTeamSpawns,

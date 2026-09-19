@@ -202,10 +202,10 @@ function cmdMatchCreate() {
   const shuffled = shuffle(VELLYMON_LIBRARY);
   const picked = shuffled.slice(0, 16);
 
-  const setup1 = buildTeamSetup(picked.slice(0, 8), 1);
-  const setup2 = buildTeamSetup(picked.slice(8, 16), 2);
-
   const map = getMapById("standard");
+  const setup1 = buildTeamSetup(picked.slice(0, 8), 1, map);
+  const setup2 = buildTeamSetup(picked.slice(8, 16), 2, map);
+
   const gameState = initializeGame(id, setup1, setup2, {
     board: parseBoardFromMap(map),
     width: map.width,

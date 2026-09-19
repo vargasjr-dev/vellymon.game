@@ -40,7 +40,6 @@ import {
   isExpired,
   type TurnTimerState,
 } from "../../server/turnTimer";
-import { getDefaultSpawnPositions } from "../../server/board";
 import { GAME_CONFIG } from "../../server/config";
 import {
   getMapById,
@@ -294,19 +293,13 @@ export async function initializeSparringGame(matchUuid: string): Promise<void> {
  */
 function buildAITeamSetup(
   teamId: 1 | 2,
-  map?: import("../../server/maps").MapConfig,
+  map: import("../../server/maps").MapConfig,
 ): TeamSetup {
   // Shuffle the library and pick 6 (or fewer if library is small)
   const shuffled = [...VELLYMON_LIBRARY].sort(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, 6);
 
-  const spawns = map
-    ? getMapSpawnPositions(map, teamId)
-    : getDefaultSpawnPositions(
-        teamId,
-        GAME_CONFIG.board.width,
-        GAME_CONFIG.board.height,
-      );
+  const spawns = getMapSpawnPositions(map, teamId);
 
   const active: VellymonSetup[] = [];
   const bench: VellymonSetup[] = [];
@@ -353,15 +346,9 @@ function buildProfileTeamSetup(
   teamNames: string[],
   profileName: string,
   teamId: 1 | 2,
-  map?: import("../../server/maps").MapConfig,
+  map: import("../../server/maps").MapConfig,
 ): TeamSetup {
-  const spawns = map
-    ? getMapSpawnPositions(map, teamId)
-    : getDefaultSpawnPositions(
-        teamId,
-        GAME_CONFIG.board.width,
-        GAME_CONFIG.board.height,
-      );
+  const spawns = getMapSpawnPositions(map, teamId);
 
   const templates = teamNames
     .slice(0, 6)
@@ -411,7 +398,7 @@ async function buildTeamSetup(
   userId: string,
   teamUuid: string,
   teamId: 1 | 2,
-  map?: import("../../server/maps").MapConfig,
+  map: import("../../server/maps").MapConfig,
 ): Promise<TeamSetup> {
   // Load team slots with vellymon instances
   const slots = await db
@@ -428,13 +415,7 @@ async function buildTeamSetup(
     .where(eq(teamSlot.teamUuid, teamUuid))
     .orderBy(asc(teamSlot.slotIndex));
 
-  const spawns = map
-    ? getMapSpawnPositions(map, teamId)
-    : getDefaultSpawnPositions(
-        teamId,
-        GAME_CONFIG.board.width,
-        GAME_CONFIG.board.height,
-      );
+  const spawns = getMapSpawnPositions(map, teamId);
 
   // First 4 slots = active, rest = bench
   const active: VellymonSetup[] = [];

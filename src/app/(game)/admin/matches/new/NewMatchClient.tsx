@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { GAME_CONFIG } from "../../../../../../server/config";
 
 type Profile = {
   id: string;
@@ -142,9 +143,11 @@ export default function NewMatchClient({ profiles }: { profiles: Profile[] }) {
   const router = useRouter();
   const [p1, setP1] = useState<ParticipantConfig>({ type: "random" });
   const [p2, setP2] = useState<ParticipantConfig>({ type: "random" });
-  const [maxTurns, setMaxTurns] = useState(15);
+  const [maxTurns, setMaxTurns] = useState(GAME_CONFIG.match.maxTurns);
   const [startingEnergy, setStartingEnergy] = useState(20);
-  const [winningEnergy, setWinningEnergy] = useState(120);
+  const [winningEnergy, setWinningEnergy] = useState(
+    GAME_CONFIG.energy.accumulationWinThreshold,
+  );
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turns, setTurns] = useState<TurnEvent[]>([]);
