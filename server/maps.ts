@@ -34,13 +34,14 @@ export type MapConfig = {
 /**
  * Standard — Classic 9×5 open battlefield.
  *
- * Fertile (yield 2) tiles near the center reward aggressive positioning.
- * Rich (yield 3) tile at dead center — high-value contest point.
+ * 10 harvest tiles: 2× (+1), 4× (+3), 3× (+6), 1× (+10).
+ * The +10 vault sits dead center flanked by +6s — the fight happens there.
+ * +3s ring the center; safe +1s sit on the open spawn-column corners.
  *
  * ```
- * 1 . . . . . . . 2     y=0
+ * 1 . . . r . . . 2     y=0  ← +6 up top, no cover
  * 1 . O . f . . . 2     y=1
- * . . f . O . f . .     y=2  ← center row: contested middle, fertile flanks
+ * , . f r h r f . ,     y=2  ← the vault row: +3 +6 +10 +6 +3
  * 1 . . . f . O . 2     y=3
  * 1 . . . . . . . 2     y=4
  * ```
@@ -52,9 +53,9 @@ const STANDARD: MapConfig = {
   width: 9,
   height: 5,
   layout: [
-    "1 . . . . . . . 2",
+    "1 . . . r . . . 2",
     "1 . O . f . . . 2",
-    ". . f . O . f . .",
+    ", . f r h r f . ,",
     "1 . . . f . O . 2",
     "1 . . . . . . . 2",
   ],
@@ -63,17 +64,18 @@ const STANDARD: MapConfig = {
 /**
  * The Choke — 9×7 with void walls creating a chokepoint.
  *
- * Fertile tiles line the chokepoint gap — harvesting near the fight is rewarding
- * but risky. Rich tile at center.
+ * 10 harvest tiles: 2× (+1), 4× (+3), 3× (+6), 1× (+10).
+ * The +10 vault guards the chokepoint gap; +6s hold the choke mouths and
+ * west pocket. +3s fringe the sides; +1s on the open row ends.
  *
  * ```
- * 1 . . . V . . . 2     y=0  ← behind void
- * . . . . V . . . .     y=1
- * 1 . O . r . . . 2     y=2  ← open row, rich near gap
- * . . f . h . f . .     y=3  ← center, lush middle (+4)
- * 1 . . . r . O . 2     y=4  ← open row, rich near gap
- * . . . . V . . . .     y=5
- * 1 . . . V . . . 2     y=6  ← behind void
+ * 1 . . . V . . . 2     y=0
+ * . . f . V . f . .     y=1
+ * 1 . O . r . f . 2     y=2  ← choke mouth (+6)
+ * , . r . h . f . ,     y=3  ← center: +6 +10, safe +1s on row ends
+ * 1 . . . r . O . 2     y=4  ← choke mouth (+6)
+ * . . . . V . . . .
+ * 1 . . . V . . . 2     y=6
  * ```
  */
 const THE_CHOKE: MapConfig = {
@@ -84,9 +86,9 @@ const THE_CHOKE: MapConfig = {
   height: 7,
   layout: [
     "1 . . . V . . . 2",
-    ". . . . V . . . .",
-    "1 . O . r . . . 2",
-    ". . f . h . f . .",
+    ". . f . V . f . .",
+    "1 . O . r . f . 2",
+    ", . r . h . f . ,",
     "1 . . . r . O . 2",
     ". . . . V . . . .",
     "1 . . . V . . . 2",
@@ -115,10 +117,11 @@ type CellDef = { type: SpaceType; team?: 1 | 2; harvestYield?: number };
 const CELL_MAP: Record<string, CellDef> = {
   "1": { type: "spawn", team: 1 },
   "2": { type: "spawn", team: 2 },
-  ".": { type: "harvestable", harvestYield: 1 },
-  f: { type: "harvestable", harvestYield: 2 },
-  r: { type: "harvestable", harvestYield: 3 },
-  h: { type: "harvestable", harvestYield: 4 },
+  ".": { type: "ground" },
+  ",": { type: "harvestable", harvestYield: 1 },
+  f: { type: "harvestable", harvestYield: 3 },
+  r: { type: "harvestable", harvestYield: 6 },
+  h: { type: "harvestable", harvestYield: 10 },
   O: { type: "occupation" },
   V: { type: "void" },
 };

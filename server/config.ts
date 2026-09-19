@@ -7,7 +7,7 @@
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type SpaceType = "spawn" | "occupation" | "harvestable" | "void";
+export type SpaceType = "spawn" | "occupation" | "harvestable" | "void" | "ground";
 
 export type GameConfig = {
   /** Energy system */

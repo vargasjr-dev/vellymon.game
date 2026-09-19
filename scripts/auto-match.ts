@@ -288,8 +288,8 @@ const res = await fetch(`${baseUrl}/api/matches/upload`, {
     turnSnapshots: match.turnSnapshots,
     turnLogs: match.turnLogs,
     status: "completed",
-    p1ProfileId: match.p1ProfileId ?? null,
-    p2ProfileId: match.p2ProfileId ?? null,
+    p1ProfileId: p1Config.id.startsWith("random-") ? null : (match.p1ProfileId ?? null),
+    p2ProfileId: p2Config.id.startsWith("random-") ? null : (match.p2ProfileId ?? null),
   }),
 });
 

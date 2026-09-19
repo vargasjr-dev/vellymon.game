@@ -53,7 +53,7 @@ export function generateDefaultBoard(): BoardSpace[] {
       const key = `${x},${y}`;
       const position: Position = { x, y };
 
-      let type: SpaceType = "harvestable";
+      let type: SpaceType = "ground";
       let team: 1 | 2 | undefined;
 
       if (spawnMap.has(key)) {
@@ -66,7 +66,6 @@ export function generateDefaultBoard(): BoardSpace[] {
       const space: BoardSpace = { position, type };
       if (team) space.team = team;
       if (type === "occupation") space.occupationCounter = 0;
-      if (type === "harvestable") space.harvestYield = 1;
 
       board.push(space);
     }
@@ -238,6 +237,9 @@ export function renderBoardText(board: BoardSpace[]): string {
           line += "O ";
           break;
         case "harvestable":
+          line += "+ ";
+          break;
+        case "ground":
           line += ". ";
           break;
         case "void":
