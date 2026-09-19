@@ -19,63 +19,6 @@ import type { SpaceType } from "./config";
 // ─── Board Generation ────────────────────────────────────────────────────────
 
 /**
- * Generate the default board layout based on GAME_CONFIG dimensions.
- *
- * Default 9×5 layout:
- * ```
- * S . . . . . . . S     (y=0)
- * S . O . . . . . S     (y=1)
- * . . . . O . . . .     (y=2)  ← center row
- * S . . . . . O . S     (y=3)
- * S . . . . . . . S     (y=4)
- * ```
- * S = spawn, O = occupation, . = harvestable
- * Team 1 spawns: left column (x=0)
- * Team 2 spawns: right column (x=8)
- */
-export function generateDefaultBoard(): BoardSpace[] {
-  const { width, height } = GAME_CONFIG.board;
-  const board: BoardSpace[] = [];
-
-  // Pre-calculate occupation point positions
-  const occupationPositions = getDefaultOccupationPositions(width, height);
-  const occSet = new Set(occupationPositions.map((p) => `${p.x},${p.y}`));
-
-  // Pre-calculate spawn positions
-  const team1Spawns = getDefaultSpawnPositions(1, width, height);
-  const team2Spawns = getDefaultSpawnPositions(2, width, height);
-  const spawnMap = new Map<string, 1 | 2>();
-  for (const pos of team1Spawns) spawnMap.set(`${pos.x},${pos.y}`, 1);
-  for (const pos of team2Spawns) spawnMap.set(`${pos.x},${pos.y}`, 2);
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const key = `${x},${y}`;
-      const position: Position = { x, y };
-
-      let type: SpaceType = "harvestable";
-      let team: 1 | 2 | undefined;
-
-      if (spawnMap.has(key)) {
-        type = "spawn";
-        team = spawnMap.get(key);
-      } else if (occSet.has(key)) {
-        type = "occupation";
-      }
-
-      const space: BoardSpace = { position, type };
-      if (team) space.team = team;
-      if (type === "occupation") space.occupationCounter = 0;
-      if (type === "harvestable") space.harvestYield = 3;
-
-      board.push(space);
-    }
-  }
-
-  return board;
-}
-
-/**
  * Get default spawn positions for a team.
  * Team 1: left column (x=0), distributed vertically
  * Team 2: right column (x=width-1), distributed vertically

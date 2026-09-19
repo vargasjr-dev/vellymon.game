@@ -24,7 +24,7 @@ import type {
   WinResult,
   Position,
 } from "./types";
-import { generateDefaultBoard } from "./board";
+import { getMapById, parseBoardFromMap } from "./maps";
 import { initializeEnergy } from "./energy";
 import {
   type Command,
@@ -86,7 +86,9 @@ export function initializeGame(
     winningEnergy?: number;
   },
 ): GameState {
-  const board = boardOverride?.board ?? generateDefaultBoard();
+  // Boards always come from the map library (server/maps.ts) — the Standard
+  // map is the default; callers override with another map from the library.
+  const board = boardOverride?.board ?? parseBoardFromMap(getMapById("standard"));
   const boardWidth = boardOverride?.width ?? GAME_CONFIG.board.width;
   const boardHeight = boardOverride?.height ?? GAME_CONFIG.board.height;
 

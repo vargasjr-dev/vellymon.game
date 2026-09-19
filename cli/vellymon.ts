@@ -37,6 +37,7 @@ import {
   type TurnTimerState,
 } from "../server/turnTimer";
 import { GAME_CONFIG } from "../server/config";
+import { getMapById, parseBoardFromMap } from "../server/maps";
 
 import type { GameState, VellymonState, TeamState } from "../server/types";
 import type { Command } from "../server/commands";
@@ -204,7 +205,12 @@ function cmdMatchCreate() {
   const setup1 = buildTeamSetup(picked.slice(0, 8), 1);
   const setup2 = buildTeamSetup(picked.slice(8, 16), 2);
 
-  const gameState = initializeGame(id, setup1, setup2);
+  const map = getMapById("standard");
+  const gameState = initializeGame(id, setup1, setup2, {
+    board: parseBoardFromMap(map),
+    width: map.width,
+    height: map.height,
+  });
   const timer = startTurn(gameState);
 
   const match: MatchFile = {

@@ -76,7 +76,6 @@ export {
 
 // Board
 export {
-  generateDefaultBoard,
   getDefaultSpawnPositions,
   getSpaceAt,
   getSpacesByType,
