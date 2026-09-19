@@ -35,11 +35,6 @@ const SPACE_COLORS: Record<string, { bg: string; border: string; label: string }
     border: "border-green-300",
     label: "",
   },
-  ground: {
-    bg: "bg-white",
-    border: "border-gray-200",
-    label: "",
-  },
   void: {
     bg: "bg-gray-800",
     border: "border-gray-900",

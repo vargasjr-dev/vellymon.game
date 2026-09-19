@@ -34,16 +34,16 @@ export type MapConfig = {
 /**
  * Standard — Classic 9×5 open battlefield.
  *
- * 10 harvest tiles: 2× (+1), 4× (+3), 3× (+6), 1× (+10).
- * The +10 vault sits dead center flanked by +6s — the fight happens there.
- * +3s ring the center; safe +1s sit on the open spawn-column corners.
+ * Every walkable tile is harvestable. Yield mix (37 tiles, mirrored for
+ * fairness): 6× +1 (edges), 16× +3 (the common ground), 12× +6, 3× +10.
+ * The +10 vaults run down the center column — the fight happens there.
  *
  * ```
- * 1 . . . r . . . 2     y=0  ← +6 up top, no cover
- * 1 . O . f . . . 2     y=1
- * , . f r h r f . ,     y=2  ← the vault row: +3 +6 +10 +6 +3
- * 1 . . . f . O . 2     y=3
- * 1 . . . . . . . 2     y=4
+ * 1 , r . h . r , 2     y=0  ← vault column: +6 +10 +6
+ * 1 . . O r . . . 2     y=1  ← star west, +6 center
+ * , r r r h r r r ,     y=2  ← the vault row: +6s stacked around the center +10
+ * 1 . . . r O . . 2     y=3  ← star east, +6 center
+ * 1 , r . h . r , 2     y=4
  * ```
  */
 const STANDARD: MapConfig = {
@@ -53,29 +53,29 @@ const STANDARD: MapConfig = {
   width: 9,
   height: 5,
   layout: [
-    "1 . . . r . . . 2",
-    "1 . O . f . . . 2",
-    ", . f r h r f . ,",
-    "1 . . . f . O . 2",
-    "1 . . . . . . . 2",
+    "1 , r . h . r , 2",
+    "1 . . O r . . . 2",
+    ", r r r h r r r ,",
+    "1 . . . r O . . 2",
+    "1 , r . h . r , 2",
   ],
 };
 
 /**
  * The Choke — 9×7 with void walls creating a chokepoint.
  *
- * 10 harvest tiles: 2× (+1), 4× (+3), 3× (+6), 1× (+10).
- * The +10 vault guards the chokepoint gap; +6s hold the choke mouths and
- * west pocket. +3s fringe the sides; +1s on the open row ends.
+ * Every walkable tile is harvestable. Yield mix (49 tiles, mirrored):
+ * 10× +1 (edges), 20× +3 (common ground), 14× +6, 5× +10.
+ * +10s guard the chokepoint gap and its flanks; +6s ring them.
  *
  * ```
- * 1 . . . V . . . 2     y=0
- * . . f . V . f . .     y=1
- * 1 . O . r . f . 2     y=2  ← choke mouth (+6)
- * , . r . h . f . ,     y=3  ← center: +6 +10, safe +1s on row ends
- * 1 . . . r . O . 2     y=4  ← choke mouth (+6)
- * . . . . V . . . .
- * 1 . . . V . . . 2     y=6
+ * 1 , . . V . . , 2     y=0
+ * . , r . V . r , .     y=1
+ * 1 r O r h r . r 2     y=2  ← choke mouth: +10 flanked by +6s
+ * , r h . h . h r ,     y=3  ← center row: three +10s
+ * 1 r . r h r O r 2     y=4  ← choke mouth: +10 flanked by +6s
+ * . , r . V . r , .     y=5
+ * 1 , . . V . . , 2     y=6
  * ```
  */
 const THE_CHOKE: MapConfig = {
@@ -85,13 +85,13 @@ const THE_CHOKE: MapConfig = {
   width: 9,
   height: 7,
   layout: [
-    "1 . . . V . . . 2",
-    ". . f . V . f . .",
-    "1 . O . r . f . 2",
-    ", . r . h . f . ,",
-    "1 . . . r . O . 2",
-    ". . . . V . . . .",
-    "1 . . . V . . . 2",
+    "1 , . . V . . , 2",
+    ". , r . V . r , .",
+    "1 r O r h r . r 2",
+    ", r h . h . h r ,",
+    "1 r . r h r O r 2",
+    ". , r . V . r , .",
+    "1 , . . V . . , 2",
   ],
 };
 
@@ -117,9 +117,8 @@ type CellDef = { type: SpaceType; team?: 1 | 2; harvestYield?: number };
 const CELL_MAP: Record<string, CellDef> = {
   "1": { type: "spawn", team: 1 },
   "2": { type: "spawn", team: 2 },
-  ".": { type: "ground" },
+  ".": { type: "harvestable", harvestYield: 3 },
   ",": { type: "harvestable", harvestYield: 1 },
-  f: { type: "harvestable", harvestYield: 3 },
   r: { type: "harvestable", harvestYield: 6 },
   h: { type: "harvestable", harvestYield: 10 },
   O: { type: "occupation" },

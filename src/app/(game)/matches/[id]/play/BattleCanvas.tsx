@@ -117,8 +117,6 @@ const COLORS = {
   bg: 0x0a0f1a,
   tile: 0x111b2e,
   tileBorder: 0x1e2d4a,
-  ground: 0x1a2332,
-  groundBorder: 0x2a3a52,
   occupation: 0x3d2800,
   occupationBorder: 0xb8860b,
   occupationStar: 0xffd700,
@@ -358,7 +356,6 @@ export default function BattleCanvas({
         const vm = vmIntMap.get(`${gx},${gy}`);
         const isOccupation = space?.type === "occupation";
         const isHarvestable = space?.type === "harvestable";
-        const isGround = space?.type === "ground";
         const isSpawn = space?.type === "spawn";
         const isSelected = vm?.uuid === selVm;
         const isYours = vm ? vm.teamId === myTeam : false;
@@ -403,9 +400,6 @@ export default function BattleCanvas({
         } else if (isHarvestable) {
           fillColor = COLORS.harvestable;
           borderColor = COLORS.harvestableBorder;
-        } else if (isGround) {
-          fillColor = COLORS.ground;
-          borderColor = COLORS.groundBorder;
         } else if (isSpawn) {
           fillColor = COLORS.spawn;
           borderColor = COLORS.spawnBorder;
